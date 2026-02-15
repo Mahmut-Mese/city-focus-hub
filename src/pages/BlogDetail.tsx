@@ -26,7 +26,7 @@ export default function BlogDetail() {
             <ArrowLeft size={18} />
             Back to Blog
           </Link>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-white mb-4 max-w-3xl">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-sans font-bold text-white mb-4 max-w-3xl">
             {post.title}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-white/80">
@@ -60,7 +60,7 @@ export default function BlogDetail() {
                     Flexible work isn't just a trend, it's a system. From layout to community, the right space turns intention into output.
                   </p>
 
-                  <h2 className="font-serif text-5xl leading-none mt-8 mb-4">A workspace that matches your day</h2>
+                  <h2 className="font-sans text-5xl leading-none mt-8 mb-4">A workspace that matches your day</h2>
                   <p className="text-black/60 mb-4 leading-relaxed">
                     Some days you need deep focus. Others you need a room for a client call, a quick coffee, or a place
                     to reset between meetings. Flexible spaces are powerful because they let you choose your environment
@@ -81,7 +81,7 @@ export default function BlogDetail() {
                     />
                   </div>
 
-                  <h2 className="font-serif text-5xl leading-none mt-8 mb-4">The habits that make work feel effortless</h2>
+                  <h2 className="font-sans text-5xl leading-none mt-8 mb-4">The habits that make work feel effortless</h2>
                   <ul className="space-y-2 mb-6">
                     <li className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-black mt-2" />
@@ -103,7 +103,7 @@ export default function BlogDetail() {
 
                   {/* Pro Tip Callout */}
                   <div className="bg-black text-white p-6 rounded-xl my-8">
-                    <h3 className="font-serif text-lg font-semibold mb-2">Pro tip</h3>
+                    <h3 className="font-sans text-lg font-semibold mb-2">Pro tip</h3>
                     <p className="text-white/90">
                       Pick one “default” seat for deep work. The consistency makes it easier to enter flow even on busy days.
                     </p>
@@ -121,7 +121,7 @@ export default function BlogDetail() {
 
                 {/* Comment Form */}
                 <div className="mt-8 pt-6 border-t border-black/10">
-                  <h3 className="font-serif text-3xl leading-none mb-6">Post a comment</h3>
+                  <h3 className="font-sans text-3xl leading-none mb-6">Post a comment</h3>
                   <form className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Input placeholder="Name" className="h-11 border-black/15" />
@@ -138,7 +138,7 @@ export default function BlogDetail() {
             <aside className="space-y-6">
               {/* Search */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Search</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Search</h3>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45" size={16} />
@@ -150,7 +150,7 @@ export default function BlogDetail() {
 
               {/* Recent Posts */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Recent posts</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Recent posts</h3>
                 <div className="space-y-4">
                   {blogPosts.filter(p => p.id !== post.id).slice(0, 3).map((p) => (
                     <Link key={p.id} to={`/blog/${p.id}`} className="flex gap-3 group items-start rounded-xl border border-black/10 p-2.5">
@@ -174,7 +174,7 @@ export default function BlogDetail() {
 
               {/* Popular Tags */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Popular tags</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Popular tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {popularTags.map((tag) => (
                     <span key={tag} className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-black/70">
@@ -186,7 +186,7 @@ export default function BlogDetail() {
 
               {/* Related Workspaces */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Related workspaces</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Related workspaces</h3>
                 <div className="space-y-4">
                   {relatedWorkspaces.map((workspace) => (
                     <Link key={workspace.id} to="/virtual-office" className="block rounded-xl border border-black/10 overflow-hidden">

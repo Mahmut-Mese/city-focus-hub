@@ -45,7 +45,7 @@ export default function About() {
         <div className="container-custom">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="font-serif text-3xl md:text-4xl font-bold mb-6">Our Story</h2>
+              <h2 className="font-sans text-3xl md:text-4xl font-bold mb-6">Our Story</h2>
               <p className="text-muted-foreground mb-4 leading-relaxed">
                 Founded in 2020, CoworkingHub was born from a simple idea: work doesn't have to be confined 
                 to a traditional office. We believe that the right environment can unlock creativity, 
@@ -112,7 +112,7 @@ export default function About() {
               />
             </div>
             <div className="lg:order-2">
-              <h2 className="font-serif text-3xl md:text-4xl font-bold mb-8">World-Class Amenities</h2>
+              <h2 className="font-sans text-3xl md:text-4xl font-bold mb-8">World-Class Amenities</h2>
               <div className="space-y-6">
                 {aboutAmenities.map((amenity) => {
                   const Icon = amenityIconMap[amenity.icon] || Wifi;

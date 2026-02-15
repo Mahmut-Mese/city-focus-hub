@@ -26,7 +26,7 @@ export default function Blog() {
       >
         <div className="hero-overlay" />
         <div className="container-custom relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-sans font-bold text-white mb-4">
             News, guides & workspace insights
           </h1>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
@@ -86,7 +86,7 @@ export default function Blog() {
             <aside className="space-y-6">
               {/* Quick Search */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-3">Quick Search</h3>
+                <h3 className="font-sans text-3xl leading-none mb-3">Quick Search</h3>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45" size={16} />
                   <Input
@@ -100,7 +100,7 @@ export default function Blog() {
 
               {/* Recent Posts */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Recent Posts</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Recent Posts</h3>
                 <div className="space-y-4">
                   {blogPosts.slice(0, 3).map((post) => (
                     <Link key={post.id} to={`/blog/${post.id}`} className="flex gap-3 group items-start">
@@ -125,7 +125,7 @@ export default function Blog() {
 
               {/* Categories */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Categories</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Categories</h3>
                 <div className="flex flex-wrap gap-2">
                   {blogCategories.filter(c => c !== 'All').map((category) => (
                     <button
@@ -143,7 +143,7 @@ export default function Blog() {
 
               {/* Popular Tags */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-serif text-3xl leading-none mb-4">Popular Tags</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">Popular Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {popularTags.map((tag) => (
                     <span key={tag} className="text-sm text-black/45">

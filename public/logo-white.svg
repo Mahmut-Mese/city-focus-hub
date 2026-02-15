@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" role="img" aria-labelledby="title desc">
+  <title id="title">The Leadenhall Works logo (white)</title>
+  <desc id="desc">Square mark with a simple building glyph and stacked text reading 'THE LEADENHALL WORKS' in white.</desc>
+  <rect x="6" y="6" width="188" height="188" rx="6" ry="6" fill="none" stroke="#fff" stroke-width="12"/>
+  <g transform="translate(24,28)">
+    <rect x="0" y="110" width="140" height="48" fill="#fff"/>
+    <rect x="26" y="36" width="28" height="122" fill="#fff"/>
+    <rect x="72" y="78" width="48" height="80" fill="#fff"/>
+  </g>
+  <g transform="translate(220,40)" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-weight="700">
+    <text x="0" y="30" font-size="28">THE</text>
+    <text x="0" y="78" font-size="36">LEADENHALL</text>
+    <text x="0" y="128" font-size="36">WORKS</text>
+  </g>
+</svg>

@@ -23,7 +23,7 @@ export function CTABanner({
   return (
     <section className="bg-primary text-primary-foreground section-padding">
       <div className="container-custom text-center">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-4">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-sans font-bold mb-4">
           {title}
         </h2>
         {subtitle && (

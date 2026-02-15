@@ -96,7 +96,7 @@ export default function FAQ() {
               <span className="inline-flex items-center h-7 px-3 rounded-full border border-black/15 text-[10px] tracking-[0.1em] uppercase font-semibold mb-6">
                 Common FAQ'S
               </span>
-              <h2 className="font-serif text-6xl leading-none mb-5">
+              <h2 className="font-sans text-6xl leading-none mb-5">
                 Frequently Asked Questions
               </h2>
               <p className="text-black/55 text-lg mb-6">
@@ -155,7 +155,7 @@ export default function FAQ() {
             <div className="w-12 h-12 rounded-full border border-black/15 flex items-center justify-center mx-auto mb-6">
               <CircleHelp size={22} className="text-black/60" />
             </div>
-            <h2 className="font-serif text-6xl leading-none mb-4">Still have questions?</h2>
+            <h2 className="font-sans text-6xl leading-none mb-4">Still have questions?</h2>
             <p className="text-black/55 text-lg mb-8 max-w-xl mx-auto">
               Can't find the answer you're looking for? Our support team is here to help.
             </p>

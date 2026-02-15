@@ -74,7 +74,7 @@ export default function MeetingRooms() {
       <section className="section-padding bg-white">
         <div className="container-custom">
           <div className="text-center mb-12 md:mb-14">
-            <h2 className="font-serif text-5xl md:text-6xl leading-tight mb-4">Designed for real work.</h2>
+            <h2 className="font-sans text-5xl md:text-6xl leading-tight mb-4">Designed for real work.</h2>
             <p className="text-lg text-black/55">From quiet focus rooms to collaborative spaces</p>
           </div>
           <div className="space-y-12">
@@ -100,7 +100,7 @@ export default function MeetingRooms() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-black/10 bg-white p-7 md:p-9 lg:order-2">
-                  <h3 className="font-serif text-5xl leading-none mb-4">{room.name}</h3>
+                  <h3 className="font-sans text-5xl leading-none mb-4">{room.name}</h3>
                   <p className="text-black/60 mb-6 leading-relaxed">{room.description}</p>
                   <ul className="space-y-2 mb-7">
                     {room.features.map((feature) => (
@@ -125,7 +125,7 @@ export default function MeetingRooms() {
       <section className="section-padding bg-[#efefef]">
         <div className="container-custom">
           <div className="text-center mb-12 md:mb-14">
-            <h2 className="font-serif text-5xl md:text-6xl leading-tight mb-4">Everything you need to stay in flow.</h2>
+            <h2 className="font-sans text-5xl md:text-6xl leading-tight mb-4">Everything you need to stay in flow.</h2>
             <p className="text-lg text-black/55">Premium amenities included with every booking</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -136,7 +136,7 @@ export default function MeetingRooms() {
                   <div className="w-10 h-10 rounded-full border border-black/15 flex items-center justify-center mx-auto mb-5">
                     <Icon size={18} className="text-black/70" />
                   </div>
-                  <h3 className="font-serif text-4xl leading-none mb-3">{amenity.title}</h3>
+                  <h3 className="font-sans text-4xl leading-none mb-3">{amenity.title}</h3>
                   <p className="text-black/55">{amenity.description}</p>
                 </article>
               );
@@ -149,7 +149,7 @@ export default function MeetingRooms() {
       <section className="section-padding bg-white">
         <div className="container-custom">
           <div className="text-center mb-12 md:mb-14">
-            <h2 className="font-serif text-5xl md:text-6xl leading-tight mb-4">Flexible plans, monochrome clarity.</h2>
+            <h2 className="font-sans text-5xl md:text-6xl leading-tight mb-4">Flexible plans, monochrome clarity.</h2>
             <p className="text-lg text-black/55">Choose the access that works for you</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -165,7 +165,7 @@ export default function MeetingRooms() {
                     <span className="inline-flex h-6 items-center rounded-full bg-black px-3 text-xs text-white">Most popular</span>
                   </div>
                 )}
-                <h3 className="font-serif text-4xl leading-none mb-3">{plan.name}</h3>
+                <h3 className="font-sans text-4xl leading-none mb-3">{plan.name}</h3>
                 <div className="mb-5">
                   <span className="text-5xl font-bold leading-none">£{plan.price}</span>
                   <span className="text-black/45">/{plan.period}</span>

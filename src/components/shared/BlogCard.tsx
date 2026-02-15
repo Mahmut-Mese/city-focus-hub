@@ -41,7 +41,7 @@ export function BlogCard({
             </div>
           </div>
           
-          <h3 className="font-serif text-[2rem] leading-tight mb-2 line-clamp-2">
+          <h3 className="font-sans text-[2rem] leading-tight mb-2 line-clamp-2">
             {title}
           </h3>
           

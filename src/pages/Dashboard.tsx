@@ -40,11 +40,11 @@ export default function Dashboard() {
           {/* User Info */}
           <div className="mb-8">
             <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-4">
-              <span className="text-2xl font-serif font-bold text-primary-foreground">
+              <span className="text-2xl font-sans font-bold text-primary-foreground">
                 {dashboardUser.initials}
               </span>
             </div>
-            <h2 className="font-serif text-lg font-semibold">{dashboardUser.name}'s Workspace</h2>
+            <h2 className="font-sans text-lg font-semibold">{dashboardUser.name}'s Workspace</h2>
             <span className="chip text-xs mt-2">{dashboardUser.plan}</span>
           </div>
 
@@ -90,7 +90,7 @@ export default function Dashboard() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="font-serif text-2xl md:text-3xl font-bold">
+              <h1 className="font-sans text-2xl md:text-3xl font-bold">
                 Welcome back, {dashboardUser.name}
               </h1>
               <p className="text-muted-foreground">Here's what's happening with your workspace</p>
@@ -141,7 +141,7 @@ export default function Dashboard() {
             {/* Upcoming Bookings */}
             <div className="card-elevated p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-serif text-xl font-semibold">Upcoming Bookings</h2>
+                <h2 className="font-sans text-xl font-semibold">Upcoming Bookings</h2>
                 <Link to="/dashboard/bookings" className="text-sm text-primary hover:underline flex items-center gap-1">
                   View all <ArrowRight size={14} />
                 </Link>
@@ -168,7 +168,7 @@ export default function Dashboard() {
 
             {/* Membership Details */}
             <div className="card-elevated p-6">
-              <h2 className="font-serif text-xl font-semibold mb-6">Membership Details</h2>
+              <h2 className="font-sans text-xl font-semibold mb-6">Membership Details</h2>
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground">Plan</span>
@@ -218,7 +218,7 @@ export default function Dashboard() {
           {/* Recent Invoices */}
           <div className="card-elevated p-6 mt-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-serif text-xl font-semibold">Recent Invoices</h2>
+              <h2 className="font-sans text-xl font-semibold">Recent Invoices</h2>
               <Link to="/dashboard/invoices" className="text-sm text-primary hover:underline flex items-center gap-1">
                 View all <ArrowRight size={14} />
               </Link>

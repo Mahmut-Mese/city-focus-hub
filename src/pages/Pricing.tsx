@@ -84,7 +84,7 @@ export default function Pricing() {
                   </div>
                 )}
 
-                <h3 className="font-semibold text-[34px] font-serif mb-1 leading-none">{plan.name}</h3>
+                <h3 className="font-semibold text-[34px] font-sans mb-1 leading-none">{plan.name}</h3>
                 <div className="mb-2">
                   <span className="text-5xl font-bold leading-none">${plan.price}</span>
                   <span className="text-sm text-black/45"> /month</span>
@@ -190,7 +190,7 @@ export default function Pricing() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {pricingFaq.map((faq) => (
               <div key={faq.question} className="rounded-xl border border-black/10 bg-white p-6">
-                <h3 className="font-serif font-semibold text-2xl mb-2.5 leading-tight">{faq.question}</h3>
+                <h3 className="font-sans font-semibold text-2xl mb-2.5 leading-tight">{faq.question}</h3>
                 <p className="text-sm text-black/60 leading-relaxed">{faq.answer}</p>
               </div>
             ))}

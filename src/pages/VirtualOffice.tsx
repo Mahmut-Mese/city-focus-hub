@@ -32,7 +32,7 @@ export default function VirtualOffice() {
 
               {/* Project Overview */}
               <div>
-                <h2 className="font-serif text-5xl leading-none mb-4">Project Overview</h2>
+                <h2 className="font-sans text-5xl leading-none mb-4">Project Overview</h2>
                 <p className="text-black/60 leading-relaxed text-lg">
                   Our private office spaces are designed for teams who need a dedicated, professional environment. 
                   Each office comes fully furnished with ergonomic furniture, high-speed internet, and access to all 
@@ -43,7 +43,7 @@ export default function VirtualOffice() {
 
               {/* Challenge Section */}
               <div>
-                <h2 className="font-serif text-5xl leading-none mb-4">Challenge of This Project</h2>
+                <h2 className="font-sans text-5xl leading-none mb-4">Challenge of This Project</h2>
                 <p className="text-black/60 mb-4 text-lg">
                   Many businesses face challenges when it comes to workspace decisions:
                 </p>
@@ -66,7 +66,7 @@ export default function VirtualOffice() {
 
               {/* Final Result */}
               <div>
-                <h2 className="font-serif text-5xl leading-none mb-4">Final Result</h2>
+                <h2 className="font-sans text-5xl leading-none mb-4">Final Result</h2>
                 <p className="text-black/60 leading-relaxed text-lg">
                   Our flexible office solutions eliminate these pain points. You get a premium workspace without 
                   the traditional overhead, with month-to-month flexibility and all-inclusive pricing. Our spaces 
@@ -98,7 +98,7 @@ export default function VirtualOffice() {
             <div className="space-y-6">
               {/* Project Info Card */}
               <div className="rounded-2xl border border-black/10 bg-white p-6">
-                <h3 className="font-serif text-4xl leading-none mb-5">Project Info</h3>
+                <h3 className="font-sans text-4xl leading-none mb-5">Project Info</h3>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <Calendar size={18} className="text-black/45" />
@@ -126,7 +126,7 @@ export default function VirtualOffice() {
 
               {/* CTA Card */}
               <div className="bg-[#0f1015] text-white p-6 rounded-2xl">
-                <h3 className="font-serif text-4xl leading-tight mb-2">
+                <h3 className="font-sans text-4xl leading-tight mb-2">
                   Get Any Coworking Services From us Now
                 </h3>
                 <p className="text-white/75 text-base mb-4">
@@ -148,7 +148,7 @@ export default function VirtualOffice() {
 
               {/* Contact Form */}
               <div className="rounded-2xl border border-black/10 bg-white p-6">
-                <h3 className="font-serif text-4xl leading-none mb-4">Contact Us</h3>
+                <h3 className="font-sans text-4xl leading-none mb-4">Contact Us</h3>
                 <form className="space-y-4">
                   <Input placeholder="Your Name" className="h-11 border-black/15" />
                   <Input type="email" placeholder="Email" className="h-11 border-black/15" />

@@ -31,7 +31,7 @@ export default function Contact() {
               <span className="inline-flex items-center h-8 px-4 rounded-full border border-black/15 text-[12px] font-semibold tracking-[0.08em] uppercase mb-6">
                 Get In Touch
               </span>
-              <h2 className="font-serif text-6xl leading-none mb-6">Have Any Questions?</h2>
+              <h2 className="font-sans text-6xl leading-none mb-6">Have Any Questions?</h2>
               <div className="flex gap-4">
                 {socialLinks.map(({ icon: Icon, href, label }) => (
                   <a
@@ -90,7 +90,7 @@ export default function Contact() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Contact Form */}
             <div className="rounded-3xl border border-black/10 bg-white p-8 md:p-10">
-              <h3 className="font-serif text-5xl leading-none mb-6">Get A Free Consultation</h3>
+              <h3 className="font-sans text-5xl leading-none mb-6">Get A Free Consultation</h3>
               <form className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Input placeholder="Name*" className="h-12 border-black/15 text-base" />

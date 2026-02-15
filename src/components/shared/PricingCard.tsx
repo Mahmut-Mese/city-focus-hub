@@ -36,7 +36,7 @@ export function PricingCard({
       )}
       
       <div className="text-center mb-6">
-        <h3 className="font-serif text-2xl font-semibold mb-2">{name}</h3>
+        <h3 className="font-sans text-2xl font-semibold mb-2">{name}</h3>
         {description && (
           <p className="text-sm text-muted-foreground">{description}</p>
         )}

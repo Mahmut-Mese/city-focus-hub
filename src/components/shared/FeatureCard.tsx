@@ -36,7 +36,7 @@ export function FeatureCard({
       >
         <Icon className={cn('w-5 h-5 text-muted-foreground', iconClassName)} />
       </div>
-      <h3 className={cn('font-serif text-2xl md:text-3xl font-semibold mb-3', titleClassName)}>{title}</h3>
+      <h3 className={cn('font-sans text-2xl md:text-3xl font-semibold mb-3', titleClassName)}>{title}</h3>
       <p
         className={cn(
           'text-base text-muted-foreground leading-relaxed max-w-[36rem]',

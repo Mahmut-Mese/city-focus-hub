@@ -26,7 +26,7 @@ export function ServiceCard({
           />
         </div>
         <div className="p-5 md:p-6">
-          <h3 className="font-serif text-xl font-semibold mb-2">{title}</h3>
+          <h3 className="font-sans text-xl font-semibold mb-2">{title}</h3>
           <p className="text-sm text-muted-foreground mb-4">{description}</p>
           <span className="inline-flex items-center gap-2 text-sm font-medium text-primary group-hover:gap-3 transition-all">
             Learn more

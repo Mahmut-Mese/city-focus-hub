@@ -92,7 +92,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/60" />
         <div className="container-custom relative z-10 py-16 md:py-20">
           <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-6xl font-serif font-semibold text-white mb-5 leading-[0.96]">
+            <h1 className="text-4xl md:text-6xl font-sans font-semibold text-white mb-5 leading-[0.96]">
               Your space to work, connect and focus in the heart of the City.
             </h1>
             <p className="text-sm md:text-base text-white/80 max-w-xl mb-7 leading-relaxed">
@@ -142,7 +142,7 @@ export default function Home() {
                       />
                     </div>
                     <div className="p-4 md:p-5">
-                      <h3 className="font-serif text-2xl leading-tight mb-1.5">{service.title}</h3>
+                      <h3 className="font-sans text-2xl leading-tight mb-1.5">{service.title}</h3>
                       <p className="text-sm text-black/60 leading-relaxed mb-4">{service.description}</p>
                       <div className="flex items-center justify-between text-xs text-black/60">
                         <span>More View • Details</span>
@@ -162,7 +162,7 @@ export default function Home() {
           <div className="container-custom grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <span className="inline-flex items-center h-5 px-2.5 rounded-full border border-black/20 text-[9px] tracking-[0.18em] uppercase text-black/60">About</span>
-              <h2 className="font-serif text-4xl md:text-5xl leading-[1.02] mt-3 mb-5 max-w-xl">
+              <h2 className="font-sans text-4xl md:text-5xl leading-[1.02] mt-3 mb-5 max-w-xl">
                 A City business address without the office cost
               </h2>
               <p className="text-sm text-black/60 leading-relaxed mb-6 max-w-lg">
@@ -208,7 +208,7 @@ export default function Home() {
               <span className="inline-flex items-center h-5 px-2.5 rounded-full border border-black/20 text-[9px] tracking-[0.18em] uppercase text-black/60">Features</span>
               <span className="text-[11px] text-black/45 uppercase tracking-[0.08em]">Built for teams</span>
             </div>
-            <h2 className="font-serif text-4xl md:text-5xl text-center mb-8">Why Choose CoworkingHub?</h2>
+            <h2 className="font-sans text-4xl md:text-5xl text-center mb-8">Why Choose CoworkingHub?</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {whyChooseUs.map((item) => {
                 const Icon = item.icon;
@@ -217,7 +217,7 @@ export default function Home() {
                     <div className="inline-flex w-9 h-9 rounded-xl bg-black items-center justify-center mb-3">
                       <Icon size={16} className="text-white" />
                     </div>
-                    <h3 className="font-serif text-xl mb-1.5">{item.title}</h3>
+                    <h3 className="font-sans text-xl mb-1.5">{item.title}</h3>
                     <p className="text-sm text-black/60 leading-relaxed">{item.description}</p>
                   </article>
                 );
@@ -232,7 +232,7 @@ export default function Home() {
               <span className="inline-flex items-center h-5 px-2.5 rounded-full border border-black/20 text-[9px] tracking-[0.18em] uppercase text-black/60">Testimonials</span>
               <span className="text-[11px] text-black/45 uppercase tracking-[0.08em]">Member reviews</span>
             </div>
-            <h2 className="font-serif text-4xl md:text-5xl text-center mb-8">What Our Members Say</h2>
+            <h2 className="font-sans text-4xl md:text-5xl text-center mb-8">What Our Members Say</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {testimonials.map((testimonial) => (
                 <article key={testimonial.name} className="rounded-xl border border-black/10 bg-white p-4 md:p-5">
@@ -256,7 +256,7 @@ export default function Home() {
               <span className="inline-flex items-center h-5 px-2.5 rounded-full border border-black/20 text-[9px] tracking-[0.18em] uppercase text-black/60">Gallery</span>
               <span className="text-[11px] text-black/45 uppercase tracking-[0.08em]">Our Space</span>
             </div>
-            <h2 className="font-serif text-4xl md:text-5xl text-center mb-8">Our Space</h2>
+            <h2 className="font-sans text-4xl md:text-5xl text-center mb-8">Our Space</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-4 md:h-[360px]">
               <div className="rounded-xl overflow-hidden h-[260px] md:h-full md:row-span-2">
                 <img
@@ -287,7 +287,7 @@ export default function Home() {
           <div className="container-custom grid grid-cols-1 lg:grid-cols-2 gap-7">
             <div className="rounded-xl border border-black/10 bg-white p-6 md:p-7">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="font-serif text-3xl">Contact Us / Book a Tour</h3>
+                <h3 className="font-sans text-3xl">Contact Us / Book a Tour</h3>
                 <span className="text-[10px] tracking-[0.15em] uppercase text-black/45">Contact</span>
               </div>
               <p className="text-sm text-black/60 mb-5">We'll get back to you within one business day.</p>
@@ -303,7 +303,7 @@ export default function Home() {
             </div>
 
             <div className="rounded-xl bg-[#111218] text-white p-6 md:p-7">
-              <h3 className="font-serif text-3xl mb-5">Visit Us</h3>
+              <h3 className="font-sans text-3xl mb-5">Visit Us</h3>
               <div className="space-y-4 text-sm">
                 <div className="flex items-start gap-3">
                   <MapPin size={16} className="text-white/80 mt-0.5" />

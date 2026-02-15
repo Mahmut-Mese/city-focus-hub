@@ -42,7 +42,7 @@
     --hero-overlay: 0 0% 0%;
     
     /* Typography */
-    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Playfair Display', Georgia, serif;
     --font-sans: 'Inter', system-ui, sans-serif;
 
     /* Shadows */
@@ -103,7 +103,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     @apply font-semibold tracking-tight;
   }
 }
@@ -164,7 +164,7 @@
 
   /* Serif heading utility */
   .heading-serif {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
   }
 }
 
