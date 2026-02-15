@@ -12,24 +12,6 @@ const socialLinks = [
   { icon: Linkedin, href: '#', label: 'LinkedIn' },
 ];
 
-const contactInfo = [
-  {
-    icon: MapPin,
-    title: 'Address',
-    content: '123 Business District\nCity Center, NY 10001',
-  },
-  {
-    icon: Mail,
-    title: 'Email Us',
-    content: 'hello@coworkinghub.com',
-  },
-  {
-    icon: Phone,
-    title: 'Phone Number',
-    content: '+1 (234) 567-890',
-  },
-];
-
 export default function Contact() {
   return (
     <Layout>
@@ -41,23 +23,22 @@ export default function Contact() {
       />
 
       {/* Contact Info Section */}
-      <section className="section-padding">
+      <section className="section-padding bg-[#efefef]">
         <div className="container-custom">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
             {/* Left - Title and Social */}
             <div>
-              <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">Have Any Questions?</h2>
-              <p className="text-muted-foreground mb-8">
-                We're here to help and answer any question you might have. 
-                We look forward to hearing from you.
-              </p>
+              <span className="inline-flex items-center h-8 px-4 rounded-full border border-black/15 text-[12px] font-semibold tracking-[0.08em] uppercase mb-6">
+                Get In Touch
+              </span>
+              <h2 className="font-serif text-6xl leading-none mb-6">Have Any Questions?</h2>
               <div className="flex gap-4">
                 {socialLinks.map(({ icon: Icon, href, label }) => (
                   <a
                     key={label}
                     href={href}
                     aria-label={label}
-                    className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-12 h-12 rounded-full border border-black/20 bg-white flex items-center justify-center hover:bg-black hover:text-white transition-colors"
                   >
                     <Icon size={18} />
                   </a>
@@ -66,54 +47,70 @@ export default function Contact() {
             </div>
 
             {/* Right - Contact Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {contactInfo.map(({ icon: Icon, title, content }) => (
-                <div key={title} className="card-elevated p-5 text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-secondary flex items-center justify-center">
-                    <Icon size={20} className="text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-black/10 bg-white p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#f1f1f1] flex items-center justify-center">
+                    <MapPin size={20} className="text-black/70" />
                   </div>
-                  <h3 className="font-semibold mb-1">{title}</h3>
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">{content}</p>
+                  <div>
+                    <h3 className="font-semibold text-3xl leading-none mb-2">Our Address</h3>
+                    <p className="text-black/60 text-lg">42 Market Street, Suite 200,<br />City Center</p>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="rounded-2xl border border-black/10 bg-white p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#f1f1f1] flex items-center justify-center">
+                    <Mail size={20} className="text-black/70" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-3xl leading-none mb-2">Email Us</h3>
+                    <p className="text-black/60 text-lg">hello@coworking.com</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-black/10 bg-white p-6 sm:col-span-2">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#f1f1f1] flex items-center justify-center">
+                    <Phone size={20} className="text-black/70" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-3xl leading-none mb-2">Phone Number</h3>
+                    <p className="text-black/60 text-lg">+1 (555) 013-0249</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Form and Map Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Contact Form */}
-            <div className="card-elevated p-6 md:p-8">
-              <h3 className="font-serif text-2xl font-semibold mb-6">Get A Free Consultation</h3>
-              <form className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input placeholder="Your Name" className="h-12" />
-                  <Input type="tel" placeholder="Phone Number" className="h-12" />
+            <div className="rounded-3xl border border-black/10 bg-white p-8 md:p-10">
+              <h3 className="font-serif text-5xl leading-none mb-6">Get A Free Consultation</h3>
+              <form className="space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <Input placeholder="Name*" className="h-12 border-black/15 text-base" />
+                  <Input type="tel" placeholder="Phone Number" className="h-12 border-black/15 text-base" />
                 </div>
-                <Input type="email" placeholder="Email Address" className="h-12" />
-                <Textarea placeholder="Your Message" className="min-h-[150px]" />
-                <Button className="btn-pill-primary w-full sm:w-auto">Submit Message</Button>
+                <Input type="email" placeholder="Email*" className="h-12 border-black/15 text-base" />
+                <Textarea placeholder="Messages" className="min-h-[170px] border-black/15 text-base" />
+                <Button className="h-12 rounded-xl px-6 text-lg w-full bg-black text-white hover:bg-black/90">
+                  REQUEST SUBMIT
+                </Button>
               </form>
             </div>
 
             {/* Map Placeholder */}
-            <div className="card-elevated overflow-hidden">
-              <div className="w-full h-full min-h-[400px] bg-secondary flex items-center justify-center">
+            <div className="rounded-3xl border border-black/10 bg-white overflow-hidden">
+              <div className="w-full h-full min-h-[420px] bg-[#f4f4f4] flex items-center justify-center">
                 <div className="text-center p-8">
-                  <MapPin size={48} className="mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-serif text-xl font-semibold mb-2">Visit Our Space</h3>
-                  <p className="text-muted-foreground text-sm mb-4">
-                    123 Business District<br />
-                    City Center, NY 10001
-                  </p>
-                  <Button className="btn-pill-secondary" asChild>
-                    <a 
-                      href="https://maps.google.com" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      Get Directions
-                    </a>
-                  </Button>
+                  <MapPin size={46} className="mx-auto mb-4 text-black/45" />
+                  <h3 className="font-semibold text-3xl mb-2">Interactive Map Location</h3>
+                  <p className="text-black/45 text-lg">London Eye, Riverside Building, County Hall</p>
                 </div>
               </div>
             </div>

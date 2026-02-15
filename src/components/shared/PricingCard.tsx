@@ -43,7 +43,7 @@ export function PricingCard({
       </div>
 
       <div className="text-center mb-6">
-        <span className="text-4xl md:text-5xl font-bold">${price}</span>
+        <span className="text-4xl md:text-5xl font-bold">£{price}</span>
         <span className="text-muted-foreground">/{period}</span>
       </div>
 

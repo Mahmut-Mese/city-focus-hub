@@ -201,7 +201,7 @@ export const popularTags = [
 export const faqItems = [
   {
     question: 'What membership plans do you offer?',
-    answer: 'We offer three main membership plans: Lounge ($29/month) for occasional workspace access, Smart Office ($39/month) for dedicated desk access, and Full Space ($59/month) for complete access including private offices. Each plan comes with different perks and meeting room hours.',
+    answer: 'We offer three main membership plans: Lounge (£29/month) for occasional workspace access, Smart Office (£39/month) for dedicated desk access, and Full Space (£59/month) for complete access including private offices. Each plan comes with different perks and meeting room hours.',
   },
   {
     question: 'Can I try the space before committing?',

@@ -5,6 +5,8 @@ interface SectionTitleProps {
   subtitle?: string;
   centered?: boolean;
   className?: string;
+  titleClassName?: string;
+  subtitleClassName?: string;
 }
 
 export function SectionTitle({
@@ -12,14 +14,16 @@ export function SectionTitle({
   subtitle,
   centered = true,
   className,
+  titleClassName,
+  subtitleClassName,
 }: SectionTitleProps) {
   return (
     <div className={cn(centered && 'text-center', 'mb-10 md:mb-14', className)}>
-      <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-4">
+      <h2 className={cn('text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-4', titleClassName)}>
         {title}
       </h2>
       {subtitle && (
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+        <p className={cn('text-muted-foreground text-lg max-w-2xl mx-auto', subtitleClassName)}>
           {subtitle}
         </p>
       )}

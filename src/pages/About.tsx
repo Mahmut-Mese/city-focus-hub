@@ -2,24 +2,24 @@ import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { SectionTitle } from '@/components/shared/SectionTitle';
 import { FeatureCard } from '@/components/shared/FeatureCard';
-import { MapPin, Clock2, HeadphonesIcon, Wifi, Users, Coffee, Printer, Check } from 'lucide-react';
+import { MapPin, CalendarDays, HeadphonesIcon, Wifi, Users, Coffee, Printer, Check } from 'lucide-react';
 import { aboutAmenities } from '@/data/mockData';
 
 const whyChooseItems = [
   {
     icon: MapPin,
     title: 'Prime Location',
-    description: 'Situated in the heart of the city with excellent transport links and nearby amenities.',
+    description: "Situated in Central London (EC3V), offering unparalleled access to the City's business district and transport links.",
   },
   {
-    icon: Clock2,
+    icon: CalendarDays,
     title: 'Flexible Terms',
-    description: 'Month-to-month contracts with the freedom to scale up or down as needed.',
+    description: 'No long-term commitments required. Choose from daily, weekly, or monthly memberships that adapt to your needs.',
   },
   {
     icon: HeadphonesIcon,
     title: 'Professional Support',
-    description: 'Dedicated staff available to help with your daily needs and requirements.',
+    description: 'Access business support services, mail handling, and professional reception services to enhance your operations.',
   },
 ];
 
@@ -74,11 +74,12 @@ export default function About() {
       </section>
 
       {/* Why Choose Us Section */}
-      <section className="section-padding bg-secondary">
+      <section className="py-16 md:py-20 bg-secondary">
         <div className="container-custom">
           <SectionTitle 
             title="Why Choose Us" 
-            subtitle="What sets CoworkingHub apart from the rest"
+            className="mb-10 md:mb-12"
+            titleClassName="text-3xl md:text-4xl lg:text-5xl"
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {whyChooseItems.map((item) => (
@@ -87,6 +88,12 @@ export default function About() {
                 icon={item.icon}
                 title={item.title}
                 description={item.description}
+                align="left"
+                className="rounded-3xl border border-border/80 bg-card p-8 shadow-none"
+                iconContainerClassName="rounded-2xl w-14 h-14 bg-primary shadow-none mb-7"
+                iconClassName="w-6 h-6 text-primary-foreground"
+                titleClassName="text-3xl md:text-[2.2rem] leading-tight mb-4"
+                descriptionClassName="max-w-none text-[1.05rem] md:text-[1.15rem] leading-relaxed"
               />
             ))}
           </div>
@@ -127,24 +134,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="section-padding bg-primary text-primary-foreground">
-        <div className="container-custom">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { number: '500+', label: 'Active Members' },
-              { number: '50+', label: 'Private Offices' },
-              { number: '10', label: 'Meeting Rooms' },
-              { number: '24/7', label: 'Access Available' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-4xl md:text-5xl font-serif font-bold mb-2">{stat.number}</p>
-                <p className="text-primary-foreground/80">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+  
     </Layout>
   );
 }

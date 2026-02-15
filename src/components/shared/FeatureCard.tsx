@@ -6,6 +6,11 @@ interface FeatureCardProps {
   title: string;
   description: string;
   className?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
+  iconContainerClassName?: string;
+  iconClassName?: string;
+  align?: 'center' | 'left';
 }
 
 export function FeatureCard({
@@ -13,14 +18,34 @@ export function FeatureCard({
   title,
   description,
   className,
+  titleClassName,
+  descriptionClassName,
+  iconContainerClassName,
+  iconClassName,
+  align = 'center',
 }: FeatureCardProps) {
   return (
-    <div className={cn('card-elevated p-6 md:p-8 text-center', className)}>
-      <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-        <Icon className="w-6 h-6 text-primary" />
+    <div className={cn('card-elevated p-8 md:p-10', align === 'center' ? 'text-center' : 'text-left', className)}>
+      {/* Icon circle — white background, subtle shadow, centered */}
+      <div
+        className={cn(
+          'w-12 h-12 mb-6 rounded-full bg-white flex items-center justify-center shadow-sm',
+          align === 'center' ? 'mx-auto' : 'mx-0',
+          iconContainerClassName
+        )}
+      >
+        <Icon className={cn('w-5 h-5 text-muted-foreground', iconClassName)} />
       </div>
-      <h3 className="font-serif text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      <h3 className={cn('font-serif text-2xl md:text-3xl font-semibold mb-3', titleClassName)}>{title}</h3>
+      <p
+        className={cn(
+          'text-base text-muted-foreground leading-relaxed max-w-[36rem]',
+          align === 'center' ? 'mx-auto' : 'mx-0',
+          descriptionClassName
+        )}
+      >
+        {description}
+      </p>
     </div>
   );
 }

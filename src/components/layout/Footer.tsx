@@ -1,49 +1,64 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Twitter } from 'lucide-react';
 
 const serviceLinks = [
-  { name: 'Coworking Space', path: '/pricing' },
-  { name: 'Meeting Rooms', path: '/meeting-rooms' },
+  { name: 'Memberships', path: '/pricing' },
+  { name: 'Meeting Room', path: '/meeting-rooms' },
   { name: 'Virtual Office', path: '/virtual-office' },
   { name: 'Private Office', path: '/virtual-office' },
 ];
 
-const companyLinks = [
+const aboutLinks = [
   { name: 'About Us', path: '/about' },
+  { name: 'Our Space', path: '/' },
+  { name: 'Testimonials', path: '/' },
   { name: 'Blog', path: '/blog' },
   { name: 'FAQ', path: '/faq' },
   { name: 'Contact', path: '/contact' },
 ];
 
+const socialLinks = [
+  { icon: Facebook, href: '#' },
+  { icon: Instagram, href: '#' },
+  { icon: Linkedin, href: '#' },
+  { icon: Twitter, href: '#' },
+];
+
 export function Footer() {
   return (
-    <footer className="bg-charcoal text-white">
-      <div className="container-custom py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          {/* Logo & Description */}
-          <div className="space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                <span className="text-charcoal font-serif font-bold text-xl">C</span>
-              </div>
-              <span className="font-serif font-semibold text-lg">CoworkingHub</span>
+    <footer className="bg-[#15161b] text-white">
+      <div className="container-custom py-14">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div>
+            <Link to="/" className="inline-flex items-center gap-2 mb-4">
+              <span className="inline-flex w-5 h-5 rounded-full bg-white items-center justify-center">
+                <span className="text-[#15161b] text-[11px] font-bold">C</span>
+              </span>
+              <span className="font-semibold text-[13px]">CoworkingHub</span>
             </Link>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Premium coworking spaces designed for productivity, collaboration, and growth. 
-              Join our community of innovators and entrepreneurs.
+            <p className="text-[13px] leading-relaxed text-white/65 mb-4 max-w-[19rem]">
+              Flexible coworking spaces in the heart of the city built for focus, meetings, and meaningful connections.
             </p>
+            <div className="flex items-center gap-2">
+              {socialLinks.map(({ icon: Icon, href }, index) => (
+                <a
+                  key={index}
+                  href={href}
+                  className="inline-flex w-7 h-7 rounded-full border border-white/20 items-center justify-center text-white/75 hover:text-white hover:border-white/35"
+                  aria-label="Social link"
+                >
+                  <Icon size={13} />
+                </a>
+              ))}
+            </div>
           </div>
 
-          {/* Services */}
           <div>
-            <h4 className="font-serif font-semibold text-lg mb-4">Services</h4>
-            <ul className="space-y-3">
+            <h4 className="text-[13px] font-semibold mb-4">Services</h4>
+            <ul className="space-y-2.5">
               {serviceLinks.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.path}
-                    className="text-gray-400 text-sm hover:text-white transition-colors"
-                  >
+                  <Link to={link.path} className="text-[13px] text-white/65 hover:text-white transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -51,16 +66,12 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Company */}
           <div>
-            <h4 className="font-serif font-semibold text-lg mb-4">Company</h4>
-            <ul className="space-y-3">
-              {companyLinks.map((link) => (
+            <h4 className="text-[13px] font-semibold mb-4">About</h4>
+            <ul className="space-y-2.5">
+              {aboutLinks.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.path}
-                    className="text-gray-400 text-sm hover:text-white transition-colors"
-                  >
+                  <Link to={link.path} className="text-[13px] text-white/65 hover:text-white transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -68,49 +79,32 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
           <div>
-            <h4 className="font-serif font-semibold text-lg mb-4">Contact</h4>
+            <h4 className="text-[13px] font-semibold mb-4">Contact</h4>
             <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <MapPin size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-400 text-sm">
-                  123 Business District<br />
-                  City Center, NY 10001
-                </span>
+              <li className="flex items-start gap-2.5 text-[13px] text-white/65">
+                <MapPin size={14} className="mt-0.5 flex-shrink-0" />
+                <span>123 Business Street, City Center</span>
               </li>
-              <li className="flex items-center gap-3">
-                <Mail size={18} className="text-gray-400 flex-shrink-0" />
-                <a href="mailto:hello@coworkinghub.com" className="text-gray-400 text-sm hover:text-white transition-colors">
-                  hello@coworkinghub.com
-                </a>
+              <li className="flex items-start gap-2.5 text-[13px] text-white/65">
+                <Mail size={14} className="mt-0.5 flex-shrink-0" />
+                <a href="mailto:info@coworkinghub.com" className="hover:text-white">info@coworkinghub.com</a>
               </li>
-              <li className="flex items-center gap-3">
-                <Phone size={18} className="text-gray-400 flex-shrink-0" />
-                <a href="tel:+1234567890" className="text-gray-400 text-sm hover:text-white transition-colors">
-                  +1 (234) 567-890
-                </a>
+              <li className="flex items-start gap-2.5 text-[13px] text-white/65">
+                <Phone size={14} className="mt-0.5 flex-shrink-0" />
+                <a href="tel:+1234567890" className="hover:text-white">+1 (234) 567-890</a>
               </li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* Bottom Bar */}
-      <div className="border-t border-gray-800">
-        <div className="container-custom py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-gray-400 text-sm">
-              © 2026 CoworkingHub. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link to="/privacy" className="text-gray-400 text-sm hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
-              <Link to="/terms" className="text-gray-400 text-sm hover:text-white transition-colors">
-                Terms of Service
-              </Link>
-            </div>
+      <div className="border-t border-white/10">
+        <div className="container-custom py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-[13px] text-white/50">© 2026 Coworking Hub. All rights reserved.</p>
+          <div className="flex items-center gap-5">
+            <Link to="/privacy" className="text-[13px] text-white/50 hover:text-white">Privacy Policy</Link>
+            <Link to="/terms" className="text-[13px] text-white/50 hover:text-white">Terms</Link>
           </div>
         </div>
       </div>

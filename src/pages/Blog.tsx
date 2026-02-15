@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { BlogCard } from '@/components/shared/BlogCard';
-import { CTABanner } from '@/components/shared/CTABanner';
 import { Input } from '@/components/ui/input';
 import { Search, Clock } from 'lucide-react';
 import { blogPosts, blogCategories, popularTags } from '@/data/mockData';
@@ -65,9 +64,9 @@ export default function Blog() {
       </section>
 
       {/* Blog Grid Section */}
-      <section className="section-padding">
+      <section className="py-20 md:py-24 bg-[#efefef]">
         <div className="container-custom">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
             {/* Main Content - Blog Grid */}
             <div className="lg:col-span-2">
               {filteredPosts.length > 0 ? (
@@ -86,35 +85,35 @@ export default function Blog() {
             {/* Sidebar */}
             <aside className="space-y-6">
               {/* Quick Search */}
-              <div className="card-elevated p-5">
-                <h3 className="font-serif text-lg font-semibold mb-4">Quick Search</h3>
+              <div className="rounded-2xl border border-black/10 bg-white p-5">
+                <h3 className="font-serif text-3xl leading-none mb-3">Quick Search</h3>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45" size={16} />
                   <Input
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 border-black/15"
                   />
                 </div>
               </div>
 
               {/* Recent Posts */}
-              <div className="card-elevated p-5">
-                <h3 className="font-serif text-lg font-semibold mb-4">Recent Posts</h3>
+              <div className="rounded-2xl border border-black/10 bg-white p-5">
+                <h3 className="font-serif text-3xl leading-none mb-4">Recent Posts</h3>
                 <div className="space-y-4">
                   {blogPosts.slice(0, 3).map((post) => (
-                    <Link key={post.id} to={`/blog/${post.id}`} className="flex gap-3 group">
+                    <Link key={post.id} to={`/blog/${post.id}`} className="flex gap-3 group items-start">
                       <img
                         src={post.image}
                         alt={post.title}
                         className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                       />
                       <div>
-                        <h4 className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
+                        <h4 className="text-sm font-medium leading-snug line-clamp-2">
                           {post.title}
                         </h4>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <div className="flex items-center gap-1 text-xs text-black/45 mt-1">
                           <Clock size={12} />
                           <span>{post.readTime}</span>
                         </div>
@@ -125,15 +124,15 @@ export default function Blog() {
               </div>
 
               {/* Categories */}
-              <div className="card-elevated p-5">
-                <h3 className="font-serif text-lg font-semibold mb-4">Categories</h3>
+              <div className="rounded-2xl border border-black/10 bg-white p-5">
+                <h3 className="font-serif text-3xl leading-none mb-4">Categories</h3>
                 <div className="flex flex-wrap gap-2">
                   {blogCategories.filter(c => c !== 'All').map((category) => (
                     <button
                       key={category}
                       onClick={() => setActiveCategory(category)}
-                      className={`chip text-xs transition-colors ${
-                        activeCategory === category ? 'chip-dark' : ''
+                      className={`inline-flex h-7 items-center rounded-full px-3 text-xs transition-colors ${
+                        activeCategory === category ? 'bg-black text-white' : 'bg-[#f1f1f1] text-black/70'
                       }`}
                     >
                       {category}
@@ -143,11 +142,11 @@ export default function Blog() {
               </div>
 
               {/* Popular Tags */}
-              <div className="card-elevated p-5">
-                <h3 className="font-serif text-lg font-semibold mb-4">Popular Tags</h3>
+              <div className="rounded-2xl border border-black/10 bg-white p-5">
+                <h3 className="font-serif text-3xl leading-none mb-4">Popular Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {popularTags.map((tag) => (
-                    <span key={tag} className="text-xs text-muted-foreground hover:text-primary cursor-pointer transition-colors">
+                    <span key={tag} className="text-sm text-black/45">
                       #{tag}
                     </span>
                   ))}
@@ -157,12 +156,6 @@ export default function Blog() {
           </div>
         </div>
       </section>
-
-      <CTABanner
-        title="Stay Updated"
-        subtitle="Subscribe to our newsletter for the latest workspace insights"
-        primaryButton={{ text: 'Subscribe Now', link: '/contact' }}
-      />
     </Layout>
   );
 }

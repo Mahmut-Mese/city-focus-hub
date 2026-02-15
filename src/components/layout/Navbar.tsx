@@ -7,11 +7,9 @@ import { cn } from '@/lib/utils';
 const navLinks = [
   { name: 'Home', path: '/' },
   { name: 'Memberships', path: '/pricing' },
-  { name: 'Meeting Rooms', path: '/meeting-rooms' },
+  { name: 'Meeting Room', path: '/meeting-rooms' },
   { name: 'Private Office', path: '/virtual-office' },
-  { name: 'About', path: '/about' },
   { name: 'Contact', path: '/contact' },
-  { name: 'Blog', path: '/blog' },
 ];
 
 export function Navbar() {
@@ -19,28 +17,21 @@ export function Navbar() {
   const location = useLocation();
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+    <nav className="sticky top-0 z-50 bg-white border-b border-black/10">
       <div className="container-custom">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
+        <div className="flex items-center justify-between h-14 md:h-16">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-serif font-bold text-xl">C</span>
-            </div>
-            <span className="font-serif font-semibold text-lg hidden sm:block">CoworkingHub</span>
+            <img src="/logo.svg" alt="The Leadenhall Works" className="h-8 w-auto" />
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 className={cn(
-                  'text-sm font-medium transition-colors hover:text-primary',
-                  location.pathname === link.path
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
+                  'text-[16px] transition-colors hover:text-black',
+                  location.pathname === link.path ? 'text-black font-medium' : 'text-black/60'
                 )}
               >
                 {link.name}
@@ -48,44 +39,39 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* CTA Button */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center">
             <Link to="/contact">
-              <Button className="btn-pill-primary">Book a Tour</Button>
+              <Button className="h-8 rounded-full px-4 text-[11px] bg-black text-white hover:bg-black/90">Book a Tour</Button>
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             className="lg:hidden p-2"
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle menu"
           >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Mobile Navigation */}
         {isOpen && (
-          <div className="lg:hidden py-4 border-t border-border">
-            <div className="flex flex-col gap-4">
+          <div className="lg:hidden py-3 border-t border-black/10 bg-white">
+            <div className="flex flex-col gap-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    'text-sm font-medium py-2 transition-colors hover:text-primary',
-                    location.pathname === link.path
-                      ? 'text-primary'
-                      : 'text-muted-foreground'
+                    'text-sm py-1.5 transition-colors hover:text-black',
+                    location.pathname === link.path ? 'text-black font-medium' : 'text-black/70'
                   )}
                 >
                   {link.name}
                 </Link>
               ))}
               <Link to="/contact" onClick={() => setIsOpen(false)}>
-                <Button className="btn-pill-primary w-full mt-2">Book a Tour</Button>
+                <Button className="h-9 rounded-full px-4 text-xs bg-black text-white hover:bg-black/90 w-full">Book a Tour</Button>
               </Link>
             </div>
           </div>
