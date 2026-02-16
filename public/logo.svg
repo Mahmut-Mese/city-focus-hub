@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 220" role="img" aria-labelledby="title desc">
   <title id="title">The Leadenhall Works logo</title>
-  <desc id="desc">Square mark with a simple building glyph and stacked text reading 'THE LEADENHALL WORKS'.</desc>
-  <rect x="6" y="6" width="188" height="188" rx="6" ry="6" fill="none" stroke="#000" stroke-width="12"/>
-  <!-- simple building icon inside the square -->
-  <g transform="translate(24,28)">
-    <rect x="0" y="110" width="140" height="48" fill="#000"/>
-    <rect x="26" y="36" width="28" height="122" fill="#000"/>
-    <rect x="72" y="78" width="48" height="80" fill="#000"/>
+  <desc id="desc">Monogram icon with stacked wordmark reading THE LEADENHALL WORKS.</desc>
+
+  <g fill="none" stroke="#000" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter">
+    <rect x="18" y="18" width="170" height="170" />
+    <path d="M66 178V90l58-33v121" />
+    <path d="M126 178v-57h62" />
   </g>
 
-  <!-- stacked text on the right -->
-  <g transform="translate(220,40)" fill="#000" font-family="Helvetica, Arial, sans-serif" font-weight="700">
-    <text x="0" y="30" font-size="28">THE</text>
-    <text x="0" y="78" font-size="36">LEADENHALL</text>
-    <text x="0" y="128" font-size="36">WORKS</text>
+  <g fill="#000" font-family="Inter, Arial, sans-serif" font-weight="800" letter-spacing="1">
+    <text x="235" y="78" font-size="56">THE</text>
+    <text x="235" y="136" font-size="72">LEADENHALL</text>
+    <text x="235" y="198" font-size="72">WORKS</text>
   </g>
 </svg>

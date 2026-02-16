@@ -21,7 +21,7 @@ export function Navbar() {
       <div className="container-custom">
         <div className="flex items-center justify-between h-14 md:h-16">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.svg" alt="The Leadenhall Works" className="h-8 w-auto" />
+            <img src="/logo.svg" alt="The Leadenhall Works" className="h-12 w-auto" />
           </Link>
 
           <div className="hidden lg:flex items-center gap-6">

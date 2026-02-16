@@ -31,7 +31,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <Link to="/" className="inline-flex items-center gap-2 mb-4">
-              <img src="/logo-white.svg" alt="The Leadenhall Works" className="h-8 w-auto" />
+              <img src="/logo-white.svg" alt="The Leadenhall Works" className="h-12 w-auto" />
             </Link>
             <p className="text-[13px] leading-relaxed text-white/65 mb-4 max-w-[19rem]">
               Flexible coworking spaces in the heart of the city built for focus, meetings, and meaningful connections.
