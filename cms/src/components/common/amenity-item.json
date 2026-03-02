@@ -1,0 +1,39 @@
+{
+  "collectionName": "components_common_amenity_items",
+  "info": {
+    "displayName": "Amenity Item",
+    "description": "Amenity card item"
+  },
+  "options": {},
+  "attributes": {
+    "icon": {
+      "type": "enumeration",
+      "enum": [
+        "CalendarDays",
+        "Clock",
+        "Coffee",
+        "Globe",
+        "HeadphonesIcon",
+        "LayoutGrid",
+        "Mail",
+        "MapPin",
+        "Phone",
+        "Printer",
+        "Shield",
+        "Users",
+        "Wifi",
+        "Zap"
+      ],
+      "default": "Wifi",
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    }
+  }
+}

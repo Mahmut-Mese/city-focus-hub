@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_common_text_items",
+  "info": {
+    "displayName": "Text Item",
+    "description": "A single editable text row for repeatable content lists"
+  },
+  "options": {},
+  "attributes": {
+    "text": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

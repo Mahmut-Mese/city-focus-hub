@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_common_social_links",
+  "info": {
+    "displayName": "Social Link",
+    "description": "Social media profile link"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "href": {
+      "type": "string",
+      "required": true
+    },
+    "icon": {
+      "type": "enumeration",
+      "enum": [
+        "Facebook",
+        "Instagram",
+        "Linkedin",
+        "Twitter"
+      ],
+      "default": "Facebook",
+      "required": true
+    }
+  }
+}

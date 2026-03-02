@@ -1,0 +1,30 @@
+{
+  "kind": "singleType",
+  "collectionName": "meeting_rooms_pages",
+  "info": {
+    "singularName": "meeting-rooms-page",
+    "pluralName": "meeting-rooms-pages",
+    "displayName": "Meeting Rooms Page",
+    "description": "Meeting rooms page content"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "heroTitle": { "type": "string", "required": true },
+    "heroSubtitle": { "type": "text", "required": true },
+    "heroBackgroundImage": { "type": "media", "multiple": false, "required": false, "allowedTypes": ["images"] },
+    "roomsTitle": { "type": "string", "required": true },
+    "roomsSubtitle": { "type": "text", "required": true },
+    "amenitiesTitle": { "type": "string", "required": true },
+    "amenitiesSubtitle": { "type": "text", "required": true },
+    "amenities": { "type": "component", "repeatable": true, "component": "common.amenity-item" },
+    "plansTitle": { "type": "string", "required": true },
+    "plansSubtitle": { "type": "text", "required": true },
+    "readMoreLabel": { "type": "string", "required": true },
+    "bookNowLabel": { "type": "string", "required": true },
+    "getStartedLabel": { "type": "string", "required": true },
+    "popularLabel": { "type": "string", "required": true }
+  }
+}

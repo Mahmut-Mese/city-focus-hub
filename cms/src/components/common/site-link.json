@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_common_site_links",
+  "info": {
+    "displayName": "Site Link",
+    "description": "Navigation or footer link"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "path": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

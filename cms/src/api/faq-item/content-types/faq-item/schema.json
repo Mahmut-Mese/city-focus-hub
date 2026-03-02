@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "faq_items",
+  "info": {
+    "singularName": "faq-item",
+    "pluralName": "faq-items",
+    "displayName": "FAQ Item",
+    "description": "Frequently asked questions and answers"
+  },
+  "config": {
+    "layouts": {
+      "list": [
+        "question",
+        "answer",
+        "isFeatured"
+      ]
+    },
+    "metadatas": {
+      "isFeatured": {
+        "list": {
+          "label": "Featured",
+          "sortable": true
+        }
+      }
+    }
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "question": {
+      "type": "string",
+      "required": true
+    },
+    "answer": {
+      "type": "text",
+      "required": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 1
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

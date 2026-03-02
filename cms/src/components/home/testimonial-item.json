@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_home_testimonial_items",
+  "info": {
+    "displayName": "Testimonial Item",
+    "description": "Homepage testimonial"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "role": {
+      "type": "string",
+      "required": true
+    },
+    "content": {
+      "type": "text",
+      "required": true
+    }
+  }
+}

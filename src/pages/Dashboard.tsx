@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useSeo } from '@/lib/seo';
+import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { 
   dashboardUser, 
   dashboardStats, 
@@ -31,6 +33,13 @@ const navItems = [
 
 export default function Dashboard() {
   const location = useLocation();
+
+  useSeo({
+    siteName: defaultSiteSettingsContent.siteName,
+    title: 'Dashboard',
+    description: 'Manage bookings, billing, invoices, and your workspace profile.',
+    noindex: true,
+  });
 
   return (
     <div className="min-h-screen bg-secondary">

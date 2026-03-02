@@ -1,52 +1,89 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { BlogCard } from '@/components/shared/BlogCard';
 import { Input } from '@/components/ui/input';
 import { Search, Clock } from 'lucide-react';
-import { blogPosts, blogCategories, popularTags } from '@/data/mockData';
+import { useBlogPageContent, useBlogPosts } from '@/hooks/useCmsContent';
+import { defaultSiteSettingsContent } from '@/data/siteContent';
+import { getPopularTags } from '@/lib/blog';
 
 export default function Blog() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
   const [activeCategory, setActiveCategory] = useState('All');
+  const { data: cmsPosts = [] } = useBlogPosts();
+  const { data: content = defaultSiteSettingsContent.blogPage } = useBlogPageContent();
 
-  const filteredPosts = blogPosts.filter((post) => {
-    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  const allPosts = cmsPosts.map((post) => ({
+    id: post.slug || post.id,
+    title: post.title,
+    excerpt: post.excerpt,
+    image: post.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
+    category: post.category,
+    date: post.date,
+    readTime: post.readTime,
+    tags: post.tags,
+    author: post.author,
+    featured: post.featured,
+  }));
+
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const featuredPosts = allPosts.filter((post) => post.featured);
+  const categorySourcePosts = hasSearchQuery ? allPosts : featuredPosts;
+  const categories = ['All', ...Array.from(new Set(categorySourcePosts.map((post) => post.category)))];
+  const tags = getPopularTags(allPosts);
+
+  useEffect(() => {
+    if (!categories.includes(activeCategory)) {
+      setActiveCategory('All');
+    }
+  }, [activeCategory, categories]);
+
+  const visiblePosts = hasSearchQuery ? allPosts : featuredPosts;
+
+  const filteredPosts = visiblePosts.filter((post) => {
+    const matchesSearch =
+      post.title.toLowerCase().includes(searchQuery.toLowerCase())
+      || post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'All' || post.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
 
   return (
-    <Layout>
-      {/* Hero Section */}
-      <section 
+    <Layout
+      seo={{
+        title: searchQuery ? `${content.heroTitle} - Search: ${searchQuery}` : content.heroTitle,
+        description: content.heroSubtitle,
+        image: content.heroBackgroundImage,
+        noindex: Boolean(searchQuery.trim()),
+      }}
+    >
+      <section
         className="relative py-20 md:py-28 bg-cover bg-center"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920)' }}
+        style={{ backgroundImage: `url(${content.heroBackgroundImage})` }}
       >
         <div className="hero-overlay" />
         <div className="container-custom relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-sans font-bold text-white mb-4">
-            News, guides & workspace insights
-          </h1>
-          <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-            Stay updated with the latest trends in coworking and remote work
-          </p>
-          
-          {/* Search Bar */}
+          <h1 className="text-4xl md:text-5xl font-sans font-bold text-white mb-4">{content.heroTitle}</h1>
+          <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">{content.heroSubtitle}</p>
+
           <div className="max-w-md mx-auto relative mb-6">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
-              placeholder="Search articles..."
+              placeholder={content.searchPlaceholder}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(event) => setSearchQuery(event.target.value)}
               className="pl-11 h-12 bg-white"
             />
           </div>
 
-          {/* Category Pills */}
           <div className="flex flex-wrap justify-center gap-2">
-            {blogCategories.map((category) => (
+            {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
@@ -63,11 +100,9 @@ export default function Blog() {
         </div>
       </section>
 
-      {/* Blog Grid Section */}
       <section className="py-20 md:py-24 bg-[#efefef]">
         <div className="container-custom">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
-            {/* Main Content - Blog Grid */}
             <div className="lg:col-span-2">
               {filteredPosts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -77,42 +112,33 @@ export default function Blog() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground">No articles found matching your criteria.</p>
+                  <p className="text-muted-foreground">{content.noResultsText}</p>
                 </div>
               )}
             </div>
 
-            {/* Sidebar */}
             <aside className="space-y-6">
-              {/* Quick Search */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-sans text-3xl leading-none mb-3">Quick Search</h3>
+                <h3 className="font-sans text-3xl leading-none mb-3">{content.quickSearchTitle}</h3>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45" size={16} />
                   <Input
-                    placeholder="Search..."
+                    placeholder={content.searchPlaceholder}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-9 border-black/15"
                   />
                 </div>
               </div>
 
-              {/* Recent Posts */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-sans text-3xl leading-none mb-4">Recent Posts</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">{content.recentPostsTitle}</h3>
                 <div className="space-y-4">
-                  {blogPosts.slice(0, 3).map((post) => (
+                  {allPosts.slice(0, 3).map((post) => (
                     <Link key={post.id} to={`/blog/${post.id}`} className="flex gap-3 group items-start">
-                      <img
-                        src={post.image}
-                        alt={post.title}
-                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                      />
+                      <img src={post.image} alt={post.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
                       <div>
-                        <h4 className="text-sm font-medium leading-snug line-clamp-2">
-                          {post.title}
-                        </h4>
+                        <h4 className="text-sm font-medium leading-snug line-clamp-2">{post.title}</h4>
                         <div className="flex items-center gap-1 text-xs text-black/45 mt-1">
                           <Clock size={12} />
                           <span>{post.readTime}</span>
@@ -123,11 +149,10 @@ export default function Blog() {
                 </div>
               </div>
 
-              {/* Categories */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-sans text-3xl leading-none mb-4">Categories</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">{content.categoriesTitle}</h3>
                 <div className="flex flex-wrap gap-2">
-                  {blogCategories.filter(c => c !== 'All').map((category) => (
+                  {categories.filter((category) => category !== 'All').map((category) => (
                     <button
                       key={category}
                       onClick={() => setActiveCategory(category)}
@@ -141,11 +166,10 @@ export default function Blog() {
                 </div>
               </div>
 
-              {/* Popular Tags */}
               <div className="rounded-2xl border border-black/10 bg-white p-5">
-                <h3 className="font-sans text-3xl leading-none mb-4">Popular Tags</h3>
+                <h3 className="font-sans text-3xl leading-none mb-4">{content.popularTagsTitle}</h3>
                 <div className="flex flex-wrap gap-2">
-                  {popularTags.map((tag) => (
+                  {tags.map((tag) => (
                     <span key={tag} className="text-sm text-black/45">
                       #{tag}
                     </span>

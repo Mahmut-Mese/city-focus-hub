@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_home_contact_forms",
+  "info": {
+    "displayName": "Contact Form",
+    "description": "Homepage contact form labels"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "submitLabel": {
+      "type": "string",
+      "required": true
+    },
+    "namePlaceholder": {
+      "type": "string",
+      "required": true
+    },
+    "emailPlaceholder": {
+      "type": "string"
+    },
+    "subjectPlaceholder": {
+      "type": "string"
+    },
+    "messagePlaceholder": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_common_image_items",
+  "info": {
+    "displayName": "Image Item",
+    "description": "Image and alt text"
+  },
+  "options": {},
+  "attributes": {
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "alt": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "collectionName": "components_site_footers",
+  "info": {
+    "displayName": "Footer",
+    "description": "Global footer settings"
+  },
+  "options": {},
+  "attributes": {
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "serviceLinks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.site-link"
+    },
+    "aboutLinks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.site-link"
+    },
+    "contactTitle": {
+      "type": "string",
+      "required": true
+    },
+    "copyright": {
+      "type": "string",
+      "required": true
+    },
+    "legalLinks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.site-link"
+    }
+  }
+}

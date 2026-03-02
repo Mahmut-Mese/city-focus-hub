@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_common_comparison_rows",
+  "info": {
+    "displayName": "Comparison Row",
+    "description": "Feature comparison row"
+  },
+  "options": {},
+  "attributes": {
+    "feature": {
+      "type": "string",
+      "required": true
+    },
+    "values": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.comparison-value"
+    }
+  }
+}

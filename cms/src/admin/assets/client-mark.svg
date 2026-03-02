@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-labelledby="title desc">
+  <title id="title">The Leadenhall Works mark</title>
+  <desc id="desc">Outlined square monogram mark for The Leadenhall Works.</desc>
+
+  <g fill="none" stroke="#000" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter">
+    <rect x="18" y="18" width="170" height="170" />
+    <path d="M66 178V90l58-33v121" />
+    <path d="M126 178v-57h62" />
+  </g>
+</svg>

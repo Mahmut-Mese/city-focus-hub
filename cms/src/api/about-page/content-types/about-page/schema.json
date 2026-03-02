@@ -1,0 +1,27 @@
+{
+  "kind": "singleType",
+  "collectionName": "about_pages",
+  "info": {
+    "singularName": "about-page",
+    "pluralName": "about-pages",
+    "displayName": "About Page",
+    "description": "About page content"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "heroTitle": { "type": "string", "required": true },
+    "heroSubtitle": { "type": "text", "required": true },
+    "heroBackgroundImage": { "type": "media", "multiple": false, "required": false, "allowedTypes": ["images"] },
+    "storyTitle": { "type": "string", "required": true },
+    "storyParagraphs": { "type": "component", "repeatable": true, "component": "common.text-item" },
+    "storyImage": { "type": "media", "multiple": false, "required": false, "allowedTypes": ["images"] },
+    "whyChooseTitle": { "type": "string", "required": true },
+    "whyChooseItems": { "type": "component", "repeatable": true, "component": "common.feature-item" },
+    "amenitiesTitle": { "type": "string", "required": true },
+    "amenitiesImage": { "type": "media", "multiple": false, "required": false, "allowedTypes": ["images"] },
+    "amenities": { "type": "component", "repeatable": true, "component": "common.amenity-item" }
+  }
+}

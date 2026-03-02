@@ -1,0 +1,142 @@
+{
+  "kind": "singleType",
+  "collectionName": "site_settings",
+  "info": {
+    "singularName": "site-setting",
+    "pluralName": "site-settings",
+    "displayName": "Site Setting",
+    "description": "Global website settings and contact information"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "siteName": {
+      "type": "string",
+      "required": true,
+      "default": "CoworkingHub"
+    },
+    "tagline": {
+      "type": "string"
+    },
+    "contactEmail": {
+      "type": "email"
+    },
+    "contactPhone": {
+      "type": "string"
+    },
+    "address": {
+      "type": "text"
+    },
+    "socialLinks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.social-link"
+    },
+    "navigation": {
+      "type": "component",
+      "repeatable": false,
+      "component": "site.navigation"
+    },
+    "footer": {
+      "type": "component",
+      "repeatable": false,
+      "component": "site.footer"
+    },
+    "homePage": {
+      "type": "json"
+    },
+    "aboutPage": {
+      "type": "json"
+    },
+    "blogPage": {
+      "type": "json"
+    },
+    "pricingPage": {
+      "type": "json"
+    },
+    "faqPage": {
+      "type": "json"
+    },
+    "meetingRoomsPage": {
+      "type": "json"
+    },
+    "virtualOfficePage": {
+      "type": "json"
+    },
+    "contactPage": {
+      "type": "json"
+    },
+    "defaultSeoTitle": {
+      "type": "string",
+      "pluginOptions": {
+        "content-manager": {
+          "visible": false
+        },
+        "content-type-builder": {
+          "visible": false
+        }
+      }
+    },
+    "defaultSeoDescription": {
+      "type": "text",
+      "pluginOptions": {
+        "content-manager": {
+          "visible": false
+        },
+        "content-type-builder": {
+          "visible": false
+        }
+      }
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "homeHeroImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "blogHeroImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "pricingHeroImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "meetingRoomsHeroImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "faqHeroImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

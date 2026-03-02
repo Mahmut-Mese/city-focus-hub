@@ -1,0 +1,39 @@
+{
+  "kind": "singleType",
+  "collectionName": "virtual_office_pages",
+  "info": {
+    "singularName": "virtual-office-page",
+    "pluralName": "virtual-office-pages",
+    "displayName": "Virtual Office Page",
+    "description": "Virtual office page content"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "heroTitle": { "type": "string", "required": true },
+    "heroSubtitle": { "type": "text", "required": true },
+    "heroBackgroundImage": { "type": "media", "multiple": false, "required": false, "allowedTypes": ["images"] },
+    "featuredImage": { "type": "media", "multiple": false, "required": false, "allowedTypes": ["images"] },
+    "overviewTitle": { "type": "string", "required": true },
+    "overviewText": { "type": "text", "required": true },
+    "challengeTitle": { "type": "string", "required": true },
+    "challengeIntro": { "type": "text", "required": true },
+    "challengeItems": { "type": "component", "repeatable": true, "component": "common.text-item" },
+    "resultTitle": { "type": "string", "required": true },
+    "resultText": { "type": "text", "required": true },
+    "galleryImages": { "type": "component", "repeatable": true, "component": "common.image-item" },
+    "projectInfoTitle": { "type": "string", "required": true },
+    "projectDateLabel": { "type": "string", "required": true },
+    "projectDateValue": { "type": "string", "required": true },
+    "projectCategoryLabel": { "type": "string", "required": true },
+    "projectCategoryValue": { "type": "string", "required": true },
+    "projectWebsiteLabel": { "type": "string", "required": true },
+    "projectWebsiteValue": { "type": "string", "required": true },
+    "ctaTitle": { "type": "string", "required": true },
+    "ctaDescription": { "type": "text", "required": true },
+    "ctaButtonLabel": { "type": "string", "required": true },
+    "contactForm": { "type": "component", "repeatable": false, "component": "common.contact-form", "required": true }
+  }
+}

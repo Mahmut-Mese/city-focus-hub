@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_common_workspace_items",
+  "info": {
+    "displayName": "Workspace Item",
+    "description": "Related workspace card"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "category": {
+      "type": "string"
+    },
+    "link": {
+      "type": "string",
+      "required": true
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}
