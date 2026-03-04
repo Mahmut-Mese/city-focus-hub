@@ -6,9 +6,9 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Clock, Calendar, User, ArrowLeft, Search, ArrowUpRight } from 'lucide-react';
 import { useBlogPageContent, useBlogPostBySlug, useBlogPosts } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { getPopularTags } from '@/lib/blog';
 
 function formatDate(value: string) {
@@ -29,15 +29,40 @@ export default function BlogDetail() {
     && (searchParams.get('status') === 'draft' || searchParams.get('status') === 'published')
     ? (searchParams.get('status') as 'draft' | 'published')
     : undefined;
-  const { data: cmsPost } = useBlogPostBySlug(id, previewStatus);
-  const { data: cmsPosts = [] } = useBlogPosts();
-  const { data: content = defaultSiteSettingsContent.blogPage } = useBlogPageContent();
+  const blogPostQuery = useBlogPostBySlug(id, previewStatus);
+  const blogPostsQuery = useBlogPosts();
+  const blogPageQuery = useBlogPageContent();
+
+  if (blogPostQuery.isLoading || blogPostsQuery.isLoading || blogPageQuery.isLoading) {
+    return null;
+  }
+
+  if (
+    !id
+    || blogPostQuery.isError
+    || blogPostsQuery.isError
+    || blogPageQuery.isError
+    || !blogPostQuery.data
+    || !blogPostsQuery.data
+    || !blogPageQuery.data
+    || blogPostsQuery.data.length === 0
+  ) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const cmsPost = blogPostQuery.data;
+  const cmsPosts = blogPostsQuery.data;
+  const content = blogPageQuery.data;
 
   const allPosts = cmsPosts.map((post) => ({
     id: post.slug || post.id,
     title: post.title,
     excerpt: post.excerpt,
-    image: post.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
+    image: post.image || '',
     contentImages: post.contentImages,
     proTipTitle: post.proTipTitle,
     proTipText: post.proTipText,
@@ -49,30 +74,24 @@ export default function BlogDetail() {
     content: post.content,
   }));
 
-  const post = cmsPost
-    ? {
-        id: cmsPost.slug || cmsPost.id,
-        title: cmsPost.title,
-        excerpt: cmsPost.excerpt,
-        image: cmsPost.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
-        contentImages: cmsPost.contentImages,
-        proTipTitle: cmsPost.proTipTitle,
-        proTipText: cmsPost.proTipText,
-        category: cmsPost.category,
-        date: cmsPost.date,
-        readTime: cmsPost.readTime,
-        tags: cmsPost.tags,
-        author: cmsPost.author,
-        content: cmsPost.content,
-      }
-    : allPosts.find((item) => item.id === id) || allPosts[0];
+  const post = {
+    id: cmsPost.slug || cmsPost.id,
+    title: cmsPost.title,
+    excerpt: cmsPost.excerpt,
+    image: cmsPost.image || '',
+    contentImages: cmsPost.contentImages,
+    proTipTitle: cmsPost.proTipTitle,
+    proTipText: cmsPost.proTipText,
+    category: cmsPost.category,
+    date: cmsPost.date,
+    readTime: cmsPost.readTime,
+    tags: cmsPost.tags,
+    author: cmsPost.author,
+    content: cmsPost.content,
+  };
 
   const tagList = getPopularTags(allPosts);
   const recentPosts = allPosts.filter((item) => item.id !== post?.id).slice(0, 3);
-
-  if (!post) {
-    return null;
-  }
 
   function handleDetailSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -161,11 +180,28 @@ export default function BlogDetail() {
 
                 <div className="mt-8 pt-6 border-t border-black/10">
                   <h3 className="font-sans text-3xl leading-none mb-6">{content.detailCommentForm.title}</h3>
+                  {content.detailCommentForm.description ? (
+                    <p className="text-sm text-black/55 mb-5">{content.detailCommentForm.description}</p>
+                  ) : null}
                   <form className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Input placeholder={content.detailCommentForm.namePlaceholder} className="h-11 border-black/15" />
                       <Input type="email" placeholder={content.detailCommentForm.emailPlaceholder} className="h-11 border-black/15" />
                     </div>
+                    {(content.detailCommentForm.phonePlaceholder || content.detailCommentForm.subjectPlaceholder) ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {content.detailCommentForm.phonePlaceholder ? (
+                          <Input placeholder={content.detailCommentForm.phonePlaceholder} className="h-11 border-black/15" />
+                        ) : (
+                          <div />
+                        )}
+                        {content.detailCommentForm.subjectPlaceholder ? (
+                          <Input placeholder={content.detailCommentForm.subjectPlaceholder} className="h-11 border-black/15" />
+                        ) : (
+                          <div />
+                        )}
+                      </div>
+                    ) : null}
                     <Textarea placeholder={content.detailCommentForm.messagePlaceholder} className="min-h-[120px] border-black/15" />
                     <Button className="h-10 rounded-xl px-5 text-sm bg-black text-white hover:bg-black/90">
                       {content.detailCommentForm.submitLabel}
@@ -229,8 +265,13 @@ export default function BlogDetail() {
                     <Link key={workspace.id} to={workspace.link} className="block rounded-xl border border-black/10 overflow-hidden">
                       <img src={workspace.image} alt={workspace.title} className="w-full h-32 object-cover" />
                       <div className="p-3 flex items-center justify-between">
-                        <h4 className="text-base font-medium">{workspace.title}</h4>
-                        <ArrowUpRight size={18} className="text-black/50" />
+                        <div className="min-w-0">
+                          {workspace.category ? (
+                            <div className="text-[11px] uppercase tracking-[0.08em] text-black/45 mb-1">{workspace.category}</div>
+                          ) : null}
+                          <h4 className="text-base font-medium truncate">{workspace.title}</h4>
+                        </div>
+                        <ArrowUpRight size={18} className="text-black/50 flex-shrink-0" />
                       </div>
                     </Link>
                   ))}

@@ -1,4 +1,4 @@
-const DEFAULT_STRAPI_URL = 'http://localhost:1337';
+const DEFAULT_STRAPI_URL = 'http://localhost:3001';
 const STRAPI_BASE_URL = (import.meta.env.VITE_STRAPI_URL || DEFAULT_STRAPI_URL).replace(/\/$/, '');
 const STRAPI_API_URL = STRAPI_BASE_URL.endsWith('/api') ? STRAPI_BASE_URL : `${STRAPI_BASE_URL}/api`;
 
@@ -60,6 +60,18 @@ export function unwrapSingle<T>(payload: unknown): T | null {
 export function getMediaUrl(media: unknown): string {
   if (!media) {
     return '';
+  }
+
+  if (typeof media === 'string') {
+    if (media.startsWith('http://') || media.startsWith('https://')) {
+      return media;
+    }
+
+    if (media.startsWith('/')) {
+      return `${STRAPI_BASE_URL}${media}`;
+    }
+
+    return media;
   }
 
   const normalized = normalizeEntity<Record<string, unknown>>(media);

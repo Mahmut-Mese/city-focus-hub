@@ -1,20 +1,41 @@
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { SectionTitle } from '@/components/shared/SectionTitle';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Check, X } from 'lucide-react';
 import { usePricingPageContent, usePricingPlans } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 
 export default function Pricing() {
-  const { data: cmsPlans = [] } = usePricingPlans('coworking');
-  const { data: content = defaultSiteSettingsContent.pricingPage } = usePricingPageContent();
+  const pricingPlansQuery = usePricingPlans('coworking');
+  const pricingPageQuery = usePricingPageContent();
+
+  if (pricingPlansQuery.isLoading || pricingPageQuery.isLoading) {
+    return null;
+  }
+
+  if (
+    pricingPlansQuery.isError
+    || pricingPageQuery.isError
+    || !pricingPageQuery.data
+    || !pricingPlansQuery.data
+    || pricingPlansQuery.data.length === 0
+  ) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const cmsPlans = pricingPlansQuery.data;
+  const content = pricingPageQuery.data;
 
   const pricingPlans = cmsPlans.map((plan) => ({
     id: plan.slug || plan.id,
     name: plan.name,
     price: plan.price,
-    description: plan.description || 'Flexible plan for modern teams.',
-    features: plan.features.length ? plan.features : ['Workspace access', 'High-speed Wi-Fi'],
+    description: plan.description || '',
+    features: plan.features,
     isPopular: plan.isPopular,
     period: plan.period,
   }));

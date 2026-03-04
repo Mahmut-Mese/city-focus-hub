@@ -3,27 +3,48 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { BlogCard } from '@/components/shared/BlogCard';
 import { Input } from '@/components/ui/input';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Search, Clock } from 'lucide-react';
 import { useBlogPageContent, useBlogPosts } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { getPopularTags } from '@/lib/blog';
 
 export default function Blog() {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
   const [activeCategory, setActiveCategory] = useState('All');
-  const { data: cmsPosts = [] } = useBlogPosts();
-  const { data: content = defaultSiteSettingsContent.blogPage } = useBlogPageContent();
+  const blogPostsQuery = useBlogPosts();
+  const blogPageQuery = useBlogPageContent();
 
   useEffect(() => {
     setSearchQuery(searchParams.get('q') ?? '');
   }, [searchParams]);
 
+  if (blogPostsQuery.isLoading || blogPageQuery.isLoading) {
+    return null;
+  }
+
+  if (
+    blogPostsQuery.isError
+    || blogPageQuery.isError
+    || !blogPageQuery.data
+    || !blogPostsQuery.data
+    || blogPostsQuery.data.length === 0
+  ) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const cmsPosts = blogPostsQuery.data;
+  const content = blogPageQuery.data;
+
   const allPosts = cmsPosts.map((post) => ({
     id: post.slug || post.id,
     title: post.title,
     excerpt: post.excerpt,
-    image: post.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
+    image: post.image || '',
     category: post.category,
     date: post.date,
     readTime: post.readTime,
@@ -37,12 +58,7 @@ export default function Blog() {
   const categorySourcePosts = hasSearchQuery ? allPosts : featuredPosts;
   const categories = ['All', ...Array.from(new Set(categorySourcePosts.map((post) => post.category)))];
   const tags = getPopularTags(allPosts);
-
-  useEffect(() => {
-    if (!categories.includes(activeCategory)) {
-      setActiveCategory('All');
-    }
-  }, [activeCategory, categories]);
+  const selectedCategory = categories.includes(activeCategory) ? activeCategory : 'All';
 
   const visiblePosts = hasSearchQuery ? allPosts : featuredPosts;
 
@@ -50,7 +66,7 @@ export default function Blog() {
     const matchesSearch =
       post.title.toLowerCase().includes(searchQuery.toLowerCase())
       || post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || post.category === activeCategory;
+    const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -88,7 +104,7 @@ export default function Blog() {
                 key={category}
                 onClick={() => setActiveCategory(category)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  activeCategory === category
+                  selectedCategory === category
                     ? 'bg-white text-foreground'
                     : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
@@ -157,7 +173,7 @@ export default function Blog() {
                       key={category}
                       onClick={() => setActiveCategory(category)}
                       className={`inline-flex h-7 items-center rounded-full px-3 text-xs transition-colors ${
-                        activeCategory === category ? 'bg-black text-white' : 'bg-[#f1f1f1] text-black/70'
+                        selectedCategory === category ? 'bg-black text-white' : 'bg-[#f1f1f1] text-black/70'
                       }`}
                     >
                       {category}

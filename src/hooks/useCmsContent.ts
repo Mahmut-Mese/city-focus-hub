@@ -842,16 +842,16 @@ export function useHomepageContent() {
 
   return useQuery({
     queryKey: ['cms', 'homepage', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['homePage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['homePage'] | null> => {
       const payload = await fetchStrapi<unknown>(
         appendStatusParam(
           '/homepage?populate[hero][populate][backgroundImage][fields][0]=url&populate[featureChips]=*&populate[services][populate][image][fields][0]=url&populate[aboutHighlight][populate][benefits]=*&populate[aboutHighlight][populate][image][fields][0]=url&populate[whyChooseItems]=*&populate[testimonials]=*&populate[galleryImages][populate][image][fields][0]=url&populate[contactForm]=*',
           previewStatus,
         ),
       );
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
 
-      return mapHomepageContent(raw);
+      return raw ? mapHomepageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -862,10 +862,10 @@ export function useAboutPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'about-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['aboutPage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['aboutPage'] | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/about-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapAboutPageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapAboutPageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -876,10 +876,10 @@ export function useBlogPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'blog-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['blogPage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['blogPage'] | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/blog-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapBlogPageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapBlogPageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -890,15 +890,15 @@ export function usePricingPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'pricing-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['pricingPage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['pricingPage'] | null> => {
       const payload = await fetchStrapi<unknown>(
         appendStatusParam(
           '/pricing-page?populate[heroBackgroundImage][fields][0]=url&populate[comparisonColumns]=*&populate[comparisonRows][populate][values]=*&populate[faqItems]=*',
           previewStatus,
         ),
       );
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapPricingPageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapPricingPageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -909,10 +909,10 @@ export function useFaqPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'faq-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['faqPage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['faqPage'] | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/faq-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapFaqPageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapFaqPageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -923,10 +923,10 @@ export function useMeetingRoomsPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'meeting-rooms-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['meetingRoomsPage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['meetingRoomsPage'] | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/meeting-rooms-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapMeetingRoomsPageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapMeetingRoomsPageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -937,10 +937,10 @@ export function useVirtualOfficePageContent() {
 
   return useQuery({
     queryKey: ['cms', 'virtual-office-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['virtualOfficePage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['virtualOfficePage'] | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/virtual-office-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapVirtualOfficePageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapVirtualOfficePageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -951,10 +951,10 @@ export function useContactPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'contact-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent['contactPage']> => {
+    queryFn: async (): Promise<SiteSettingsContent['contactPage'] | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/contact-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapContactPageContent(raw);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapContactPageContent(raw) : null;
     },
     staleTime: 60_000,
   });
@@ -965,10 +965,10 @@ export function usePrivacyPolicyPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'privacy-policy-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<LegalPageContent> => {
+    queryFn: async (): Promise<LegalPageContent | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/privacy-policy-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapLegalPageContent(raw, defaultPrivacyPolicyContent);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapLegalPageContent(raw, defaultPrivacyPolicyContent) : null;
     },
     staleTime: 60_000,
   });
@@ -979,10 +979,10 @@ export function useTermsPageContent() {
 
   return useQuery({
     queryKey: ['cms', 'terms-page', previewStatus ?? 'published'],
-    queryFn: async (): Promise<LegalPageContent> => {
+    queryFn: async (): Promise<LegalPageContent | null> => {
       const payload = await fetchStrapi<unknown>(appendStatusParam('/terms-page?populate=*', previewStatus));
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
-      return mapLegalPageContent(raw, defaultTermsContent);
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+      return raw ? mapLegalPageContent(raw, defaultTermsContent) : null;
     },
     staleTime: 60_000,
   });
@@ -993,14 +993,19 @@ export function useSiteSettings() {
 
   return useQuery({
     queryKey: ['cms', 'site-settings', previewStatus ?? 'published'],
-    queryFn: async (): Promise<SiteSettingsContent> => {
+    queryFn: async (): Promise<SiteSettingsContent | null> => {
       const payload = await fetchStrapi<unknown>(
         appendStatusParam(
           '/site-setting?populate[socialLinks]=*&populate[navigation][populate][links]=*&populate[footer][populate][logo][fields][0]=url&populate[footer][populate][serviceLinks]=*&populate[footer][populate][aboutLinks]=*&populate[footer][populate][legalLinks]=*&populate[logo][fields][0]=url',
           previewStatus,
         ),
       );
-      const raw = unwrapSingle<Record<string, unknown>>(payload) ?? {};
+      const raw = unwrapSingle<Record<string, unknown>>(payload);
+
+      if (!raw) {
+        return null;
+      }
+
       const merged = mergeContent<SiteSettingsContent>(cloneData(defaultSiteSettingsContent), {
         siteName: typeof raw.siteName === 'string' ? raw.siteName : undefined,
         tagline: typeof raw.tagline === 'string' ? raw.tagline : undefined,

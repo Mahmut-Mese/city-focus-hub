@@ -1,9 +1,22 @@
 import { LegalDocumentPage } from '@/components/shared/LegalDocumentPage';
-import { defaultPrivacyPolicyContent } from '@/data/siteContent';
+import { Layout } from '@/components/layout/Layout';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { usePrivacyPolicyPageContent } from '@/hooks/useCmsContent';
 
 export default function PrivacyPolicy() {
-  const { data: content = defaultPrivacyPolicyContent } = usePrivacyPolicyPageContent();
+  const privacyPolicyQuery = usePrivacyPolicyPageContent();
 
-  return <LegalDocumentPage content={content} />;
+  if (privacyPolicyQuery.isLoading) {
+    return null;
+  }
+
+  if (privacyPolicyQuery.isError || !privacyPolicyQuery.data) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  return <LegalDocumentPage content={privacyPolicyQuery.data} />;
 }

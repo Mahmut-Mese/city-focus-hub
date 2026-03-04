@@ -1,22 +1,47 @@
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Check, Wifi } from 'lucide-react';
 import { useMeetingRooms, useMeetingRoomsPageContent, usePricingPlans } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { contentIconMap } from '@/lib/site-icons';
 
 export default function MeetingRooms() {
-  const { data: cmsRooms = [] } = useMeetingRooms();
-  const { data: cmsMeetingPlans = [] } = usePricingPlans('meeting-room');
-  const { data: content = defaultSiteSettingsContent.meetingRoomsPage } = useMeetingRoomsPageContent();
+  const meetingRoomsQuery = useMeetingRooms();
+  const meetingPlansQuery = usePricingPlans('meeting-room');
+  const meetingRoomsPageQuery = useMeetingRoomsPageContent();
+
+  if (meetingRoomsQuery.isLoading || meetingPlansQuery.isLoading || meetingRoomsPageQuery.isLoading) {
+    return null;
+  }
+
+  if (
+    meetingRoomsQuery.isError
+    || meetingPlansQuery.isError
+    || meetingRoomsPageQuery.isError
+    || !meetingRoomsPageQuery.data
+    || !meetingRoomsQuery.data
+    || !meetingPlansQuery.data
+    || meetingRoomsQuery.data.length === 0
+    || meetingPlansQuery.data.length === 0
+  ) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const cmsRooms = meetingRoomsQuery.data;
+  const cmsMeetingPlans = meetingPlansQuery.data;
+  const content = meetingRoomsPageQuery.data;
 
   const rooms = cmsRooms.map((room) => ({
     id: room.slug || room.id,
     name: room.name,
-    description: room.description || 'Professional room setup for productive sessions.',
+    description: room.description || '',
     features: room.features,
-    image: room.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200',
+    image: room.image || '',
     badges: room.badges,
   }));
 

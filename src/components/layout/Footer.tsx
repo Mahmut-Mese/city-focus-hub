@@ -1,11 +1,15 @@
 import { Link } from 'react-router-dom';
 import { Mail, MapPin, Phone } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { socialIconMap } from '@/lib/site-icons';
 
 export function Footer() {
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
+  const { data: siteSettings } = useSiteSettings();
+
+  if (!siteSettings) {
+    return null;
+  }
+
   const { footer, socialLinks } = siteSettings;
 
   return (

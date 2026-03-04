@@ -3,14 +3,29 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Globe, Phone, Check } from 'lucide-react';
 import { useSiteSettings, useVirtualOfficePageContent } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 
 export default function VirtualOffice() {
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
-  const { data: content = defaultSiteSettingsContent.virtualOfficePage } = useVirtualOfficePageContent();
+  const siteSettingsQuery = useSiteSettings();
+  const virtualOfficeQuery = useVirtualOfficePageContent();
+
+  if (siteSettingsQuery.isLoading || virtualOfficeQuery.isLoading) {
+    return null;
+  }
+
+  if (siteSettingsQuery.isError || virtualOfficeQuery.isError || !siteSettingsQuery.data || !virtualOfficeQuery.data) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const siteSettings = siteSettingsQuery.data;
+  const content = virtualOfficeQuery.data;
 
   return (
     <Layout

@@ -3,14 +3,32 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { MapPin, Mail, Phone } from 'lucide-react';
 import { useContactPageContent, useSiteSettings } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { socialIconMap } from '@/lib/site-icons';
 
 export default function Contact() {
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
-  const { data: content = defaultSiteSettingsContent.contactPage } = useContactPageContent();
+  const siteSettingsQuery = useSiteSettings();
+  const contactPageQuery = useContactPageContent();
+
+  if (siteSettingsQuery.isLoading || contactPageQuery.isLoading) {
+    return null;
+  }
+
+  if (siteSettingsQuery.isError || contactPageQuery.isError || !siteSettingsQuery.data || !contactPageQuery.data) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const siteSettings = siteSettingsQuery.data;
+  const content = contactPageQuery.data;
+  const mapQuery = encodeURIComponent(siteSettings.address);
+  const mapEmbedUrl = `https://www.google.com/maps?q=${mapQuery}&z=15&output=embed`;
+  const mapLocationUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
 
   return (
     <Layout
@@ -114,11 +132,32 @@ export default function Contact() {
             </div>
 
             <div className="rounded-3xl border border-black/10 bg-white overflow-hidden">
-              <div className="w-full h-full min-h-[420px] bg-[#f4f4f4] flex items-center justify-center">
-                <div className="text-center p-8">
-                  <MapPin size={46} className="mx-auto mb-4 text-black/45" />
-                  <h3 className="font-semibold text-3xl mb-2">{content.mapTitle}</h3>
-                  <p className="text-black/45 text-lg">{content.mapDescription}</p>
+              <div className="relative min-h-[420px]">
+                <iframe
+                  title={content.mapTitle}
+                  src={mapEmbedUrl}
+                  className="absolute inset-0 h-full w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-white/50 bg-white/92 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
+                      <MapPin size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-2xl leading-none mb-2">{content.mapTitle}</h3>
+                      <p className="text-black/55">{content.mapDescription || siteSettings.address}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={mapLocationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex h-10 items-center rounded-xl bg-black px-4 text-sm font-medium text-white hover:bg-black/90"
+                  >
+                    Open in Google Maps
+                  </a>
                 </div>
               </div>
             </div>

@@ -2,14 +2,29 @@ import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { SectionTitle } from '@/components/shared/SectionTitle';
 import { FeatureCard } from '@/components/shared/FeatureCard';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Wifi } from 'lucide-react';
 import { useAboutPageContent, useSiteSettings } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 import { contentIconMap } from '@/lib/site-icons';
 
 export default function About() {
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
-  const { data: content = defaultSiteSettingsContent.aboutPage } = useAboutPageContent();
+  const siteSettingsQuery = useSiteSettings();
+  const aboutPageQuery = useAboutPageContent();
+
+  if (siteSettingsQuery.isLoading || aboutPageQuery.isLoading) {
+    return null;
+  }
+
+  if (siteSettingsQuery.isError || aboutPageQuery.isError || !siteSettingsQuery.data || !aboutPageQuery.data) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const siteSettings = siteSettingsQuery.data;
+  const content = aboutPageQuery.data;
 
   return (
     <Layout

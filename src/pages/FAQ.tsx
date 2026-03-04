@@ -1,18 +1,44 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Search, ChevronDown, ChevronUp, CircleHelp } from 'lucide-react';
 import { useFaqItems, useFaqPageContent } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 
 export default function FAQ() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
   const [openIndex, setOpenIndex] = useState<number | null>(0);
-  const { data: cmsFaqItems = [] } = useFaqItems();
-  const { data: content = defaultSiteSettingsContent.faqPage } = useFaqPageContent();
+  const faqItemsQuery = useFaqItems();
+  const faqPageQuery = useFaqPageContent();
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  if (faqItemsQuery.isLoading || faqPageQuery.isLoading) {
+    return null;
+  }
+
+  if (
+    faqItemsQuery.isError
+    || faqPageQuery.isError
+    || !faqItemsQuery.data
+    || !faqPageQuery.data
+    || faqItemsQuery.data.length === 0
+  ) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const cmsFaqItems = faqItemsQuery.data;
+  const content = faqPageQuery.data;
 
   const faqItems = cmsFaqItems.map((item) => ({
     question: item.question,

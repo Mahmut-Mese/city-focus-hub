@@ -14,12 +14,27 @@ import {
   Star,
 } from 'lucide-react';
 import { useHomepageContent, useSiteSettings } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { contentIconMap } from '@/lib/site-icons';
 
 export default function Home() {
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
-  const { data: content = defaultSiteSettingsContent.homePage } = useHomepageContent();
+  const siteSettingsQuery = useSiteSettings();
+  const homepageQuery = useHomepageContent();
+
+  if (siteSettingsQuery.isLoading || homepageQuery.isLoading) {
+    return null;
+  }
+
+  if (siteSettingsQuery.isError || homepageQuery.isError || !siteSettingsQuery.data || !homepageQuery.data) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  const siteSettings = siteSettingsQuery.data;
+  const content = homepageQuery.data;
 
   return (
     <Layout

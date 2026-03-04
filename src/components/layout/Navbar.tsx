@@ -4,12 +4,16 @@ import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSiteSettings } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
+  const { data: siteSettings } = useSiteSettings();
+
+  if (!siteSettings) {
+    return null;
+  }
+
   const { navigation } = siteSettings;
 
   return (

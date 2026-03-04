@@ -1,0 +1,123 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import AdminJS, { ComponentLoader } from 'adminjs';
+import * as AdminJSSequelize from '@adminjs/sequelize';
+import { config } from './config.js';
+import { getContentPageDefinitions, handleContentPage } from './content-pages.js';
+import { getCollectionPageDefinitions, handleCollectionPage } from './collection-pages.js';
+import { getMediaPageDefinitions, handleMediaPage } from './media-pages.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+AdminJS.registerAdapter({
+  Database: AdminJSSequelize.Database,
+  Resource: AdminJSSequelize.Resource,
+});
+
+const componentLoader = new ComponentLoader();
+const dashboardComponent = componentLoader.add(
+  'Dashboard',
+  path.join(__dirname, 'components', 'Dashboard.jsx'),
+);
+const collectionManagerComponent = componentLoader.add(
+  'CollectionManager',
+  path.join(__dirname, 'components', 'CollectionManager.jsx'),
+);
+const contentPageEditorComponent = componentLoader.add(
+  'ContentPageEditor',
+  path.join(__dirname, 'components', 'ContentPageEditor.jsx'),
+);
+const mediaLibraryComponent = componentLoader.add(
+  'MediaLibrary',
+  path.join(__dirname, 'components', 'MediaLibrary.jsx'),
+);
+
+componentLoader.override(
+  'Sidebar',
+  path.join(__dirname, 'components', 'Sidebar.jsx'),
+);
+componentLoader.override(
+  'Login',
+  path.join(__dirname, 'components', 'Login.jsx'),
+);
+componentLoader.override(
+  'TopBar',
+  path.join(__dirname, 'components', 'TopBar.jsx'),
+);
+
+const contentPages = Object.fromEntries(
+  getContentPageDefinitions().map((definition) => [
+    definition.name,
+    {
+      label: definition.label,
+      icon: definition.icon,
+      component: contentPageEditorComponent,
+      handler: async (request) => handleContentPage(definition.name, request),
+    },
+  ]),
+);
+
+const pageTranslations = Object.fromEntries(
+  [...getContentPageDefinitions(), ...getCollectionPageDefinitions(), ...getMediaPageDefinitions()]
+    .map((definition) => [definition.name, definition.pluralLabel ?? definition.label]),
+);
+
+const collectionPages = Object.fromEntries(
+  getCollectionPageDefinitions().map((definition) => [
+    definition.name,
+    {
+      label: definition.pluralLabel,
+      icon: definition.icon,
+      component: collectionManagerComponent,
+      handler: async (request) => handleCollectionPage(definition.name, request),
+    },
+  ]),
+);
+
+const mediaPages = Object.fromEntries(
+  getMediaPageDefinitions().map((definition) => [
+    definition.name,
+    {
+      label: definition.label,
+      icon: 'Media',
+      component: mediaLibraryComponent,
+      handler: async (request) => handleMediaPage(definition.name, request),
+    },
+  ]),
+);
+
+export function createAdmin(resources) {
+  return new AdminJS({
+    rootPath: config.rootPath,
+    componentLoader,
+    branding: {
+      companyName: 'The Leadenhall Works Admin',
+      logo: '/admin-assets/logo.svg',
+      withMadeWithLove: false,
+    },
+    resources: [
+      ...resources,
+    ],
+    pages: {
+      ...contentPages,
+      ...collectionPages,
+      ...mediaPages,
+    },
+    locale: {
+      translations: {
+        labels: {
+          navigation: 'Content',
+          pages: 'Pages',
+        },
+        pages: pageTranslations,
+      },
+    },
+    dashboard: {
+      handler: async () => ({
+        message: 'AdminJS is connected to the copied Strapi database and exposes the client-facing content surface.',
+      }),
+      component: dashboardComponent,
+    },
+  });
+}

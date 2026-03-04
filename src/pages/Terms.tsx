@@ -1,9 +1,22 @@
 import { LegalDocumentPage } from '@/components/shared/LegalDocumentPage';
-import { defaultTermsContent } from '@/data/siteContent';
+import { Layout } from '@/components/layout/Layout';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { useTermsPageContent } from '@/hooks/useCmsContent';
 
 export default function Terms() {
-  const { data: content = defaultTermsContent } = useTermsPageContent();
+  const termsQuery = useTermsPageContent();
 
-  return <LegalDocumentPage content={content} />;
+  if (termsQuery.isLoading) {
+    return null;
+  }
+
+  if (termsQuery.isError || !termsQuery.data) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
+
+  return <LegalDocumentPage content={termsQuery.data} />;
 }

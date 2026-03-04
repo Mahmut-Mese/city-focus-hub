@@ -4,22 +4,34 @@ import remarkGfm from 'remark-gfm';
 import { ArrowRight } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
+import { CmsNoData } from '@/components/shared/CmsNoData';
 import { type LegalPageContent } from '@/data/siteContent';
 import { useSiteSettings } from '@/hooks/useCmsContent';
-import { defaultSiteSettingsContent } from '@/data/siteContent';
 
 interface LegalDocumentPageProps {
   content: LegalPageContent;
 }
 
 export function LegalDocumentPage({ content }: LegalDocumentPageProps) {
-  const { data: siteSettings = defaultSiteSettingsContent } = useSiteSettings();
+  const { data: siteSettings, isLoading, isError } = useSiteSettings();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (isError || !siteSettings) {
+    return (
+      <Layout>
+        <CmsNoData />
+      </Layout>
+    );
+  }
 
   return (
     <Layout
       seo={{
         title: content.heroTitle,
-        description: `${content.heroSubtitle} ${content.introText}` || siteSettings.tagline,
+        description: `${content.heroSubtitle} ${content.introText}`.trim(),
       }}
     >
       <section className="bg-[#15161b] text-white py-18 md:py-24 border-b border-white/10">
