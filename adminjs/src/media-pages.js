@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { QueryTypes } from 'sequelize';
 import { sequelize } from './database.js';
 import { config } from './config.js';
@@ -84,6 +85,7 @@ function buildAsset(row) {
     folderPath: row.folder_path,
     size: Number(row.size ?? 0),
     sizeLabel: formatSize(row.size),
+    relativeUrl: row.url,
     url,
     thumbnailUrl,
     previewUrl: absoluteUrl(row.preview_url),
@@ -127,6 +129,62 @@ async function loadAssetRow(id) {
   );
 
   return row ?? null;
+}
+
+export async function createMediaAssetFromUpload(file) {
+  if (!file) {
+    throw new Error('No file received.');
+  }
+
+  const now = new Date();
+  const extFromOriginalName = file.originalname?.includes('.') ? `.${file.originalname.split('.').pop()}` : '';
+  const extFromMime = file.mimetype?.includes('/') ? `.${file.mimetype.split('/').pop()}` : '';
+  const ext = extFromOriginalName || extFromMime;
+  const relativeUrl = `/uploads/${file.filename}`;
+  const baseHash = file.filename.replace(/\.[^/.]+$/, '').slice(0, 255);
+  const sizeInKb = Number((Number(file.size ?? 0) / 1024).toFixed(2));
+
+  const [insertId, metadata] = await sequelize.query(
+    `INSERT INTO files
+      (document_id, name, alternative_text, caption, width, height, formats, hash, ext, mime, size, url, preview_url, provider, folder_path, created_at, updated_at)
+     VALUES
+      (:documentId, :name, :alternativeText, :caption, :width, :height, :formats, :hash, :ext, :mime, :size, :url, :previewUrl, :provider, :folderPath, :createdAt, :updatedAt)`,
+    {
+      replacements: {
+        documentId: randomUUID(),
+        name: file.originalname || file.filename,
+        alternativeText: '',
+        caption: '',
+        width: null,
+        height: null,
+        formats: null,
+        hash: baseHash || randomUUID().replace(/-/g, '').slice(0, 24),
+        ext: ext || '',
+        mime: file.mimetype || 'application/octet-stream',
+        size: sizeInKb,
+        url: relativeUrl,
+        previewUrl: null,
+        provider: 'local',
+        folderPath: '/uploads',
+        createdAt: now,
+        updatedAt: now,
+      },
+    },
+  );
+
+  const nextId = typeof insertId === 'number' ? insertId : metadata?.insertId ?? null;
+
+  if (!nextId) {
+    throw new Error('Failed to save uploaded media.');
+  }
+
+  const row = await loadAssetRow(nextId);
+
+  if (!row) {
+    throw new Error('Uploaded media record was not found.');
+  }
+
+  return buildAsset(row);
 }
 
 export function getMediaPageDefinitions() {

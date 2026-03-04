@@ -19,7 +19,7 @@ const PAGE_DEFINITIONS = [
     name: 'about-page',
     label: 'About Page',
     icon: 'User',
-    kind: 'strapi-about-page',
+    kind: 'about-page-record',
   },
   {
     name: 'blog-page',
@@ -498,13 +498,13 @@ async function loadAboutPageFromRecord(record, transaction) {
 async function findFileIdForMediaValue(value, transaction) {
   const normalized = toRelativeFileUrl(value);
 
-  if (!normalized || !normalized.startsWith('/uploads/')) {
+  if (!normalized) {
     return null;
   }
 
   const file = await selectOne(
-    'SELECT id FROM files WHERE url = :url LIMIT 1',
-    { url: normalized },
+    'SELECT id FROM files WHERE url = :url OR url = :rawUrl LIMIT 1',
+    { url: normalized, rawUrl: value },
     transaction,
   );
 
@@ -1517,7 +1517,7 @@ async function loadContentPageState(definition) {
     };
   }
 
-  if (definition.kind === 'strapi-about-page') {
+  if (definition.kind === 'about-page-record') {
     const { draftRow, publishedRow } = await getPageVersions('about_pages');
     return {
       draftData: await loadAboutPageFromRecord(draftRow),
@@ -1577,7 +1577,7 @@ export async function handleContentPage(pageName, request) {
       } else {
         await saveJsonPage(definition.column, content);
       }
-    } else if (definition.kind === 'strapi-about-page') {
+    } else if (definition.kind === 'about-page-record') {
       if (intent === 'publish') {
         await publishAboutPage(content);
       } else if (intent === 'unpublish') {
@@ -1607,10 +1607,10 @@ export async function handleContentPage(pageName, request) {
       notice: {
         message:
           intent === 'publish'
-            ? `${definition.label} published to the copied comparison database.`
+            ? `${definition.label} published to the live content database.`
             : intent === 'unpublish'
-              ? `${definition.label} unpublished in the copied comparison database.`
-              : `${definition.label} saved to the copied comparison database.`,
+              ? `${definition.label} unpublished in the live content database.`
+              : `${definition.label} saved to the live content database.`,
         type: 'success',
       },
     };

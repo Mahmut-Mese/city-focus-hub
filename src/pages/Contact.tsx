@@ -1,3 +1,4 @@
+import { FormEvent, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -7,10 +8,30 @@ import { CmsNoData } from '@/components/shared/CmsNoData';
 import { MapPin, Mail, Phone } from 'lucide-react';
 import { useContactPageContent, useSiteSettings } from '@/hooks/useCmsContent';
 import { socialIconMap } from '@/lib/site-icons';
+import { postApi } from '@/lib/content-api';
+
+type ContactFormState = {
+  name: string;
+  phone: string;
+  email: string;
+  message: string;
+};
+
+const EMPTY_FORM: ContactFormState = {
+  name: '',
+  phone: '',
+  email: '',
+  message: '',
+};
 
 export default function Contact() {
   const siteSettingsQuery = useSiteSettings();
   const contactPageQuery = useContactPageContent();
+  const [formState, setFormState] = useState<ContactFormState>(EMPTY_FORM);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
+  const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim());
 
   if (siteSettingsQuery.isLoading || contactPageQuery.isLoading) {
     return null;
@@ -29,6 +50,51 @@ export default function Contact() {
   const mapQuery = encodeURIComponent(siteSettings.address);
   const mapEmbedUrl = `https://www.google.com/maps?q=${mapQuery}&z=15&output=embed`;
   const mapLocationUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+
+  const handleFieldChange = (field: keyof ContactFormState, value: string) => {
+    setFormState((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    if (!formState.name.trim()) {
+      setSubmitError('Name is required.');
+      return;
+    }
+
+    if (!formState.email.trim()) {
+      setSubmitError('Email is required.');
+      return;
+    }
+
+    if (!emailLooksValid) {
+      setSubmitError('Enter a valid email address.');
+      return;
+    }
+
+    if (!formState.message.trim()) {
+      setSubmitError('Message is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await postApi('/contact-submissions', {
+        ...formState,
+        sourcePage: 'contact',
+      });
+      setFormState(EMPTY_FORM);
+      setSubmitSuccess('Your request has been submitted.');
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit your request.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Layout
@@ -118,15 +184,50 @@ export default function Contact() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="rounded-3xl border border-black/10 bg-white p-8 md:p-10">
               <h3 className="font-sans text-5xl leading-none mb-6">{content.form.title}</h3>
-              <form className="space-y-3.5">
+              <form className="space-y-3.5" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <Input placeholder={content.form.namePlaceholder} className="h-12 border-black/15 text-base" />
-                  <Input type="tel" placeholder={content.form.phonePlaceholder} className="h-12 border-black/15 text-base" />
+                  <Input
+                    value={formState.name}
+                    onChange={(event) => handleFieldChange('name', event.target.value)}
+                    placeholder={content.form.namePlaceholder}
+                    className="h-12 border-black/15 text-base"
+                    autoComplete="name"
+                  />
+                  <Input
+                    type="tel"
+                    value={formState.phone}
+                    onChange={(event) => handleFieldChange('phone', event.target.value)}
+                    placeholder={content.form.phonePlaceholder}
+                    className="h-12 border-black/15 text-base"
+                    autoComplete="tel"
+                  />
                 </div>
-                <Input type="email" placeholder={content.form.emailPlaceholder} className="h-12 border-black/15 text-base" />
-                <Textarea placeholder={content.form.messagePlaceholder} className="min-h-[170px] border-black/15 text-base" />
-                <Button className="h-12 rounded-xl px-6 text-lg w-full bg-black text-white hover:bg-black/90">
-                  {content.form.submitLabel}
+                <Input
+                  type="email"
+                  value={formState.email}
+                  onChange={(event) => handleFieldChange('email', event.target.value)}
+                  placeholder={content.form.emailPlaceholder}
+                  className="h-12 border-black/15 text-base"
+                  autoComplete="email"
+                />
+                <Textarea
+                  value={formState.message}
+                  onChange={(event) => handleFieldChange('message', event.target.value)}
+                  placeholder={content.form.messagePlaceholder}
+                  className="min-h-[170px] border-black/15 text-base"
+                />
+                {submitError ? (
+                  <p className="text-sm font-medium text-red-600">{submitError}</p>
+                ) : null}
+                {submitSuccess ? (
+                  <p className="text-sm font-medium text-green-700">{submitSuccess}</p>
+                ) : null}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-12 rounded-xl px-6 text-lg w-full bg-black text-white hover:bg-black/90"
+                >
+                  {isSubmitting ? 'Submitting...' : content.form.submitLabel}
                 </Button>
               </form>
             </div>

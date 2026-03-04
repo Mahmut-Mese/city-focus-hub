@@ -41,7 +41,7 @@ const SIDEBAR_WIDTH = 304;
 const RAIL_WIDTH = 48;
 
 const STYLES = `
-.strapi-sidebar-shell {
+.admin-sidebar-shell {
   position: fixed;
   inset: 0 auto 0 0;
   width: ${SIDEBAR_WIDTH}px;
@@ -53,15 +53,15 @@ const STYLES = `
   transition: transform 0.2s ease;
 }
 
-.strapi-sidebar-shell--rail-only {
+.admin-sidebar-shell--rail-only {
   width: ${RAIL_WIDTH}px;
 }
 
-.strapi-sidebar-shell--hidden {
+.admin-sidebar-shell--hidden {
   transform: translateX(-${SIDEBAR_WIDTH}px);
 }
 
-.strapi-sidebar-rail {
+.admin-sidebar-rail {
   width: 48px;
   border-right: 1px solid #eaebf0;
   display: flex;
@@ -72,14 +72,14 @@ const STYLES = `
   background: #ffffff;
 }
 
-.strapi-sidebar-logo {
+.admin-sidebar-logo {
   width: 28px;
   height: 28px;
   object-fit: contain;
   margin-bottom: 2px;
 }
 
-.strapi-rail-button {
+.admin-rail-button {
   width: 32px;
   height: 32px;
   border: 0;
@@ -91,12 +91,12 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-rail-button--active {
+.admin-rail-button--active {
   background: #f0ebff;
   color: #7b79ff;
 }
 
-.strapi-rail-button svg {
+.admin-rail-button svg {
   width: 16px;
   height: 16px;
   stroke: currentColor;
@@ -106,11 +106,11 @@ const STYLES = `
   stroke-linejoin: round;
 }
 
-.strapi-rail-spacer {
+.admin-rail-spacer {
   flex: 1;
 }
 
-.strapi-avatar {
+.admin-avatar {
   width: 30px;
   height: 30px;
   border-radius: 999px;
@@ -122,7 +122,7 @@ const STYLES = `
   font-weight: 700;
 }
 
-.strapi-sidebar-panel {
+.admin-sidebar-panel {
   width: 256px;
   display: flex;
   flex-direction: column;
@@ -130,7 +130,7 @@ const STYLES = `
   background: #ffffff;
 }
 
-.strapi-sidebar-header {
+.admin-sidebar-header {
   padding: 14px 16px;
   border-bottom: 1px solid #eaebf0;
   font-size: 1rem;
@@ -139,16 +139,16 @@ const STYLES = `
   color: #32324d;
 }
 
-.strapi-sidebar-body {
+.admin-sidebar-body {
   padding: 14px 8px 18px;
   overflow-y: auto;
 }
 
-.strapi-search {
+.admin-search {
   padding: 0 8px 12px;
 }
 
-.strapi-search input {
+.admin-search input {
   width: 100%;
   min-height: 2.25rem;
   padding: 0.5rem 0.75rem;
@@ -160,23 +160,23 @@ const STYLES = `
   font-size: 0.75rem;
 }
 
-.strapi-search input:focus {
+.admin-search input:focus {
   outline: none;
   border-color: #4945ff;
 }
 
-.strapi-group {
+.admin-group {
   margin-top: 10px;
 }
 
-.strapi-group__head {
+.admin-group__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 10px 8px;
 }
 
-.strapi-group__label {
+.admin-group__label {
   font-size: 0.6875rem;
   line-height: 1rem;
   font-weight: 700;
@@ -185,7 +185,7 @@ const STYLES = `
   color: #8e8ea9;
 }
 
-.strapi-group__count {
+.admin-group__count {
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
@@ -200,7 +200,7 @@ const STYLES = `
   font-weight: 700;
 }
 
-.strapi-nav-link {
+.admin-nav-link {
   width: 100%;
   border: 0;
   background: transparent;
@@ -216,16 +216,16 @@ const STYLES = `
   text-align: left;
 }
 
-.strapi-nav-link:hover {
+.admin-nav-link:hover {
   background: #f6f6f9;
 }
 
-.strapi-nav-link--selected {
+.admin-nav-link--selected {
   background: #f0ebff;
   color: #4945ff;
 }
 
-.strapi-nav-link__text {
+.admin-nav-link__text {
   min-width: 0;
   font-size: 0.875rem;
   line-height: 1.375rem;
@@ -235,25 +235,25 @@ const STYLES = `
   text-overflow: ellipsis;
 }
 
-.strapi-nav-link__icon {
+.admin-nav-link__icon {
   width: 12px;
   color: #8e8ea9;
   font-size: 10px;
 }
 
 @media (max-width: 960px) {
-  .strapi-sidebar-shell {
+  .admin-sidebar-shell {
     box-shadow: 0 18px 48px rgba(33, 33, 52, 0.12);
   }
 
-  .strapi-sidebar-shell--hidden {
+  .admin-sidebar-shell--hidden {
     transform: translateX(-${SIDEBAR_WIDTH}px);
   }
 }
 
 @media (min-width: 961px) {
-  .strapi-sidebar-shell,
-  .strapi-sidebar-shell--hidden {
+  .admin-sidebar-shell,
+  .admin-sidebar-shell--hidden {
     transform: translateX(0);
   }
 }
@@ -351,43 +351,43 @@ export default function Sidebar({ isVisible }) {
   return (
     <>
       <style>{STYLES}</style>
-      <div className={`strapi-sidebar-shell${showPanel ? '' : ' strapi-sidebar-shell--rail-only'}${isVisible ? '' : ' strapi-sidebar-shell--hidden'}`}>
-        <div className="strapi-sidebar-rail">
+      <div className={`admin-sidebar-shell${showPanel ? '' : ' admin-sidebar-shell--rail-only'}${isVisible ? '' : ' admin-sidebar-shell--hidden'}`}>
+        <div className="admin-sidebar-rail">
           <img
-            className="strapi-sidebar-logo"
+            className="admin-sidebar-logo"
             src="/admin-assets/client-mark.svg"
             alt="The Leadenhall Works"
           />
           <button
-            className={`strapi-rail-button${isDashboard ? ' strapi-rail-button--active' : ''}`}
+            className={`admin-rail-button${isDashboard ? ' admin-rail-button--active' : ''}`}
             type="button"
             onClick={() => navigate('/admin')}
           >
             <HomeIcon />
           </button>
           <button
-            className={`strapi-rail-button${!isDashboard && !isMedia ? ' strapi-rail-button--active' : ''}`}
+            className={`admin-rail-button${!isDashboard && !isMedia ? ' admin-rail-button--active' : ''}`}
             type="button"
             onClick={() => navigate('/admin/pages/site-settings')}
           >
             <PencilIcon />
           </button>
           <button
-            className={`strapi-rail-button${isMedia ? ' strapi-rail-button--active' : ''}`}
+            className={`admin-rail-button${isMedia ? ' admin-rail-button--active' : ''}`}
             type="button"
             onClick={() => navigate('/admin/pages/media-library')}
           >
             <MediaIcon />
           </button>
-          <div className="strapi-rail-spacer" />
-          <div className="strapi-avatar">{initial}</div>
+          <div className="admin-rail-spacer" />
+          <div className="admin-avatar">{initial}</div>
         </div>
 
         {showPanel ? (
-        <div className="strapi-sidebar-panel">
-          <div className="strapi-sidebar-header">Content Manager</div>
-          <div className="strapi-sidebar-body">
-            <div className="strapi-search">
+        <div className="admin-sidebar-panel">
+          <div className="admin-sidebar-header">Content Manager</div>
+          <div className="admin-sidebar-body">
+            <div className="admin-search">
               <input
                 type="text"
                 placeholder="Search"
@@ -396,36 +396,36 @@ export default function Sidebar({ isVisible }) {
               />
             </div>
 
-            <div className="strapi-group">
-              <div className="strapi-group__head">
-                <span className="strapi-group__label">Collection Types</span>
-                <span className="strapi-group__count">{collectionItems.length}</span>
+            <div className="admin-group">
+              <div className="admin-group__head">
+                <span className="admin-group__label">Collection Types</span>
+                <span className="admin-group__count">{collectionItems.length}</span>
               </div>
               {collectionItems.map((item) => (
                 <button
                   key={item.id}
-                  className={`strapi-nav-link${item.selected ? ' strapi-nav-link--selected' : ''}`}
+                  className={`admin-nav-link${item.selected ? ' admin-nav-link--selected' : ''}`}
                   type="button"
                   onClick={() => navigate(item.href)}
                 >
-                  <span className="strapi-nav-link__text">{item.label}</span>
+                  <span className="admin-nav-link__text">{item.label}</span>
                 </button>
               ))}
             </div>
 
-            <div className="strapi-group">
-              <div className="strapi-group__head">
-                <span className="strapi-group__label">Single Types</span>
-                <span className="strapi-group__count">{pageItems.length}</span>
+            <div className="admin-group">
+              <div className="admin-group__head">
+                <span className="admin-group__label">Single Types</span>
+                <span className="admin-group__count">{pageItems.length}</span>
               </div>
               {pageItems.map((item) => (
                 <button
                   key={item.id}
-                  className={`strapi-nav-link${item.selected ? ' strapi-nav-link--selected' : ''}`}
+                  className={`admin-nav-link${item.selected ? ' admin-nav-link--selected' : ''}`}
                   type="button"
                   onClick={() => navigate(item.href)}
                 >
-                  <span className="strapi-nav-link__text">{item.label}</span>
+                  <span className="admin-nav-link__text">{item.label}</span>
                 </button>
               ))}
             </div>

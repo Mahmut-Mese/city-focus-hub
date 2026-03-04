@@ -8,7 +8,6 @@ const api = new ApiClient();
 const MULTILINE_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|hours|address|text|paragraph|overview|challenge|result)/i;
 const IMAGE_FIELD_PATTERN = /(image|background|logo|thumbnail|featured)/i;
 const FULL_WIDTH_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|overview|challenge|result|background|image|gallery|sections|testimonials|services|whyChooseItems|featureChips|socialLinks|faqItems|comparisonRows|comparisonColumns|storyParagraphs|relatedWorkspaces|challengeItems|amenities|navigation|footer|form)/i;
-const IMAGE_URL_PATTERN = /^https?:\/\/.+/i;
 const REQUIRED_FIELD_PATTERN = /(heroTitle|heroSubtitle|storyTitle|whyChooseTitle|amenitiesTitle|title)$/i;
 
 const PAGE_LAYOUTS = {
@@ -89,33 +88,20 @@ const PAGE_LAYOUTS = {
   ],
 };
 
-const PREVIEW_PATHS = {
-  homepage: '/',
-  'about-page': '/about',
-  'blog-page': '/blog',
-  'pricing-page': '/pricing',
-  'faq-page': '/faq',
-  'meeting-rooms-page': '/meeting-rooms',
-  'virtual-office-page': '/virtual-office',
-  'contact-page': '/contact',
-  'privacy-policy-page': '/privacy-policy',
-  'terms-page': '/terms',
-};
-
 const STYLES = `
-.strapi-editor {
+.admin-editor {
   min-height: 100%;
   padding: 32px 40px 64px 344px;
   background: #f6f6f9;
   color: #32324d;
 }
 
-.strapi-editor__inner {
+.admin-editor__inner {
   max-width: 1240px;
   margin: 0 auto;
 }
 
-.strapi-back {
+.admin-back {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -129,7 +115,7 @@ const STYLES = `
   margin-bottom: 14px;
 }
 
-.strapi-header {
+.admin-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -137,7 +123,7 @@ const STYLES = `
   margin-bottom: 12px;
 }
 
-.strapi-meta {
+.admin-meta {
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 700;
@@ -147,7 +133,7 @@ const STYLES = `
   margin-bottom: 4px;
 }
 
-.strapi-title {
+.admin-title {
   margin: 0;
   font-size: 2.25rem;
   line-height: 2.75rem;
@@ -155,7 +141,7 @@ const STYLES = `
   color: #32324d;
 }
 
-.strapi-status {
+.admin-status {
   display: inline-flex;
   align-items: center;
   min-height: 2rem;
@@ -170,7 +156,7 @@ const STYLES = `
   font-weight: 600;
 }
 
-.strapi-kebab {
+.admin-kebab {
   width: 2rem;
   height: 2rem;
   border: 1px solid #dcdce4;
@@ -182,7 +168,7 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-tabs {
+.admin-tabs {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -190,7 +176,7 @@ const STYLES = `
   border-bottom: 1px solid #eaeaef;
 }
 
-.strapi-tab {
+.admin-tab {
   position: relative;
   border: 0;
   background: transparent;
@@ -202,11 +188,11 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-tab--active {
+.admin-tab--active {
   color: #4945ff;
 }
 
-.strapi-tab--active::after {
+.admin-tab--active::after {
   content: '';
   position: absolute;
   left: 0;
@@ -216,44 +202,44 @@ const STYLES = `
   background: #4945ff;
 }
 
-.strapi-layout {
+.admin-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 232px;
   gap: 16px;
   align-items: start;
 }
 
-.strapi-main-card,
-.strapi-side-card {
+.admin-main-card,
+.admin-side-card {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(33, 33, 52, 0.06);
 }
 
-.strapi-main-card {
+.admin-main-card {
   padding: 24px;
 }
 
-.strapi-section + .strapi-section {
+.admin-section + .admin-section {
   margin-top: 20px;
 }
 
-.strapi-field-grid {
+.admin-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px 24px;
 }
 
-.strapi-field {
+.admin-field {
   min-width: 0;
 }
 
-.strapi-field--full {
+.admin-field--full {
   grid-column: 1 / -1;
 }
 
-.strapi-label {
+.admin-label {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -264,12 +250,12 @@ const STYLES = `
   font-weight: 600;
 }
 
-.strapi-label__required {
+.admin-label__required {
   color: #d02b20;
 }
 
-.strapi-input,
-.strapi-textarea {
+.admin-input,
+.admin-textarea {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #dcdce4;
@@ -282,36 +268,36 @@ const STYLES = `
   outline: none;
 }
 
-.strapi-input {
+.admin-input {
   min-height: 2.5rem;
 }
 
-.strapi-input:focus,
-.strapi-textarea:focus {
+.admin-input:focus,
+.admin-textarea:focus {
   border-color: #4945ff;
   box-shadow: 0 0 0 1px #4945ff;
 }
 
-.strapi-input:disabled,
-.strapi-textarea:disabled {
+.admin-input:disabled,
+.admin-textarea:disabled {
   background: #f6f6f9;
   color: #666687;
   cursor: not-allowed;
 }
 
-.strapi-textarea {
+.admin-textarea {
   min-height: 5.75rem;
   resize: vertical;
 }
 
-.strapi-media {
+.admin-media {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #ffffff;
   padding: 16px;
 }
 
-.strapi-media__canvas {
+.admin-media__canvas {
   min-height: 140px;
   border: 1px solid #dcdce4;
   border-radius: 4px;
@@ -322,32 +308,32 @@ const STYLES = `
   padding: 16px;
 }
 
-.strapi-media__empty {
+.admin-media__empty {
   color: #8e8ea9;
   font-size: 0.8125rem;
 }
 
-.strapi-media__stack {
+.admin-media__stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.strapi-media__thumb {
+.admin-media__thumb {
   max-width: 240px;
   max-height: 140px;
   object-fit: cover;
   border-radius: 2px;
 }
 
-.strapi-media__actions {
+.admin-media__actions {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.strapi-media__action {
+.admin-media__action {
   width: 2rem;
   height: 2rem;
   border: 1px solid #dcdce4;
@@ -357,13 +343,13 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-media__action:disabled {
+.admin-media__action:disabled {
   background: #f6f6f9;
   color: #8e8ea9;
   cursor: not-allowed;
 }
 
-.strapi-media__filename {
+.admin-media__filename {
   max-width: 280px;
   color: #666687;
   font-size: 0.75rem;
@@ -373,17 +359,48 @@ const STYLES = `
   white-space: nowrap;
 }
 
-.strapi-media__source {
+.admin-media__source {
   margin-top: 10px;
 }
 
-.strapi-object {
+.admin-media__source-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-media__upload-button {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid #dcdce4;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #32324d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-media__upload-button:disabled {
+  background: #f6f6f9;
+  color: #8e8ea9;
+  cursor: not-allowed;
+}
+
+.admin-media__error {
+  color: #d02b20;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.admin-object {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   padding: 16px;
 }
 
-.strapi-object__title {
+.admin-object__title {
   margin: 0 0 12px;
   font-size: 0.8125rem;
   line-height: 1rem;
@@ -392,14 +409,14 @@ const STYLES = `
   text-transform: uppercase;
 }
 
-.strapi-repeatable {
+.admin-repeatable {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   overflow: hidden;
   background: #ffffff;
 }
 
-.strapi-repeatable__head {
+.admin-repeatable__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -408,27 +425,31 @@ const STYLES = `
   border-bottom: 1px solid #f0f0f5;
 }
 
-.strapi-repeatable__title {
+.admin-repeatable__title {
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 600;
   color: #32324d;
 }
 
-.strapi-repeatable__count {
+.admin-repeatable__count {
   color: #8e8ea9;
   font-size: 0.75rem;
 }
 
-.strapi-repeatable__item + .strapi-repeatable__item {
+.admin-repeatable__item + .admin-repeatable__item {
   border-top: 1px solid #f0f0f5;
 }
 
-.strapi-repeatable__item[open] summary {
+.admin-repeatable__item--drag-over summary {
+  background: #f0f0ff;
+}
+
+.admin-repeatable__item[open] summary {
   background: #fafafb;
 }
 
-.strapi-repeatable__summary {
+.admin-repeatable__summary {
   list-style: none;
   display: flex;
   align-items: center;
@@ -438,18 +459,18 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-repeatable__summary::-webkit-details-marker {
+.admin-repeatable__summary::-webkit-details-marker {
   display: none;
 }
 
-.strapi-repeatable__summary-left {
+.admin-repeatable__summary-left {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
 }
 
-.strapi-repeatable__bullet {
+.admin-repeatable__bullet {
   width: 20px;
   height: 20px;
   border-radius: 999px;
@@ -461,7 +482,7 @@ const STYLES = `
   font-size: 0.625rem;
 }
 
-.strapi-repeatable__name {
+.admin-repeatable__name {
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 600;
@@ -471,7 +492,7 @@ const STYLES = `
   text-overflow: ellipsis;
 }
 
-.strapi-repeatable__actions {
+.admin-repeatable__actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -479,7 +500,7 @@ const STYLES = `
   font-size: 0.875rem;
 }
 
-.strapi-repeatable__icon-button {
+.admin-repeatable__icon-button {
   border: 0;
   background: transparent;
   color: inherit;
@@ -487,25 +508,44 @@ const STYLES = `
   padding: 0;
 }
 
-.strapi-repeatable__icon-button:disabled,
-.strapi-repeatable__add:disabled,
-.strapi-side-button:disabled,
-.strapi-side-button--secondary:disabled {
+.admin-repeatable__drag-handle {
+  border: 0;
+  background: transparent;
+  color: #8e8ea9;
+  cursor: grab;
+  padding: 0 2px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.admin-repeatable__drag-handle:active {
+  cursor: grabbing;
+}
+
+.admin-repeatable__drag-handle:disabled {
+  color: #c4c4d2;
+  cursor: not-allowed;
+}
+
+.admin-repeatable__icon-button:disabled,
+.admin-repeatable__add:disabled,
+.admin-side-button:disabled,
+.admin-side-button--secondary:disabled {
   cursor: not-allowed;
   opacity: 1;
 }
 
-.strapi-repeatable__icon-button:disabled,
-.strapi-repeatable__add:disabled {
+.admin-repeatable__icon-button:disabled,
+.admin-repeatable__add:disabled {
   color: #8e8ea9;
 }
 
-.strapi-repeatable__body {
+.admin-repeatable__body {
   padding: 16px;
   background: #ffffff;
 }
 
-.strapi-repeatable__add {
+.admin-repeatable__add {
   width: 100%;
   border: 0;
   border-top: 1px solid #f0f0f5;
@@ -518,7 +558,7 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-switch {
+.admin-switch {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -529,20 +569,20 @@ const STYLES = `
   padding: 0.625rem 0.875rem;
 }
 
-.strapi-switch input {
+.admin-switch input {
   accent-color: #4945ff;
 }
 
-.strapi-switch:has(input:disabled) {
+.admin-switch:has(input:disabled) {
   background: #f6f6f9;
   color: #666687;
 }
 
-.strapi-side-card + .strapi-side-card {
+.admin-side-card + .admin-side-card {
   margin-top: 12px;
 }
 
-.strapi-side-card__head {
+.admin-side-card__head {
   padding: 14px 16px 8px;
   color: #666687;
   font-size: 0.75rem;
@@ -551,19 +591,19 @@ const STYLES = `
   text-transform: uppercase;
 }
 
-.strapi-side-card__body {
+.admin-side-card__body {
   padding: 0 12px 12px;
 }
 
-.strapi-side-button-row {
+.admin-side-button-row {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
   position: relative;
 }
 
-.strapi-side-button,
-.strapi-side-button--secondary {
+.admin-side-button,
+.admin-side-button--secondary {
   width: 100%;
   min-height: 2.25rem;
   border-radius: 4px;
@@ -573,35 +613,31 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-side-button {
+.admin-side-button {
   border: 1px solid #4945ff;
   background: #4945ff;
   color: #ffffff;
 }
 
-.strapi-side-button--secondary {
+.admin-side-button--secondary {
   border: 1px solid #dcdce4;
   background: #ffffff;
   color: #32324d;
 }
 
-.strapi-side-button:disabled,
-.strapi-side-button--secondary:disabled {
+.admin-side-button:disabled,
+.admin-side-button--secondary:disabled {
   border-color: #dcdce4;
   background: #f6f6f9;
   color: #8e8ea9;
 }
 
-.strapi-side-button--menu {
+.admin-side-button--menu {
   width: 2rem;
   flex: 0 0 2rem;
 }
 
-.strapi-side-button--preview {
-  margin-top: 4px;
-}
-
-.strapi-side-action-menu {
+.admin-side-action-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -614,7 +650,7 @@ const STYLES = `
   z-index: 40;
 }
 
-.strapi-side-action-menu__item {
+.admin-side-action-menu__item {
   width: 100%;
   border: 0;
   background: transparent;
@@ -629,38 +665,38 @@ const STYLES = `
   text-align: left;
 }
 
-.strapi-side-action-menu__item:hover {
+.admin-side-action-menu__item:hover {
   background: #f6f6f9;
 }
 
-.strapi-side-action-menu__item--danger {
+.admin-side-action-menu__item--danger {
   color: #d02b20;
 }
 
-.strapi-side-action-menu__item:disabled {
+.admin-side-action-menu__item:disabled {
   background: transparent;
   color: #8e8ea9;
   cursor: not-allowed;
 }
 
-.strapi-side-action-menu__icon {
+.admin-side-action-menu__icon {
   width: 18px;
   color: inherit;
   text-align: center;
 }
 
 @media (max-width: 1180px) {
-  .strapi-layout {
+  .admin-layout {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 960px) {
-  .strapi-editor {
+  .admin-editor {
     padding: 20px 16px 48px;
   }
 
-  .strapi-field-grid {
+  .admin-field-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -807,6 +843,31 @@ function appendAtPath(value, path, nextItem) {
   return clone;
 }
 
+function moveAtPath(value, path, offset) {
+  if (path.length === 1) {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+
+    const index = path[0];
+    const nextIndex = index + offset;
+
+    if (nextIndex < 0 || nextIndex >= value.length) {
+      return value;
+    }
+
+    const clone = [...value];
+    const [moved] = clone.splice(index, 1);
+    clone.splice(nextIndex, 0, moved);
+    return clone;
+  }
+
+  const [segment, ...rest] = path;
+  const clone = Array.isArray(value) ? [...value] : { ...value };
+  clone[segment] = moveAtPath(value?.[segment], rest, offset);
+  return clone;
+}
+
 function parseInputValue(nextRawValue, currentValue) {
   if (typeof currentValue === 'number') {
     if (nextRawValue === '') {
@@ -820,14 +881,79 @@ function parseInputValue(nextRawValue, currentValue) {
   return nextRawValue;
 }
 
+function resolveMediaPreviewUrl(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:image/')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/')) {
+    return trimmed;
+  }
+
+  return `/${trimmed.replace(/^\.?\//, '')}`;
+}
+
+function toAdminErrorMessage(error, fallback) {
+  const responseData = error?.response?.data;
+
+  if (typeof responseData?.message === 'string' && responseData.message.trim()) {
+    return responseData.message;
+  }
+
+  if (typeof responseData?.error === 'string' && responseData.error.trim()) {
+    return responseData.error;
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+async function uploadAdminImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/admin/api/media/upload', {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin',
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to upload image.');
+  }
+
+  const uploadedUrl = payload?.url || payload?.item?.relativeUrl || payload?.item?.url;
+
+  if (!uploadedUrl) {
+    throw new Error('Upload succeeded but returned no URL.');
+  }
+
+  return uploadedUrl;
+}
+
 function isRequiredField(fieldKey) {
   return REQUIRED_FIELD_PATTERN.test(fieldKey);
 }
 
 function fieldClassName(fieldKey, value) {
   return FULL_WIDTH_FIELD_PATTERN.test(fieldKey) || typeof value === 'boolean'
-    ? 'strapi-field strapi-field--full'
-    : 'strapi-field';
+    ? 'admin-field admin-field--full'
+    : 'admin-field';
 }
 
 function getItemTitle(item, fallbackLabel, index) {
@@ -885,16 +1011,20 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
   const inputValue = value ?? '';
   const required = isRequiredField(fieldKey);
   const isImageField = typeof inputValue === 'string' && IMAGE_FIELD_PATTERN.test(fieldKey);
-  const showPreview = isImageField && IMAGE_URL_PATTERN.test(inputValue);
+  const previewUrl = isImageField ? resolveMediaPreviewUrl(inputValue) : '';
+  const showPreview = Boolean(previewUrl);
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   if (typeof value === 'boolean') {
     return (
       <div className={fieldClassName(fieldKey, value)}>
-        <label className="strapi-label">
+        <label className="admin-label">
           {label}
-          {required ? <span className="strapi-label__required">*</span> : null}
+          {required ? <span className="admin-label__required">*</span> : null}
         </label>
-        <div className="strapi-switch">
+        <div className="admin-switch">
           <span>{value ? 'Enabled' : 'Disabled'}</span>
           <input
             type="checkbox"
@@ -909,27 +1039,27 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
 
   if (isImageField) {
     return (
-      <div className="strapi-field strapi-field--full">
-        <label className="strapi-label">
+      <div className="admin-field admin-field--full">
+        <label className="admin-label">
           {label}
-          {required ? <span className="strapi-label__required">*</span> : null}
+          {required ? <span className="admin-label__required">*</span> : null}
         </label>
-        <div className="strapi-media">
-          <div className="strapi-media__canvas">
+        <div className="admin-media">
+          <div className="admin-media__canvas">
             {showPreview ? (
-              <div className="strapi-media__stack">
-                <img className="strapi-media__thumb" src={inputValue} alt={label} />
-                <div className="strapi-media__actions">
+              <div className="admin-media__stack">
+                <img className="admin-media__thumb" src={previewUrl} alt={label} />
+                <div className="admin-media__actions">
                   <button
-                    className="strapi-media__action"
+                    className="admin-media__action"
                     type="button"
                     disabled={disabled}
-                    onClick={() => window.open(inputValue, '_blank', 'noopener,noreferrer')}
+                    onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
                   >
                     ↗
                   </button>
                   <button
-                    className="strapi-media__action"
+                    className="admin-media__action"
                     type="button"
                     disabled={disabled}
                     onClick={() => {
@@ -942,7 +1072,7 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
                     ✎
                   </button>
                   <button
-                    className="strapi-media__action"
+                    className="admin-media__action"
                     type="button"
                     disabled={disabled}
                     onClick={() => onChange(path, '')}
@@ -950,21 +1080,58 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
                     ✕
                   </button>
                 </div>
-                <div className="strapi-media__filename">{getFilename(inputValue)}</div>
+                <div className="admin-media__filename">{getFilename(inputValue)}</div>
               </div>
             ) : (
-              <div className="strapi-media__empty">Paste an image URL below to attach media.</div>
+              <div className="admin-media__empty">Paste an image URL below to attach media.</div>
             )}
           </div>
-          <div className="strapi-media__source">
+          <div className="admin-media__source">
             <input
-              className="strapi-input"
+              className="admin-input"
               type="text"
               value={inputValue}
-              disabled={disabled}
+              disabled={disabled || uploading}
               onChange={(event) => onChange(path, event.target.value)}
               placeholder="https://..."
             />
+            <div className="admin-media__source-actions">
+              <button
+                className="admin-media__upload-button"
+                type="button"
+                disabled={disabled || uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? 'Uploading...' : 'Upload from computer'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={async (event) => {
+                  const selectedFile = event.target.files?.[0];
+                  event.target.value = '';
+
+                  if (!selectedFile) {
+                    return;
+                  }
+
+                  setUploadError('');
+                  setUploading(true);
+
+                  try {
+                    const uploadedUrl = await uploadAdminImage(selectedFile);
+                    onChange(path, uploadedUrl);
+                  } catch (error) {
+                    setUploadError(error?.message || 'Failed to upload image.');
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+              />
+            </div>
+            {uploadError ? <div className="admin-media__error">{uploadError}</div> : null}
           </div>
         </div>
       </div>
@@ -973,20 +1140,20 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
 
   return (
     <div className={fieldClassName(fieldKey, value)}>
-      <label className="strapi-label">
+      <label className="admin-label">
         {label}
-        {required ? <span className="strapi-label__required">*</span> : null}
+        {required ? <span className="admin-label__required">*</span> : null}
       </label>
       {MULTILINE_FIELD_PATTERN.test(fieldKey) ? (
         <textarea
-          className="strapi-textarea"
+          className="admin-textarea"
           value={inputValue}
           disabled={disabled}
           onChange={(event) => onChange(path, parseInputValue(event.target.value, value))}
         />
       ) : (
         <input
-          className="strapi-input"
+          className="admin-input"
           type={typeof value === 'number' ? 'number' : 'text'}
           value={inputValue}
           disabled={disabled}
@@ -997,14 +1164,14 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
   );
 }
 
-function ObjectField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, disabled }) {
+function ObjectField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   const entries = Object.entries(value ?? {}).filter(([nestedKey]) => nestedKey !== 'id');
 
   return (
-    <div className="strapi-field strapi-field--full">
-      <div className="strapi-object">
-        <h4 className="strapi-object__title">{toLabel(fieldKey)}</h4>
-        <div className="strapi-field-grid">
+    <div className="admin-field admin-field--full">
+      <div className="admin-object">
+        <h4 className="admin-object__title">{toLabel(fieldKey)}</h4>
+        <div className="admin-field-grid">
           {entries.map(([nestedKey, nestedValue]) => (
             <FieldRenderer
               key={`${fieldKey}-${nestedKey}`}
@@ -1014,6 +1181,7 @@ function ObjectField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem,
               onChange={onChange}
               onAddItem={onAddItem}
               onRemoveItem={onRemoveItem}
+              onMoveItem={onMoveItem}
               disabled={disabled}
             />
           ))}
@@ -1023,46 +1191,109 @@ function ObjectField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem,
   );
 }
 
-function ArrayField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, disabled }) {
+function ArrayField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   const label = toLabel(fieldKey);
   const sample = value[0] ?? '';
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   return (
-    <div className="strapi-field strapi-field--full">
-      <label className="strapi-label">{label}</label>
-      <div className="strapi-repeatable">
-        <div className="strapi-repeatable__head">
+    <div className="admin-field admin-field--full">
+      <label className="admin-label">{label}</label>
+      <div className="admin-repeatable">
+        <div className="admin-repeatable__head">
           <div>
-            <div className="strapi-repeatable__title">{label}</div>
-            <div className="strapi-repeatable__count">{value.length} entry{value.length === 1 ? '' : 'ies'}</div>
+            <div className="admin-repeatable__title">{label}</div>
+            <div className="admin-repeatable__count">{value.length} entry{value.length === 1 ? '' : 'ies'}</div>
           </div>
         </div>
 
         {value.map((item, index) => (
-          <details key={`${fieldKey}-${index}`} className="strapi-repeatable__item" open={index === 0}>
-            <summary className="strapi-repeatable__summary">
-              <div className="strapi-repeatable__summary-left">
-                <span className="strapi-repeatable__bullet">▼</span>
-                <span className="strapi-repeatable__name">{getItemTitle(item, label, index)}</span>
+          <details
+            key={`${fieldKey}-${index}`}
+            className={`admin-repeatable__item${dragOverIndex === index ? ' admin-repeatable__item--drag-over' : ''}`}
+            open={index === 0}
+            onDragOver={(event) => {
+              if (disabled || dragIndex === null) {
+                return;
+              }
+
+              event.preventDefault();
+              if (dragOverIndex !== index) {
+                setDragOverIndex(index);
+              }
+            }}
+            onDrop={(event) => {
+              if (disabled || dragIndex === null) {
+                return;
+              }
+
+              event.preventDefault();
+              const offset = index - dragIndex;
+              if (offset !== 0) {
+                onMoveItem([...path, dragIndex], offset);
+              }
+              setDragIndex(null);
+              setDragOverIndex(null);
+            }}
+            onDragLeave={() => {
+              if (dragOverIndex === index) {
+                setDragOverIndex(null);
+              }
+            }}
+          >
+            <summary className="admin-repeatable__summary">
+              <div className="admin-repeatable__summary-left">
+                <span className="admin-repeatable__bullet">▼</span>
+                <span className="admin-repeatable__name">{getItemTitle(item, label, index)}</span>
               </div>
-              <div className="strapi-repeatable__actions">
+              <div className="admin-repeatable__actions">
                 <button
-                  className="strapi-repeatable__icon-button"
+                  className="admin-repeatable__icon-button"
                   type="button"
                   disabled={disabled}
                   onClick={(event) => {
                     event.preventDefault();
+                    event.stopPropagation();
                     onRemoveItem([...path, index]);
                   }}
+                  aria-label="Delete"
                 >
                   🗑
                 </button>
-                <span>⋮⋮</span>
+                <button
+                  className="admin-repeatable__drag-handle"
+                  type="button"
+                  draggable={!disabled}
+                  disabled={disabled}
+                  title="Drag to reorder"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onDragStart={(event) => {
+                    if (disabled) {
+                      return;
+                    }
+
+                    event.stopPropagation();
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', String(index));
+                    setDragIndex(index);
+                    setDragOverIndex(index);
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                >
+                  ⋮⋮
+                </button>
               </div>
             </summary>
-            <div className="strapi-repeatable__body">
+            <div className="admin-repeatable__body">
               {isPlainObject(item) ? (
-                <div className="strapi-field-grid">
+                <div className="admin-field-grid">
                   {Object.entries(item)
                     .filter(([nestedKey]) => nestedKey !== 'id')
                     .map(([nestedKey, nestedValue]) => (
@@ -1074,6 +1305,7 @@ function ArrayField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, 
                         onChange={onChange}
                         onAddItem={onAddItem}
                         onRemoveItem={onRemoveItem}
+                        onMoveItem={onMoveItem}
                         disabled={disabled}
                       />
                     ))}
@@ -1092,7 +1324,7 @@ function ArrayField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, 
         ))}
 
         <button
-          className="strapi-repeatable__add"
+          className="admin-repeatable__add"
           type="button"
           disabled={disabled}
           onClick={() => onAddItem(path, getEmptyItem(sample))}
@@ -1118,10 +1350,10 @@ function FieldRenderer(props) {
   return <PrimitiveField {...props} />;
 }
 
-function FormSection({ entries, onChange, onAddItem, onRemoveItem, disabled }) {
+function FormSection({ entries, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   return (
-    <div className="strapi-section">
-      <div className="strapi-field-grid">
+    <div className="admin-section">
+      <div className="admin-field-grid">
         {entries.map(([fieldKey, value]) => (
           <FieldRenderer
             key={fieldKey}
@@ -1131,6 +1363,7 @@ function FormSection({ entries, onChange, onAddItem, onRemoveItem, disabled }) {
             onChange={onChange}
             onAddItem={onAddItem}
             onRemoveItem={onRemoveItem}
+            onMoveItem={onMoveItem}
             disabled={disabled}
           />
         ))}
@@ -1168,7 +1401,6 @@ export default function ContentPageEditor() {
   const canDiscard = !saving && !isPublishedView && hasDraftContent;
   const canUnpublish = !saving && Boolean(publishedContent);
   const sections = useMemo(() => buildSections(pageName, displayedContent), [pageName, displayedContent]);
-  const previewUrl = PREVIEW_PATHS[pageName] ? `http://localhost:8080${PREVIEW_PATHS[pageName]}` : null;
   const entryTitle = useMemo(() => (
     displayedContent?.heroTitle
     || displayedContent?.title
@@ -1202,7 +1434,7 @@ export default function ContentPageEditor() {
           return;
         }
 
-        setError(loadError?.response?.data?.message ?? 'Failed to load this content page.');
+        setError(toAdminErrorMessage(loadError, 'Failed to load this content page.'));
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -1246,6 +1478,10 @@ export default function ContentPageEditor() {
     setContent((currentValue) => removeAtPath(currentValue, path));
   };
 
+  const handleMoveItem = (path, offset) => {
+    setContent((currentValue) => moveAtPath(currentValue, path, offset));
+  };
+
   const handleSave = async (intent = 'save') => {
     setSaving(true);
     setError('');
@@ -1270,7 +1506,7 @@ export default function ContentPageEditor() {
         type: 'success',
       });
     } catch (saveError) {
-      const message = saveError?.response?.data?.message ?? 'Failed to save this content page.';
+      const message = toAdminErrorMessage(saveError, 'Failed to save this content page.');
       setError(message);
       addNotice({ message, type: 'error' });
     } finally {
@@ -1295,28 +1531,28 @@ export default function ContentPageEditor() {
   return (
     <>
       <style>{STYLES}</style>
-      <div className="strapi-editor">
-        <div className="strapi-editor__inner">
-          <button className="strapi-back" type="button" onClick={() => window.history.back()}>
+      <div className="admin-editor">
+        <div className="admin-editor__inner">
+          <button className="admin-back" type="button" onClick={() => window.history.back()}>
             ← Back
           </button>
 
-          <div className="strapi-header">
+          <div className="admin-header">
             <div>
-              <div className="strapi-meta">Single Type</div>
-              <h1 className="strapi-title">{entryTitle}</h1>
-            <div className="strapi-status">{publishedContent ? 'Published' : 'Draft'}</div>
+              <div className="admin-meta">Single Type</div>
+              <h1 className="admin-title">{entryTitle}</h1>
+            <div className="admin-status">{publishedContent ? 'Published' : 'Draft'}</div>
           </div>
 
-            <button className="strapi-kebab" type="button">…</button>
+            <button className="admin-kebab" type="button">…</button>
           </div>
 
-          <div className="strapi-tabs">
-            <button className={`strapi-tab${activeTab === 'draft' ? ' strapi-tab--active' : ''}`} type="button" onClick={() => setActiveTab('draft')}>
+          <div className="admin-tabs">
+            <button className={`admin-tab${activeTab === 'draft' ? ' admin-tab--active' : ''}`} type="button" onClick={() => setActiveTab('draft')}>
               DRAFT
             </button>
             <button
-              className={`strapi-tab${activeTab === 'published' ? ' strapi-tab--active' : ''}`}
+              className={`admin-tab${activeTab === 'published' ? ' admin-tab--active' : ''}`}
               type="button"
               onClick={() => publishedContent && setActiveTab('published')}
             >
@@ -1326,8 +1562,8 @@ export default function ContentPageEditor() {
 
           {error ? <MessageBox variant="danger">{error}</MessageBox> : null}
 
-          <div className="strapi-layout">
-            <div className="strapi-main-card">
+          <div className="admin-layout">
+            <div className="admin-main-card">
               {sections.map((section, index) => (
                 <FormSection
                   key={`section-${index}`}
@@ -1335,68 +1571,56 @@ export default function ContentPageEditor() {
                   onChange={handleChange}
                   onAddItem={handleAddItem}
                   onRemoveItem={handleRemoveItem}
+                  onMoveItem={handleMoveItem}
                   disabled={isPublishedView}
                 />
               ))}
             </div>
 
             <aside>
-              <div className="strapi-side-card">
-                <div className="strapi-side-card__head">Entry</div>
-                <div className="strapi-side-card__body">
-                  <div className="strapi-side-button-row">
-                    <button className="strapi-side-button--secondary" type="button" onClick={() => handleSave('publish')} disabled={!canPublish}>
+              <div className="admin-side-card">
+                <div className="admin-side-card__head">Entry</div>
+                <div className="admin-side-card__body">
+                  <div className="admin-side-button-row">
+                    <button className="admin-side-button--secondary" type="button" onClick={() => handleSave('publish')} disabled={!canPublish}>
                       Publish
                     </button>
                     <button
-                      className="strapi-side-button--secondary strapi-side-button--menu"
+                      className="admin-side-button--secondary admin-side-button--menu"
                       type="button"
                       onClick={() => setMenuOpen((current) => !current)}
                     >
                       …
                     </button>
                     {menuOpen ? (
-                      <div ref={menuRef} className="strapi-side-action-menu">
+                      <div ref={menuRef} className="admin-side-action-menu">
                         <button
-                          className="strapi-side-action-menu__item strapi-side-action-menu__item--danger"
+                          className="admin-side-action-menu__item admin-side-action-menu__item--danger"
                           type="button"
                           onClick={() => handleSave('unpublish')}
                           disabled={!canUnpublish}
                         >
-                          <span className="strapi-side-action-menu__icon">×</span>
+                          <span className="admin-side-action-menu__icon">×</span>
                           Unpublish
                         </button>
                         <button
-                          className="strapi-side-action-menu__item strapi-side-action-menu__item--danger"
+                          className="admin-side-action-menu__item admin-side-action-menu__item--danger"
                           type="button"
                           onClick={handleDiscardChanges}
                           disabled={!canDiscard}
                         >
-                          <span className="strapi-side-action-menu__icon">×</span>
+                          <span className="admin-side-action-menu__icon">×</span>
                           Discard changes
                         </button>
                       </div>
                     ) : null}
                   </div>
-                  <button className="strapi-side-button" type="button" onClick={() => handleSave('save')} disabled={!canSave}>
+                  <button className="admin-side-button" type="button" onClick={() => handleSave('save')} disabled={!canSave}>
                     {saving ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </div>
 
-              <div className="strapi-side-card">
-                <div className="strapi-side-card__head">Preview</div>
-                <div className="strapi-side-card__body">
-                  <button
-                    className="strapi-side-button--secondary strapi-side-button--preview"
-                    type="button"
-                    onClick={() => previewUrl && window.open(previewUrl, '_blank', 'noopener,noreferrer')}
-                    disabled={!previewUrl}
-                  >
-                    Open preview
-                  </button>
-                </div>
-              </div>
             </aside>
           </div>
         </div>

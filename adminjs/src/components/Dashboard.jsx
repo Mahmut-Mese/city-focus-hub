@@ -16,19 +16,19 @@ const COLLECTIONS = [
 ];
 
 const STYLES = `
-.strapi-dashboard {
+.admin-dashboard {
   min-height: 100%;
   padding: 32px 40px 64px 344px;
   background: #f6f6f9;
   color: #32324d;
 }
 
-.strapi-dashboard__inner {
+.admin-dashboard__inner {
   max-width: 1240px;
   margin: 0 auto;
 }
 
-.strapi-dashboard__eyebrow {
+.admin-dashboard__eyebrow {
   margin: 0 0 4px;
   color: #666687;
   font-size: 0.75rem;
@@ -38,14 +38,14 @@ const STYLES = `
   letter-spacing: 0.03em;
 }
 
-.strapi-dashboard__title {
+.admin-dashboard__title {
   margin: 0;
   font-size: 2.25rem;
   line-height: 2.75rem;
   font-weight: 700;
 }
 
-.strapi-dashboard__subtitle {
+.admin-dashboard__subtitle {
   margin: 10px 0 28px;
   max-width: 780px;
   color: #666687;
@@ -53,25 +53,25 @@ const STYLES = `
   line-height: 1.5rem;
 }
 
-.strapi-dashboard__grid {
+.admin-dashboard__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 16px;
 }
 
-.strapi-dashboard__card {
+.admin-dashboard__card {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(33, 33, 52, 0.06);
 }
 
-.strapi-dashboard__card-head {
+.admin-dashboard__card-head {
   padding: 16px 20px 12px;
   border-bottom: 1px solid #f0f0f5;
 }
 
-.strapi-dashboard__card-title {
+.admin-dashboard__card-title {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -79,16 +79,16 @@ const STYLES = `
   color: #32324d;
 }
 
-.strapi-dashboard__card-body {
+.admin-dashboard__card-body {
   padding: 8px;
 }
 
-.strapi-dashboard__list {
+.admin-dashboard__list {
   display: flex;
   flex-direction: column;
 }
 
-.strapi-dashboard__item {
+.admin-dashboard__item {
   width: 100%;
   border: 0;
   background: transparent;
@@ -102,45 +102,45 @@ const STYLES = `
   text-align: left;
 }
 
-.strapi-dashboard__item:hover {
+.admin-dashboard__item:hover {
   background: #f6f6f9;
 }
 
-.strapi-dashboard__item-copy {
+.admin-dashboard__item-copy {
   min-width: 0;
 }
 
-.strapi-dashboard__item-label {
+.admin-dashboard__item-label {
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 600;
   color: #32324d;
 }
 
-.strapi-dashboard__item-meta {
+.admin-dashboard__item-meta {
   margin-top: 2px;
   font-size: 0.75rem;
   line-height: 1rem;
   color: #666687;
 }
 
-.strapi-dashboard__item-arrow {
+.admin-dashboard__item-arrow {
   color: #8e8ea9;
   font-size: 1rem;
 }
 
-.strapi-dashboard__notice {
+.admin-dashboard__notice {
   padding: 20px;
 }
 
-.strapi-dashboard__notice-title {
+.admin-dashboard__notice-title {
   margin: 0 0 8px;
   font-size: 1rem;
   line-height: 1.5rem;
   font-weight: 700;
 }
 
-.strapi-dashboard__notice-copy {
+.admin-dashboard__notice-copy {
   margin: 0;
   color: #666687;
   font-size: 0.875rem;
@@ -148,11 +148,11 @@ const STYLES = `
 }
 
 @media (max-width: 960px) {
-  .strapi-dashboard {
+  .admin-dashboard {
     padding: 20px 16px 48px;
   }
 
-  .strapi-dashboard__grid {
+  .admin-dashboard__grid {
     grid-template-columns: 1fr;
   }
 }
@@ -160,24 +160,24 @@ const STYLES = `
 
 function ShortcutList({ title, items, navigate, meta }) {
   return (
-    <section className="strapi-dashboard__card">
-      <div className="strapi-dashboard__card-head">
-        <h2 className="strapi-dashboard__card-title">{title}</h2>
+    <section className="admin-dashboard__card">
+      <div className="admin-dashboard__card-head">
+        <h2 className="admin-dashboard__card-title">{title}</h2>
       </div>
-      <div className="strapi-dashboard__card-body">
-        <div className="strapi-dashboard__list">
+      <div className="admin-dashboard__card-body">
+        <div className="admin-dashboard__list">
           {items.map((item) => (
             <button
               key={item.href}
-              className="strapi-dashboard__item"
+              className="admin-dashboard__item"
               type="button"
               onClick={() => navigate(item.href)}
             >
-              <div className="strapi-dashboard__item-copy">
-                <div className="strapi-dashboard__item-label">{item.label}</div>
-                <div className="strapi-dashboard__item-meta">{meta}</div>
+              <div className="admin-dashboard__item-copy">
+                <div className="admin-dashboard__item-label">{item.label}</div>
+                <div className="admin-dashboard__item-meta">{meta}</div>
               </div>
-              <span className="strapi-dashboard__item-arrow">→</span>
+              <span className="admin-dashboard__item-arrow">→</span>
             </button>
           ))}
         </div>
@@ -192,16 +192,15 @@ export default function Dashboard() {
   return (
     <>
       <style>{STYLES}</style>
-      <div className="strapi-dashboard">
-        <div className="strapi-dashboard__inner">
-          <p className="strapi-dashboard__eyebrow">Home</p>
-          <h1 className="strapi-dashboard__title">Content Manager</h1>
-          <p className="strapi-dashboard__subtitle">
-            Start from the same client-facing content areas used in Strapi. Use the shortcuts below to jump
-            into single pages and collection content.
+      <div className="admin-dashboard">
+        <div className="admin-dashboard__inner">
+          <p className="admin-dashboard__eyebrow">Home</p>
+          <h1 className="admin-dashboard__title">Content Manager</h1>
+          <p className="admin-dashboard__subtitle">
+            Use the shortcuts below to jump into single pages and collection content for the live site.
           </p>
 
-          <div className="strapi-dashboard__grid">
+          <div className="admin-dashboard__grid">
             <ShortcutList
               title="Single Types"
               items={PRIMARY_PAGES}
@@ -209,15 +208,14 @@ export default function Dashboard() {
               meta="Edit structured page content"
             />
 
-            <section className="strapi-dashboard__card">
-              <div className="strapi-dashboard__card-head">
-                <h2 className="strapi-dashboard__card-title">Workspace</h2>
+            <section className="admin-dashboard__card">
+              <div className="admin-dashboard__card-head">
+                <h2 className="admin-dashboard__card-title">Workspace</h2>
               </div>
-              <div className="strapi-dashboard__notice">
-                <h3 className="strapi-dashboard__notice-title">Comparison environment</h3>
-                <p className="strapi-dashboard__notice-copy">
-                  This AdminJS workspace is still attached to the copied comparison database. Content saved here
-                  will not change the live frontend until we switch the data source.
+              <div className="admin-dashboard__notice">
+                <h3 className="admin-dashboard__notice-title">Production content workspace</h3>
+                <p className="admin-dashboard__notice-copy">
+                  This AdminJS workspace is the active content source for the frontend and backend.
                 </p>
               </div>
             </section>

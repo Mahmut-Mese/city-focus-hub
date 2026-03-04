@@ -3,19 +3,19 @@ import { useLocation, useNavigate } from 'react-router';
 import { Loader, MessageBox } from '@adminjs/design-system';
 
 const STYLES = `
-.strapi-media-page {
+.admin-media-page {
   min-height: 100%;
   padding: 28px 40px 48px 88px;
   background: #f6f6f9;
   color: #32324d;
 }
 
-.strapi-media-page__inner {
+.admin-media-page__inner {
   max-width: 1860px;
   margin: 0 auto;
 }
 
-.strapi-media-page__top {
+.admin-media-page__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -23,7 +23,7 @@ const STYLES = `
   margin-bottom: 28px;
 }
 
-.strapi-media-page__title {
+.admin-media-page__title {
   margin: 0;
   font-size: 3rem;
   line-height: 3.5rem;
@@ -31,15 +31,15 @@ const STYLES = `
   color: #32324d;
 }
 
-.strapi-media-page__actions {
+.admin-media-page__actions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.strapi-media-page__button,
-.strapi-media-page__button--primary,
-.strapi-media-page__icon-button {
+.admin-media-page__button,
+.admin-media-page__button--primary,
+.admin-media-page__icon-button {
   border-radius: 4px;
   min-height: 2.5rem;
   font-size: 1rem;
@@ -48,21 +48,21 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-media-page__button {
+.admin-media-page__button {
   border: 1px solid #dcdce4;
   background: #ffffff;
   color: #32324d;
   padding: 0 1rem;
 }
 
-.strapi-media-page__button--primary {
+.admin-media-page__button--primary {
   border: 1px solid #4945ff;
   background: #4945ff;
   color: #ffffff;
   padding: 0 1.25rem;
 }
 
-.strapi-media-page__toolbar {
+.admin-media-page__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,15 +70,15 @@ const STYLES = `
   margin-bottom: 28px;
 }
 
-.strapi-media-page__toolbar-left,
-.strapi-media-page__toolbar-right {
+.admin-media-page__toolbar-left,
+.admin-media-page__toolbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.strapi-media-page__square,
-.strapi-media-page__icon-button {
+.admin-media-page__square,
+.admin-media-page__icon-button {
   width: 2.5rem;
   height: 2.5rem;
   border: 1px solid #dcdce4;
@@ -89,8 +89,8 @@ const STYLES = `
   border-radius: 4px;
 }
 
-.strapi-media-page__select,
-.strapi-media-page__search {
+.admin-media-page__select,
+.admin-media-page__search {
   min-height: 2.5rem;
   border: 1px solid #dcdce4;
   border-radius: 4px;
@@ -100,33 +100,33 @@ const STYLES = `
   font-size: 1rem;
 }
 
-.strapi-media-page__search {
+.admin-media-page__search {
   min-width: 280px;
 }
 
-.strapi-media-page__select {
+.admin-media-page__select {
   min-width: 268px;
   appearance: none;
 }
 
-.strapi-media-page__section-title {
+.admin-media-page__section-title {
   margin: 0 0 18px;
   font-size: 2rem;
   line-height: 2.5rem;
   font-weight: 700;
 }
 
-.strapi-media-page__count {
+.admin-media-page__count {
   color: #666687;
 }
 
-.strapi-media-grid {
+.admin-media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 24px;
 }
 
-.strapi-asset-card {
+.admin-asset-card {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #ffffff;
@@ -135,11 +135,11 @@ const STYLES = `
   cursor: pointer;
 }
 
-.strapi-asset-card:hover {
+.admin-asset-card:hover {
   box-shadow: 0 4px 12px rgba(33, 33, 52, 0.08);
 }
 
-.strapi-asset-card__preview {
+.admin-asset-card__preview {
   position: relative;
   min-height: 256px;
   padding: 16px;
@@ -150,7 +150,7 @@ const STYLES = `
   background-size: 24px 24px;
 }
 
-.strapi-asset-card__checkbox {
+.admin-asset-card__checkbox {
   position: absolute;
   top: 16px;
   left: 16px;
@@ -161,18 +161,18 @@ const STYLES = `
   background: rgba(255, 255, 255, 0.92);
 }
 
-.strapi-asset-card__image {
+.admin-asset-card__image {
   width: 100%;
   height: 224px;
   object-fit: cover;
   display: block;
 }
 
-.strapi-asset-card__body {
+.admin-asset-card__body {
   padding: 14px 18px 16px;
 }
 
-.strapi-asset-card__title-row {
+.admin-asset-card__title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -180,14 +180,14 @@ const STYLES = `
   margin-bottom: 4px;
 }
 
-.strapi-asset-card__title {
+.admin-asset-card__title {
   font-size: 1rem;
   line-height: 1.5rem;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.strapi-asset-card__type {
+.admin-asset-card__type {
   flex: 0 0 auto;
   min-height: 2rem;
   padding: 0 0.75rem;
@@ -202,13 +202,13 @@ const STYLES = `
   font-weight: 700;
 }
 
-.strapi-asset-card__meta {
+.admin-asset-card__meta {
   color: #666687;
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
 
-.strapi-media-detail__back {
+.admin-media-detail__back {
   border: 0;
   background: transparent;
   color: #4945ff;
@@ -219,25 +219,25 @@ const STYLES = `
   margin-bottom: 18px;
 }
 
-.strapi-media-detail__layout {
+.admin-media-detail__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 24px;
 }
 
-.strapi-media-detail__preview,
-.strapi-media-detail__card {
+.admin-media-detail__preview,
+.admin-media-detail__card {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(33, 33, 52, 0.06);
 }
 
-.strapi-media-detail__preview {
+.admin-media-detail__preview {
   padding: 24px;
 }
 
-.strapi-media-detail__canvas {
+.admin-media-detail__canvas {
   min-height: 620px;
   display: grid;
   place-items: center;
@@ -250,19 +250,19 @@ const STYLES = `
   background-size: 24px 24px;
 }
 
-.strapi-media-detail__image {
+.admin-media-detail__image {
   max-width: 100%;
   max-height: 580px;
   object-fit: contain;
 }
 
-.strapi-media-detail__side {
+.admin-media-detail__side {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.strapi-media-detail__card-head {
+.admin-media-detail__card-head {
   padding: 14px 16px 8px;
   color: #666687;
   font-size: 0.75rem;
@@ -271,15 +271,15 @@ const STYLES = `
   text-transform: uppercase;
 }
 
-.strapi-media-detail__card-body {
+.admin-media-detail__card-body {
   padding: 0 16px 16px;
 }
 
-.strapi-media-detail__field + .strapi-media-detail__field {
+.admin-media-detail__field + .admin-media-detail__field {
   margin-top: 16px;
 }
 
-.strapi-media-detail__label {
+.admin-media-detail__label {
   display: block;
   margin-bottom: 6px;
   font-size: 0.75rem;
@@ -288,8 +288,8 @@ const STYLES = `
   color: #666687;
 }
 
-.strapi-media-detail__input,
-.strapi-media-detail__textarea {
+.admin-media-detail__input,
+.admin-media-detail__textarea {
   width: 100%;
   box-sizing: border-box;
   min-height: 2.5rem;
@@ -302,17 +302,17 @@ const STYLES = `
   line-height: 1.25rem;
 }
 
-.strapi-media-detail__textarea {
+.admin-media-detail__textarea {
   min-height: 6rem;
   resize: none;
 }
 
-.strapi-media-detail__meta-list {
+.admin-media-detail__meta-list {
   display: grid;
   gap: 12px;
 }
 
-.strapi-media-detail__meta-item {
+.admin-media-detail__meta-item {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -320,42 +320,42 @@ const STYLES = `
   line-height: 1.25rem;
 }
 
-.strapi-media-detail__meta-key {
+.admin-media-detail__meta-key {
   color: #666687;
   font-weight: 600;
 }
 
-.strapi-media-detail__meta-value {
+.admin-media-detail__meta-value {
   color: #32324d;
   text-align: right;
   overflow-wrap: anywhere;
 }
 
 @media (max-width: 1080px) {
-  .strapi-media-detail__layout {
+  .admin-media-detail__layout {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 960px) {
-  .strapi-media-page {
+  .admin-media-page {
     padding: 20px 16px 40px 72px;
   }
 
-  .strapi-media-page__top,
-  .strapi-media-page__toolbar {
+  .admin-media-page__top,
+  .admin-media-page__toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .strapi-media-page__toolbar-left,
-  .strapi-media-page__toolbar-right,
-  .strapi-media-page__actions {
+  .admin-media-page__toolbar-left,
+  .admin-media-page__toolbar-right,
+  .admin-media-page__actions {
     flex-wrap: wrap;
   }
 
-  .strapi-media-page__search,
-  .strapi-media-page__select {
+  .admin-media-page__search,
+  .admin-media-page__select {
     min-width: 0;
     width: 100%;
   }
@@ -389,19 +389,38 @@ async function requestMedia(query = {}) {
   return payload;
 }
 
+async function uploadAdminImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/admin/api/media/upload', {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin',
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to upload image.');
+  }
+
+  return payload;
+}
+
 function AssetCard({ item, onOpen }) {
   return (
-    <article className="strapi-asset-card" onClick={() => onOpen(item.id)}>
-      <div className="strapi-asset-card__preview">
-        <div className="strapi-asset-card__checkbox" />
-        <img className="strapi-asset-card__image" src={item.thumbnailUrl || item.url} alt={item.alternativeText || item.name} />
+    <article className="admin-asset-card" onClick={() => onOpen(item.id)}>
+      <div className="admin-asset-card__preview">
+        <div className="admin-asset-card__checkbox" />
+        <img className="admin-asset-card__image" src={item.thumbnailUrl || item.url} alt={item.alternativeText || item.name} />
       </div>
-      <div className="strapi-asset-card__body">
-        <div className="strapi-asset-card__title-row">
-          <div className="strapi-asset-card__title">{item.name}</div>
-          <div className="strapi-asset-card__type">{item.mime.startsWith('image/') ? 'IMAGE' : item.ext.replace('.', '').toUpperCase()}</div>
+      <div className="admin-asset-card__body">
+        <div className="admin-asset-card__title-row">
+          <div className="admin-asset-card__title">{item.name}</div>
+          <div className="admin-asset-card__type">{item.mime.startsWith('image/') ? 'IMAGE' : item.ext.replace('.', '').toUpperCase()}</div>
         </div>
-        <div className="strapi-asset-card__meta">
+        <div className="admin-asset-card__meta">
           {item.ext.replace('.', '').toUpperCase()} - {item.width}×{item.height}
         </div>
       </div>
@@ -412,83 +431,83 @@ function AssetCard({ item, onOpen }) {
 function DetailView({ item, onBack }) {
   return (
     <div>
-      <button className="strapi-media-detail__back" type="button" onClick={onBack}>
+      <button className="admin-media-detail__back" type="button" onClick={onBack}>
         ← Back
       </button>
 
-      <div className="strapi-media-page__top" style={{ marginBottom: 24 }}>
-        <h1 className="strapi-media-page__title" style={{ fontSize: '2.25rem', lineHeight: '2.75rem' }}>{item.name}</h1>
-        <div className="strapi-media-page__actions">
-          <button className="strapi-media-page__button" type="button" onClick={() => navigator.clipboard?.writeText(item.url || '')}>
+      <div className="admin-media-page__top" style={{ marginBottom: 24 }}>
+        <h1 className="admin-media-page__title" style={{ fontSize: '2.25rem', lineHeight: '2.75rem' }}>{item.name}</h1>
+        <div className="admin-media-page__actions">
+          <button className="admin-media-page__button" type="button" onClick={() => navigator.clipboard?.writeText(item.url || '')}>
             Copy URL
           </button>
-          <button className="strapi-media-page__button--primary" type="button" onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}>
+          <button className="admin-media-page__button--primary" type="button" onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}>
             Open asset
           </button>
         </div>
       </div>
 
-      <div className="strapi-media-detail__layout">
-        <section className="strapi-media-detail__preview">
-          <div className="strapi-media-detail__canvas">
-            <img className="strapi-media-detail__image" src={item.url} alt={item.alternativeText || item.name} />
+      <div className="admin-media-detail__layout">
+        <section className="admin-media-detail__preview">
+          <div className="admin-media-detail__canvas">
+            <img className="admin-media-detail__image" src={item.url} alt={item.alternativeText || item.name} />
           </div>
         </section>
 
-        <aside className="strapi-media-detail__side">
-          <div className="strapi-media-detail__card">
-            <div className="strapi-media-detail__card-head">Details</div>
-            <div className="strapi-media-detail__card-body">
-              <div className="strapi-media-detail__field">
-                <label className="strapi-media-detail__label">File name</label>
-                <input className="strapi-media-detail__input" value={item.name || ''} disabled readOnly />
+        <aside className="admin-media-detail__side">
+          <div className="admin-media-detail__card">
+            <div className="admin-media-detail__card-head">Details</div>
+            <div className="admin-media-detail__card-body">
+              <div className="admin-media-detail__field">
+                <label className="admin-media-detail__label">File name</label>
+                <input className="admin-media-detail__input" value={item.name || ''} disabled readOnly />
               </div>
-              <div className="strapi-media-detail__field">
-                <label className="strapi-media-detail__label">Alternative text</label>
-                <input className="strapi-media-detail__input" value={item.alternativeText || ''} disabled readOnly />
+              <div className="admin-media-detail__field">
+                <label className="admin-media-detail__label">Alternative text</label>
+                <input className="admin-media-detail__input" value={item.alternativeText || ''} disabled readOnly />
               </div>
-              <div className="strapi-media-detail__field">
-                <label className="strapi-media-detail__label">Caption</label>
-                <textarea className="strapi-media-detail__textarea" value={item.caption || ''} disabled readOnly />
+              <div className="admin-media-detail__field">
+                <label className="admin-media-detail__label">Caption</label>
+                <textarea className="admin-media-detail__textarea" value={item.caption || ''} disabled readOnly />
               </div>
             </div>
           </div>
 
-          <div className="strapi-media-detail__card">
-            <div className="strapi-media-detail__card-head">Metadata</div>
-            <div className="strapi-media-detail__card-body">
-              <div className="strapi-media-detail__meta-list">
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Dimensions</span>
-                  <span className="strapi-media-detail__meta-value">{item.width} × {item.height}</span>
+          <div className="admin-media-detail__card">
+            <div className="admin-media-detail__card-head">Metadata</div>
+            <div className="admin-media-detail__card-body">
+              <div className="admin-media-detail__meta-list">
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Dimensions</span>
+                  <span className="admin-media-detail__meta-value">{item.width} × {item.height}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Size</span>
-                  <span className="strapi-media-detail__meta-value">{item.sizeLabel}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Size</span>
+                  <span className="admin-media-detail__meta-value">{item.sizeLabel}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Type</span>
-                  <span className="strapi-media-detail__meta-value">{item.mime}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Type</span>
+                  <span className="admin-media-detail__meta-value">{item.mime}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Provider</span>
-                  <span className="strapi-media-detail__meta-value">{item.provider || 'local'}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Provider</span>
+                  <span className="admin-media-detail__meta-value">{item.provider || 'local'}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Folder</span>
-                  <span className="strapi-media-detail__meta-value">{item.folderPath || '/'}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Folder</span>
+                  <span className="admin-media-detail__meta-value">{item.folderPath || '/'}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Updated</span>
-                  <span className="strapi-media-detail__meta-value">{item.updatedAtLabel}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Updated</span>
+                  <span className="admin-media-detail__meta-value">{item.updatedAtLabel}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Created</span>
-                  <span className="strapi-media-detail__meta-value">{item.createdAtLabel}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Created</span>
+                  <span className="admin-media-detail__meta-value">{item.createdAtLabel}</span>
                 </div>
-                <div className="strapi-media-detail__meta-item">
-                  <span className="strapi-media-detail__meta-key">Document ID</span>
-                  <span className="strapi-media-detail__meta-value">{item.documentId}</span>
+                <div className="admin-media-detail__meta-item">
+                  <span className="admin-media-detail__meta-key">Document ID</span>
+                  <span className="admin-media-detail__meta-value">{item.documentId}</span>
                 </div>
               </div>
             </div>
@@ -510,6 +529,7 @@ export default function MediaLibrary() {
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
   const [item, setItem] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -563,35 +583,71 @@ export default function MediaLibrary() {
   return (
     <>
       <style>{STYLES}</style>
-      <div className="strapi-media-page">
-        <div className="strapi-media-page__inner">
+      <div className="admin-media-page">
+        <div className="admin-media-page__inner">
           {error ? <MessageBox variant="danger">{error}</MessageBox> : null}
 
           {fileId && item ? (
             <DetailView item={item} onBack={() => openList()} />
           ) : (
             <>
-              <div className="strapi-media-page__top">
-                <h1 className="strapi-media-page__title">Media Library</h1>
-                <div className="strapi-media-page__actions">
-                  <button className="strapi-media-page__button" type="button">+ Add new folder</button>
-                  <button className="strapi-media-page__button--primary" type="button">+ Add new assets</button>
+              <div className="admin-media-page__top">
+                <h1 className="admin-media-page__title">Media Library</h1>
+                <div className="admin-media-page__actions">
+                  <button className="admin-media-page__button" type="button">+ Add new folder</button>
+                  <button
+                    className="admin-media-page__button--primary"
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.multiple = true;
+                      input.onchange = async () => {
+                        const files = Array.from(input.files ?? []);
+                        if (!files.length) {
+                          return;
+                        }
+
+                        setUploading(true);
+                        setError('');
+
+                        try {
+                          for (const file of files) {
+                            await uploadAdminImage(file);
+                          }
+
+                          const refreshedPayload = await requestMedia(search ? { search } : {});
+                          setItems(refreshedPayload.items ?? []);
+                          setCount(refreshedPayload.count ?? 0);
+                        } catch (uploadError) {
+                          setError(uploadError.message);
+                        } finally {
+                          setUploading(false);
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    {uploading ? 'Uploading...' : '+ Add new assets'}
+                  </button>
                 </div>
               </div>
 
-              <div className="strapi-media-page__toolbar">
-                <div className="strapi-media-page__toolbar-left">
-                  <div className="strapi-media-page__square" />
-                  <select className="strapi-media-page__select" defaultValue="recent">
+              <div className="admin-media-page__toolbar">
+                <div className="admin-media-page__toolbar-left">
+                  <div className="admin-media-page__square" />
+                  <select className="admin-media-page__select" defaultValue="recent">
                     <option value="recent">Most recent uploads</option>
                   </select>
-                  <button className="strapi-media-page__button" type="button">Filters</button>
+                  <button className="admin-media-page__button" type="button">Filters</button>
                 </div>
-                <div className="strapi-media-page__toolbar-right">
-                  <button className="strapi-media-page__icon-button" type="button">⚙</button>
-                  <button className="strapi-media-page__icon-button" type="button">☰</button>
+                <div className="admin-media-page__toolbar-right">
+                  <button className="admin-media-page__icon-button" type="button">⚙</button>
+                  <button className="admin-media-page__icon-button" type="button">☰</button>
                   <input
-                    className="strapi-media-page__search"
+                    className="admin-media-page__search"
                     value={search}
                     onChange={(event) => openList(event.target.value)}
                     placeholder="Search assets"
@@ -599,11 +655,11 @@ export default function MediaLibrary() {
                 </div>
               </div>
 
-              <h2 className="strapi-media-page__section-title">
-                Assets <span className="strapi-media-page__count">({count})</span>
+              <h2 className="admin-media-page__section-title">
+                Assets <span className="admin-media-page__count">({count})</span>
               </h2>
 
-              <div className="strapi-media-grid">
+              <div className="admin-media-grid">
                 {items.map((mediaItem) => (
                   <AssetCard key={mediaItem.id} item={mediaItem} onOpen={(nextId) => navigate(buildPagePath('/admin/pages/media-library', { fileId: nextId }))} />
                 ))}

@@ -57,7 +57,7 @@ export default function Login() {
             />
             <H2 color="white" marginBottom="lg">Client Content Portal</H2>
             <Text color="grey40">
-              Use the same client-facing content surface you see in Strapi, backed by the copied comparison database.
+              Manage the same client-facing content surface used by the live site.
             </Text>
           </Box>
           <Text color="grey50">The Leadenhall Works</Text>

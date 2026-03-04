@@ -115,7 +115,7 @@ export function createAdmin(resources) {
     },
     dashboard: {
       handler: async () => ({
-        message: 'AdminJS is connected to the copied Strapi database and exposes the client-facing content surface.',
+        message: 'AdminJS is connected to the content database and exposes the client-facing content surface.',
       }),
       component: dashboardComponent,
     },

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 220" role="img" aria-labelledby="title desc">
+  <title id="title">The Leadenhall Works logo</title>
+  <desc id="desc">Monogram icon with stacked wordmark reading THE LEADENHALL WORKS.</desc>
+
+  <g fill="none" stroke="#000" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter">
+    <rect x="18" y="18" width="170" height="170" />
+    <path d="M66 178V90l58-33v121" />
+    <path d="M126 178v-57h62" />
+  </g>
+
+  <g fill="#000" font-family="Inter, Arial, sans-serif" font-weight="800" letter-spacing="1">
+    <text x="235" y="78" font-size="56">THE</text>
+    <text x="235" y="136" font-size="72">LEADENHALL</text>
+    <text x="235" y="198" font-size="72">WORKS</text>
+  </g>
+</svg>

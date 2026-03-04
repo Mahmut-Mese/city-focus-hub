@@ -1,42 +1,36 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { DataTypes } from 'sequelize';
 import { sequelize } from './database.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const cmsRoot = path.resolve(__dirname, '..', '..', 'cms', 'src');
 
 const RESOURCE_DEFINITIONS = [
   {
     table: 'blog_posts',
     label: 'Blog Posts',
     navigation: 'Collections',
-    schemaPath: path.join(cmsRoot, 'api', 'blog-post', 'content-types', 'blog-post', 'schema.json'),
   },
   {
     table: 'faq_items',
     label: 'FAQ Items',
     navigation: 'Collections',
-    schemaPath: path.join(cmsRoot, 'api', 'faq-item', 'content-types', 'faq-item', 'schema.json'),
   },
   {
     table: 'meeting_rooms',
     label: 'Meeting Rooms',
     navigation: 'Collections',
-    schemaPath: path.join(cmsRoot, 'api', 'meeting-room', 'content-types', 'meeting-room', 'schema.json'),
   },
   {
     table: 'pricing_plans',
     label: 'Pricing Plans',
     navigation: 'Collections',
-    schemaPath: path.join(cmsRoot, 'api', 'pricing-plan', 'content-types', 'pricing-plan', 'schema.json'),
   },
   {
     table: 'files',
     label: 'Media Library',
     navigation: 'Media',
+  },
+  {
+    table: 'contact_submissions',
+    label: 'Contact Submissions',
+    navigation: 'Inbox',
   },
 ];
 
@@ -66,6 +60,7 @@ const EXACT_LABELS = {
   published_at: 'Published At',
   published_date: 'Published Date',
   read_time: 'Read Time',
+  source_page: 'Source Page',
   search_placeholder: 'Search Placeholder',
   sort_order: 'Display Order',
   updated_at: 'Updated At',
@@ -81,14 +76,11 @@ const PREFERRED_TITLE_COLUMNS = [
   'label',
   'feature',
   'text',
+  'email',
   'alt',
   'slug',
   'document_id',
 ];
-
-function camelToSnake(value) {
-  return value.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
-}
 
 function toPascalCase(value) {
   return value
@@ -176,24 +168,6 @@ function mapColumnType(columnType) {
   return DataTypes.STRING;
 }
 
-async function readSchema(schemaPath) {
-  if (!schemaPath) {
-    return null;
-  }
-
-  try {
-    const raw = await fs.readFile(schemaPath, 'utf8');
-
-    return JSON.parse(raw);
-  } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
 function pickTitleColumn(columns) {
   return columns.find((column) => PREFERRED_TITLE_COLUMNS.includes(column)) || 'id';
 }
@@ -228,42 +202,8 @@ function buildTranslations(definition, columns) {
   };
 }
 
-function buildSchemaDrivenProperties(schema, columns) {
-  if (!schema) {
-    return null;
-  }
-
-  const hiddenColumns = new Set(HIDDEN_PROPERTIES);
-  const visibleAttributes = [];
-
-  Object.entries(schema.attributes ?? {}).forEach(([attributeName, attribute]) => {
-    const columnName = camelToSnake(attributeName);
-    const isHidden = attribute.pluginOptions?.['content-manager']?.visible === false;
-
-    if (isHidden) {
-      hiddenColumns.add(columnName);
-      return;
-    }
-
-    if (columns.includes(columnName)) {
-      visibleAttributes.push(columnName);
-    }
-  });
-
-  const listProperties = (schema.config?.layouts?.list ?? [])
-    .map((attributeName) => camelToSnake(attributeName))
-    .filter((columnName) => columns.includes(columnName));
-
-  return {
-    editProperties: visibleAttributes,
-    listProperties,
-    hiddenColumns: Array.from(hiddenColumns),
-  };
-}
-
 async function defineModelForTable(definition) {
   const table = await sequelize.getQueryInterface().describeTable(definition.table);
-  const schema = await readSchema(definition.schemaPath);
   const attributes = {};
 
   Object.entries(table).forEach(([columnName, columnDefinition]) => {
@@ -283,14 +223,9 @@ async function defineModelForTable(definition) {
 
   const columns = Object.keys(attributes);
   const titleColumn = pickTitleColumn(columns);
-  const schemaDriven = buildSchemaDrivenProperties(schema, columns);
-  const listProperties = schemaDriven?.listProperties?.length
-    ? schemaDriven.listProperties
-    : ['id', titleColumn, 'updated_at'].filter((column) => columns.includes(column));
-  const editProperties = schemaDriven?.editProperties?.length
-    ? schemaDriven.editProperties
-    : columns.filter((column) => !['id', 'created_at', 'updated_at'].includes(column));
-  const hiddenColumns = schemaDriven?.hiddenColumns ?? HIDDEN_PROPERTIES;
+  const listProperties = ['id', titleColumn, 'updated_at'].filter((column) => columns.includes(column));
+  const editProperties = columns.filter((column) => !['id', 'created_at', 'updated_at'].includes(column));
+  const hiddenColumns = HIDDEN_PROPERTIES;
 
   return {
     resource: model,

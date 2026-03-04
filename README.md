@@ -36,9 +36,7 @@ npm i
 npm run dev
 ```
 
-## Local development with Strapi + MySQL
-
-This repository now includes a Strapi CMS app in `cms/`.
+## Local development with AdminJS + Express + MySQL
 
 ### 1. Start MySQL
 
@@ -46,31 +44,19 @@ This repository now includes a Strapi CMS app in `cms/`.
 brew services start mysql
 ```
 
-### 2. Create the local CMS database/user (one-time)
+### 2. Create the local content database (one-time)
 
 ```sh
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS strapi CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
-CREATE USER IF NOT EXISTS 'strapi'@'127.0.0.1' IDENTIFIED BY 'strapi'; \
-GRANT ALL PRIVILEGES ON strapi.* TO 'strapi'@'127.0.0.1'; \
-FLUSH PRIVILEGES;"
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS city_focus_hub_admin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-### 3. Run Strapi
+### 3. Run backend
 
 ```sh
-cp cms/.env.example cms/.env
-npm run cms:dev
+npm run adminjs:dev
 ```
 
-Strapi admin: `http://localhost:1337/admin`
-
-### 3.1 Seed CMS from frontend mock data (optional)
-
-```sh
-npm run cms:seed
-```
-
-This imports data from `src/data/mockData.ts` into Strapi collections.
+Backend admin: `http://localhost:3001/admin`
 
 ### 4. Run frontend
 
@@ -79,7 +65,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`
+Frontend: `http://localhost:8080`
 
 **Edit a file directly in GitHub**
 

@@ -9,17 +9,17 @@ const BOOLEAN_FIELD_PATTERN = /^(featured|isFeatured|isPopular)$/i;
 const FULL_WIDTH_FIELD_PATTERN = /(description|content|answer|excerpt|contentImages|coverImage|image|features|badges|tags)$/i;
 
 const STYLES = `
-.strapi-editor {
+.admin-editor {
   min-height: 100%;
   padding: 32px 40px 64px 344px;
   background: #f6f6f9;
   color: #32324d;
 }
-.strapi-editor__inner {
+.admin-editor__inner {
   max-width: 1240px;
   margin: 0 auto;
 }
-.strapi-back {
+.admin-back {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -31,27 +31,27 @@ const STYLES = `
   padding: 0;
   margin-bottom: 14px;
 }
-.strapi-header {
+.admin-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 12px;
 }
-.strapi-meta {
+.admin-meta {
   margin-bottom: 4px;
   color: #666687;
   font-size: .75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
-.strapi-title {
+.admin-title {
   margin: 0;
   font-size: 2.25rem;
   line-height: 2.75rem;
   font-weight: 700;
 }
-.strapi-status {
+.admin-status {
   display: inline-flex;
   align-items: center;
   min-height: 2rem;
@@ -64,20 +64,20 @@ const STYLES = `
   font-size: .8125rem;
   font-weight: 600;
 }
-.strapi-kebab {
+.admin-kebab {
   width: 2rem;
   height: 2rem;
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #fff;
 }
-.strapi-tabs {
+.admin-tabs {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
   border-bottom: 1px solid #eaeaef;
 }
-.strapi-tab {
+.admin-tab {
   position: relative;
   border: 0;
   background: transparent;
@@ -86,69 +86,69 @@ const STYLES = `
   font-size: .75rem;
   font-weight: 700;
 }
-.strapi-tab--active { color: #4945ff; }
-.strapi-tab--active::after {
+.admin-tab--active { color: #4945ff; }
+.admin-tab--active::after {
   content: '';
   position: absolute;
   left: 0; right: 0; bottom: -1px;
   height: 2px;
   background: #4945ff;
 }
-.strapi-layout {
+.admin-layout {
   display: grid;
   grid-template-columns: minmax(0,1fr) 232px;
   gap: 16px;
   align-items: start;
 }
-.strapi-main-card,.strapi-side-card,.strapi-list-card {
+.admin-main-card,.admin-side-card,.admin-list-card {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(33,33,52,.06);
 }
-.strapi-main-card { padding: 24px; }
-.strapi-side-card + .strapi-side-card { margin-top: 12px; }
-.strapi-side-card__head {
+.admin-main-card { padding: 24px; }
+.admin-side-card + .admin-side-card { margin-top: 12px; }
+.admin-side-card__head {
   padding: 14px 16px 8px;
   color: #666687;
   font-size: .75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
-.strapi-side-card__body { padding: 0 12px 12px; }
-.strapi-side-button-row {
+.admin-side-card__body { padding: 0 12px 12px; }
+.admin-side-button-row {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
   position: relative;
 }
-.strapi-side-button,.strapi-side-button--secondary {
+.admin-side-button,.admin-side-button--secondary {
   width: 100%;
   min-height: 2.25rem;
   border-radius: 4px;
   font-size: .8125rem;
   font-weight: 600;
 }
-.strapi-side-button {
+.admin-side-button {
   border: 1px solid #4945ff;
   background: #4945ff;
   color: #fff;
 }
-.strapi-side-button--secondary {
+.admin-side-button--secondary {
   border: 1px solid #dcdce4;
   background: #fff;
   color: #32324d;
 }
-.strapi-side-button:disabled,
-.strapi-side-button--secondary:disabled,
-.strapi-primary:disabled,
-.strapi-secondary:disabled {
+.admin-side-button:disabled,
+.admin-side-button--secondary:disabled,
+.admin-primary:disabled,
+.admin-secondary:disabled {
   border-color: #dcdce4;
   background: #f6f6f9;
   color: #8e8ea9;
   cursor: not-allowed;
 }
-.strapi-side-action-menu {
+.admin-side-action-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -160,7 +160,7 @@ const STYLES = `
   padding: 8px 0;
   z-index: 40;
 }
-.strapi-side-action-menu__item {
+.admin-side-action-menu__item {
   width: 100%;
   border: 0;
   background: transparent;
@@ -174,34 +174,34 @@ const STYLES = `
   cursor: pointer;
   text-align: left;
 }
-.strapi-side-action-menu__item:hover {
+.admin-side-action-menu__item:hover {
   background: #f6f6f9;
 }
-.strapi-side-action-menu__item--danger {
+.admin-side-action-menu__item--danger {
   color: #d02b20;
 }
-.strapi-side-action-menu__item:disabled {
+.admin-side-action-menu__item:disabled {
   background: transparent;
   color: #8e8ea9;
   cursor: not-allowed;
 }
-.strapi-side-action-menu__icon {
+.admin-side-action-menu__icon {
   width: 18px;
   color: inherit;
   text-align: center;
 }
-.strapi-side-button--menu {
+.admin-side-button--menu {
   width: 2rem;
   flex: 0 0 2rem;
 }
-.strapi-section + .strapi-section { margin-top: 20px; }
-.strapi-field-grid {
+.admin-section + .admin-section { margin-top: 20px; }
+.admin-field-grid {
   display: grid;
   grid-template-columns: repeat(2,minmax(0,1fr));
   gap: 20px 24px;
 }
-.strapi-field--full { grid-column: 1 / -1; }
-.strapi-label {
+.admin-field--full { grid-column: 1 / -1; }
+.admin-label {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -210,8 +210,8 @@ const STYLES = `
   font-size: .75rem;
   font-weight: 600;
 }
-.strapi-label__required { color: #d02b20; }
-.strapi-input,.strapi-textarea,.strapi-search-input {
+.admin-label__required { color: #d02b20; }
+.admin-input,.admin-textarea,.admin-search-input {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #dcdce4;
@@ -223,35 +223,36 @@ const STYLES = `
   line-height: 1.25rem;
   outline: none;
 }
-.strapi-input { min-height: 2.5rem; }
-.strapi-textarea { min-height: 5.75rem; resize: vertical; }
-.strapi-input:focus,.strapi-textarea:focus,.strapi-search-input:focus {
+.admin-input { min-height: 2.5rem; }
+.admin-textarea { min-height: 5.75rem; resize: vertical; }
+.admin-input:focus,.admin-textarea:focus,.admin-search-input:focus {
   border-color: #4945ff;
   box-shadow: 0 0 0 1px #4945ff;
 }
-.strapi-input:disabled,
-.strapi-textarea:disabled {
+.admin-input:disabled,
+.admin-textarea:disabled {
   background: #f6f6f9;
   color: #666687;
   cursor: not-allowed;
 }
-.strapi-repeatable {
+.admin-repeatable {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   overflow: hidden;
   background: #fff;
 }
-.strapi-repeatable__head {
+.admin-repeatable__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px 10px;
   border-bottom: 1px solid #f0f0f5;
 }
-.strapi-repeatable__title { font-size: .75rem; font-weight: 600; }
-.strapi-repeatable__count { color: #8e8ea9; font-size: .75rem; }
-.strapi-repeatable__item + .strapi-repeatable__item { border-top: 1px solid #f0f0f5; }
-.strapi-repeatable__summary {
+.admin-repeatable__title { font-size: .75rem; font-weight: 600; }
+.admin-repeatable__count { color: #8e8ea9; font-size: .75rem; }
+.admin-repeatable__item + .admin-repeatable__item { border-top: 1px solid #f0f0f5; }
+.admin-repeatable__item--drag-over summary { background: #f0f0ff; }
+.admin-repeatable__summary {
   list-style: none;
   display: flex;
   align-items: center;
@@ -260,13 +261,13 @@ const STYLES = `
   padding: 12px 16px;
   cursor: pointer;
 }
-.strapi-repeatable__summary::-webkit-details-marker { display: none; }
-.strapi-repeatable__summary-left {
+.admin-repeatable__summary::-webkit-details-marker { display: none; }
+.admin-repeatable__summary-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.strapi-repeatable__bullet {
+.admin-repeatable__bullet {
   width: 20px; height: 20px;
   border-radius: 999px;
   background: #f0f0f5;
@@ -276,21 +277,35 @@ const STYLES = `
   justify-content: center;
   font-size: .625rem;
 }
-.strapi-repeatable__name { font-size: .875rem; font-weight: 600; }
-.strapi-repeatable__actions {
+.admin-repeatable__name { font-size: .875rem; font-weight: 600; }
+.admin-repeatable__actions {
   display: flex; align-items: center; gap: 10px;
   color: #8e8ea9;
 }
-.strapi-repeatable__icon-button {
+.admin-repeatable__icon-button {
   border: 0; background: transparent; color: inherit; cursor: pointer;
 }
-.strapi-repeatable__icon-button:disabled,
-.strapi-repeatable__add:disabled {
+.admin-repeatable__drag-handle {
+  border: 0;
+  background: transparent;
+  color: #8e8ea9;
+  cursor: grab;
+  padding: 0 2px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.admin-repeatable__drag-handle:active { cursor: grabbing; }
+.admin-repeatable__drag-handle:disabled {
+  color: #c4c4d2;
+  cursor: not-allowed;
+}
+.admin-repeatable__icon-button:disabled,
+.admin-repeatable__add:disabled {
   color: #8e8ea9;
   cursor: not-allowed;
 }
-.strapi-repeatable__body { padding: 16px; }
-.strapi-repeatable__add {
+.admin-repeatable__body { padding: 16px; }
+.admin-repeatable__add {
   width: 100%;
   border: 0;
   border-top: 1px solid #f0f0f5;
@@ -301,7 +316,7 @@ const STYLES = `
   padding: 14px 16px;
   cursor: pointer;
 }
-.strapi-toggle {
+.admin-toggle {
   min-height: 2.5rem;
   display: flex;
   align-items: center;
@@ -310,17 +325,17 @@ const STYLES = `
   border: 1px solid #dcdce4;
   border-radius: 4px;
 }
-.strapi-toggle:has(input:disabled) {
+.admin-toggle:has(input:disabled) {
   background: #f6f6f9;
   color: #666687;
 }
-.strapi-media {
+.admin-media {
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #fff;
   padding: 16px;
 }
-.strapi-media__canvas {
+.admin-media__canvas {
   min-height: 140px;
   border: 1px solid #dcdce4;
   border-radius: 4px;
@@ -330,60 +345,87 @@ const STYLES = `
   justify-content: center;
   padding: 16px;
 }
-.strapi-media__stack {
+.admin-media__stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
-.strapi-media__thumb {
+.admin-media__thumb {
   max-width: 240px;
   max-height: 140px;
   object-fit: cover;
 }
-.strapi-media__actions {
+.admin-media__actions {
   display: flex;
   gap: 4px;
 }
-.strapi-media__action {
+.admin-media__action {
   width: 2rem; height: 2rem;
   border: 1px solid #dcdce4;
   border-radius: 4px;
   background: #fff;
 }
-.strapi-media__action:disabled {
+.admin-media__action:disabled {
   background: #f6f6f9;
   color: #8e8ea9;
   cursor: not-allowed;
 }
-.strapi-media__filename { color: #666687; font-size: .75rem; }
-.strapi-media__source { margin-top: 10px; }
-.strapi-list-toolbar {
+.admin-media__filename { color: #666687; font-size: .75rem; }
+.admin-media__source { margin-top: 10px; }
+.admin-media__source-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.admin-media__upload-button {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid #dcdce4;
+  border-radius: 4px;
+  background: #fff;
+  color: #32324d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-media__upload-button:disabled {
+  background: #f6f6f9;
+  color: #8e8ea9;
+  cursor: not-allowed;
+}
+.admin-media__error {
+  color: #d02b20;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+.admin-list-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
 }
-.strapi-list-actions {
+.admin-list-actions {
   display: flex;
   gap: 12px;
   align-items: center;
 }
-.strapi-search-wrap { width: 280px; }
-.strapi-list-meta {
+.admin-search-wrap { width: 280px; }
+.admin-list-meta {
   margin: 12px 0 32px;
   color: #666687;
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
-.strapi-toolbar-cluster {
+.admin-toolbar-cluster {
   display: flex;
   align-items: center;
   gap: 12px;
   position: relative;
 }
-.strapi-toolbar-button {
+.admin-toolbar-button {
   min-height: 2.5rem;
   padding: 0 1rem;
   border: 1px solid #dcdce4;
@@ -394,15 +436,15 @@ const STYLES = `
   font-weight: 600;
   cursor: pointer;
 }
-.strapi-toolbar-button--icon {
+.admin-toolbar-button--icon {
   width: 2.5rem;
   padding: 0;
 }
-.strapi-toolbar-button--active {
+.admin-toolbar-button--active {
   border-color: #4945ff;
   color: #4945ff;
 }
-.strapi-toolbar-search {
+.admin-toolbar-search {
   width: 280px;
   min-height: 2.5rem;
   border: 1px solid #dcdce4;
@@ -410,7 +452,7 @@ const STYLES = `
   padding: 0 0.875rem;
   font-size: 0.875rem;
 }
-.strapi-list-popover {
+.admin-list-popover {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -424,18 +466,18 @@ const STYLES = `
   padding: 16px;
   z-index: 20;
 }
-.strapi-list-popover__head {
+.admin-list-popover__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
 }
-.strapi-list-popover__title {
+.admin-list-popover__title {
   font-size: 1rem;
   font-weight: 700;
 }
-.strapi-list-popover__reset {
+.admin-list-popover__reset {
   border: 0;
   background: transparent;
   color: #4945ff;
@@ -443,10 +485,10 @@ const STYLES = `
   cursor: pointer;
   padding: 0;
 }
-.strapi-list-popover__group + .strapi-list-popover__group {
+.admin-list-popover__group + .admin-list-popover__group {
   margin-top: 16px;
 }
-.strapi-list-popover__label {
+.admin-list-popover__label {
   display: block;
   margin-bottom: 8px;
   color: #666687;
@@ -454,7 +496,7 @@ const STYLES = `
   font-weight: 700;
   text-transform: uppercase;
 }
-.strapi-list-popover__select {
+.admin-list-popover__select {
   width: 100%;
   min-height: 2.5rem;
   border: 1px solid #dcdce4;
@@ -463,29 +505,29 @@ const STYLES = `
   padding: 0 0.75rem;
   font-size: 0.875rem;
 }
-.strapi-list-popover__check {
+.admin-list-popover__check {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 8px 0;
   font-size: 0.875rem;
 }
-.strapi-list-popover__check input {
+.admin-list-popover__check input {
   width: 1.25rem;
   height: 1.25rem;
 }
-.strapi-list-card__head {
+.admin-list-card__head {
   padding: 16px 20px;
   border-bottom: 1px solid #f0f0f5;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.strapi-list-table {
+.admin-list-table {
   width: 100%;
   border-collapse: collapse;
 }
-.strapi-list-table th {
+.admin-list-table th {
   padding: 10px 16px;
   text-align: left;
   color: #666687;
@@ -493,17 +535,17 @@ const STYLES = `
   font-weight: 700;
   text-transform: uppercase;
 }
-.strapi-list-table td {
+.admin-list-table td {
   padding: 14px 16px;
   border-top: 1px solid #f0f0f5;
   font-size: .875rem;
   vertical-align: middle;
 }
-.strapi-list-row-menu-cell {
+.admin-list-row-menu-cell {
   position: relative;
   width: 44px;
 }
-.strapi-list-row-menu-trigger {
+.admin-list-row-menu-trigger {
   width: 2rem;
   height: 2rem;
   border: 0;
@@ -513,7 +555,7 @@ const STYLES = `
   line-height: 1;
   cursor: pointer;
 }
-.strapi-list-row-menu {
+.admin-list-row-menu {
   position: absolute;
   top: calc(100% - 6px);
   right: 0;
@@ -525,7 +567,7 @@ const STYLES = `
   padding: 8px 0;
   z-index: 24;
 }
-.strapi-list-row-menu__item {
+.admin-list-row-menu__item {
   width: 100%;
   border: 0;
   background: transparent;
@@ -539,18 +581,18 @@ const STYLES = `
   cursor: pointer;
   text-align: left;
 }
-.strapi-list-row-menu__item:hover {
+.admin-list-row-menu__item:hover {
   background: #f6f6f9;
 }
-.strapi-list-row-menu__item--danger {
+.admin-list-row-menu__item--danger {
   color: #d02b20;
 }
-.strapi-list-row-menu__icon {
+.admin-list-row-menu__icon {
   width: 18px;
   color: inherit;
   text-align: center;
 }
-.strapi-list-table th button {
+.admin-list-table th button {
   border: 0;
   background: transparent;
   padding: 0;
@@ -559,9 +601,9 @@ const STYLES = `
   text-transform: inherit;
   cursor: pointer;
 }
-.strapi-list-table tr { cursor: pointer; }
-.strapi-list-table tr:hover { background: #fafafb; }
-.strapi-list-status {
+.admin-list-table tr { cursor: pointer; }
+.admin-list-table tr:hover { background: #fafafb; }
+.admin-list-status {
   display: inline-flex;
   align-items: center;
   min-height: 1.75rem;
@@ -572,7 +614,7 @@ const STYLES = `
   font-size: .75rem;
   font-weight: 600;
 }
-.strapi-primary {
+.admin-primary {
   min-height: 2.25rem;
   padding: 0 .875rem;
   border: 1px solid #4945ff;
@@ -583,7 +625,7 @@ const STYLES = `
   font-weight: 600;
   cursor: pointer;
 }
-.strapi-secondary {
+.admin-secondary {
   min-height: 2.25rem;
   padding: 0 .875rem;
   border: 1px solid #dcdce4;
@@ -594,7 +636,7 @@ const STYLES = `
   font-weight: 600;
   cursor: pointer;
 }
-.strapi-list-boolean {
+.admin-list-boolean {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -604,22 +646,22 @@ const STYLES = `
   font-size: 0.625rem;
   font-weight: 700;
 }
-.strapi-list-boolean--yes {
+.admin-list-boolean--yes {
   background: #2f6846;
   color: #fff;
 }
-.strapi-list-boolean--no {
+.admin-list-boolean--no {
   background: #d02b20;
   color: #fff;
 }
 @media (max-width: 1180px) {
-  .strapi-layout { grid-template-columns: 1fr; }
+  .admin-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 960px) {
-  .strapi-editor { padding: 20px 16px 48px; }
-  .strapi-field-grid { grid-template-columns: 1fr; }
-  .strapi-list-toolbar { flex-direction: column; align-items: stretch; }
-  .strapi-search-wrap { width: 100%; }
+  .admin-editor { padding: 20px 16px 48px; }
+  .admin-field-grid { grid-template-columns: 1fr; }
+  .admin-list-toolbar { flex-direction: column; align-items: stretch; }
+  .admin-search-wrap { width: 100%; }
 }
 `;
 
@@ -769,6 +811,31 @@ function appendAtPath(value, path, nextItem) {
   return clone;
 }
 
+function moveAtPath(value, path, offset) {
+  if (path.length === 1) {
+    if (!Array.isArray(value)) {
+      return value;
+    }
+
+    const index = path[0];
+    const nextIndex = index + offset;
+
+    if (nextIndex < 0 || nextIndex >= value.length) {
+      return value;
+    }
+
+    const clone = [...value];
+    const [moved] = clone.splice(index, 1);
+    clone.splice(nextIndex, 0, moved);
+    return clone;
+  }
+
+  const [segment, ...rest] = path;
+  const clone = Array.isArray(value) ? [...value] : { ...value };
+  clone[segment] = moveAtPath(value?.[segment], rest, offset);
+  return clone;
+}
+
 function getDisplayTitle(definition, record) {
   if (!record) {
     return definition.label;
@@ -800,45 +867,120 @@ async function requestPage(pageName, options = {}) {
   return payload;
 }
 
+async function uploadAdminImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/admin/api/media/upload', {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin',
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to upload image.');
+  }
+
+  const uploadedUrl = payload?.url || payload?.item?.relativeUrl || payload?.item?.url;
+
+  if (!uploadedUrl) {
+    throw new Error('Upload succeeded but returned no URL.');
+  }
+
+  return uploadedUrl;
+}
+
 function MediaField({ label, value, path, onChange, disabled }) {
   const urls = Array.isArray(value) ? value : [value].filter(Boolean);
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   return (
-    <div className="strapi-field strapi-field--full">
-      <label className="strapi-label">{label}</label>
-      <div className="strapi-media">
-        <div className="strapi-media__canvas">
+    <div className="admin-field admin-field--full">
+      <label className="admin-label">{label}</label>
+      <div className="admin-media">
+        <div className="admin-media__canvas">
           {urls.length ? (
-            <div className="strapi-media__stack">
-              <img className="strapi-media__thumb" src={urls[0]} alt={label} />
-              <div className="strapi-media__actions">
-                <button className="strapi-media__action" type="button" onClick={() => window.open(urls[0], '_blank', 'noopener,noreferrer')}>↗</button>
-                <button className="strapi-media__action" type="button" disabled={disabled} onClick={() => onChange(path, Array.isArray(value) ? [] : '')}>✕</button>
+            <div className="admin-media__stack">
+              <img className="admin-media__thumb" src={urls[0]} alt={label} />
+              <div className="admin-media__actions">
+                <button className="admin-media__action" type="button" onClick={() => window.open(urls[0], '_blank', 'noopener,noreferrer')}>↗</button>
+                <button className="admin-media__action" type="button" disabled={disabled} onClick={() => onChange(path, Array.isArray(value) ? [] : '')}>✕</button>
               </div>
-              <div className="strapi-media__filename">{urls[0].split('/').pop()}</div>
+              <div className="admin-media__filename">{urls[0].split('/').pop()}</div>
             </div>
           ) : (
             <div>No media selected.</div>
           )}
         </div>
-        <div className="strapi-media__source">
+        <div className="admin-media__source">
           {Array.isArray(value) ? (
             <textarea
-              className="strapi-textarea"
+              className="admin-textarea"
               value={value.join('\n')}
-              disabled={disabled}
+              disabled={disabled || uploading}
               onChange={(event) => onChange(path, event.target.value.split('\n').map((item) => item.trim()).filter(Boolean))}
               placeholder="One image URL per line"
             />
           ) : (
             <input
-              className="strapi-input"
+              className="admin-input"
               value={value ?? ''}
-              disabled={disabled}
+              disabled={disabled || uploading}
               onChange={(event) => onChange(path, event.target.value)}
               placeholder="https://..."
             />
           )}
+          <div className="admin-media__source-actions">
+            <button
+              className="admin-media__upload-button"
+              type="button"
+              disabled={disabled || uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? 'Uploading...' : 'Upload from computer'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple={Array.isArray(value)}
+              style={{ display: 'none' }}
+              onChange={async (event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = '';
+
+                if (!files.length) {
+                  return;
+                }
+
+                setUploadError('');
+                setUploading(true);
+
+                try {
+                  const uploadedUrls = [];
+                  for (const file of files) {
+                    const uploadedUrl = await uploadAdminImage(file);
+                    uploadedUrls.push(uploadedUrl);
+                  }
+
+                  if (Array.isArray(value)) {
+                    onChange(path, [...value, ...uploadedUrls]);
+                  } else {
+                    onChange(path, uploadedUrls[0] || '');
+                  }
+                } catch (error) {
+                  setUploadError(error?.message || 'Failed to upload image.');
+                } finally {
+                  setUploading(false);
+                }
+              }}
+            />
+          </div>
+          {uploadError ? <div className="admin-media__error">{uploadError}</div> : null}
         </div>
       </div>
     </div>
@@ -854,9 +996,9 @@ function PrimitiveField({ field, value, path, onChange, disabled }) {
 
   if (BOOLEAN_FIELD_PATTERN.test(field)) {
     return (
-      <div className="strapi-field strapi-field--full">
-        <label className="strapi-label">{label}</label>
-        <div className="strapi-toggle">
+      <div className="admin-field admin-field--full">
+        <label className="admin-label">{label}</label>
+        <div className="admin-toggle">
           <span>{value ? 'Enabled' : 'Disabled'}</span>
           <input type="checkbox" checked={Boolean(value)} disabled={disabled} onChange={(event) => onChange(path, event.target.checked)} />
         </div>
@@ -864,24 +1006,24 @@ function PrimitiveField({ field, value, path, onChange, disabled }) {
     );
   }
 
-  const className = FULL_WIDTH_FIELD_PATTERN.test(field) ? 'strapi-field strapi-field--full' : 'strapi-field';
+  const className = FULL_WIDTH_FIELD_PATTERN.test(field) ? 'admin-field admin-field--full' : 'admin-field';
 
   return (
     <div className={className}>
-      <label className="strapi-label">
+      <label className="admin-label">
         {label}
-        {field !== 'sortOrder' && !BOOLEAN_FIELD_PATTERN.test(field) ? <span className="strapi-label__required">*</span> : null}
+        {field !== 'sortOrder' && !BOOLEAN_FIELD_PATTERN.test(field) ? <span className="admin-label__required">*</span> : null}
       </label>
       {MULTILINE_FIELD_PATTERN.test(field) ? (
         <textarea
-          className="strapi-textarea"
+          className="admin-textarea"
           value={value ?? ''}
           disabled={disabled}
           onChange={(event) => onChange(path, parseInputValue(event.target.value, value))}
         />
       ) : (
         <input
-          className="strapi-input"
+          className="admin-input"
           type={typeof value === 'number' ? 'number' : 'text'}
           value={value ?? ''}
           disabled={disabled}
@@ -892,48 +1034,111 @@ function PrimitiveField({ field, value, path, onChange, disabled }) {
   );
 }
 
-function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, disabled }) {
+function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   const label = toLabel(field);
   const items = Array.isArray(value) ? value : [];
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   return (
-    <div className="strapi-field strapi-field--full">
-      <label className="strapi-label">{label}</label>
-      <div className="strapi-repeatable">
-        <div className="strapi-repeatable__head">
+    <div className="admin-field admin-field--full">
+      <label className="admin-label">{label}</label>
+      <div className="admin-repeatable">
+        <div className="admin-repeatable__head">
           <div>
-            <div className="strapi-repeatable__title">{label}</div>
-            <div className="strapi-repeatable__count">{items.length} entries</div>
+            <div className="admin-repeatable__title">{label}</div>
+            <div className="admin-repeatable__count">{items.length} entries</div>
           </div>
         </div>
         {items.map((item, index) => (
-          <details key={`${field}-${index}`} className="strapi-repeatable__item" open={index === 0}>
-            <summary className="strapi-repeatable__summary">
-              <div className="strapi-repeatable__summary-left">
-                <span className="strapi-repeatable__bullet">▼</span>
-                <span className="strapi-repeatable__name">{typeof item === 'string' ? item || `${label} ${index + 1}` : item?.text || `${label} ${index + 1}`}</span>
+          <details
+            key={`${field}-${index}`}
+            className={`admin-repeatable__item${dragOverIndex === index ? ' admin-repeatable__item--drag-over' : ''}`}
+            open={index === 0}
+            onDragOver={(event) => {
+              if (disabled || dragIndex === null) {
+                return;
+              }
+
+              event.preventDefault();
+              if (dragOverIndex !== index) {
+                setDragOverIndex(index);
+              }
+            }}
+            onDrop={(event) => {
+              if (disabled || dragIndex === null) {
+                return;
+              }
+
+              event.preventDefault();
+              const offset = index - dragIndex;
+              if (offset !== 0) {
+                onMoveItem([...path, dragIndex], offset);
+              }
+              setDragIndex(null);
+              setDragOverIndex(null);
+            }}
+            onDragLeave={() => {
+              if (dragOverIndex === index) {
+                setDragOverIndex(null);
+              }
+            }}
+          >
+            <summary className="admin-repeatable__summary">
+              <div className="admin-repeatable__summary-left">
+                <span className="admin-repeatable__bullet">▼</span>
+                <span className="admin-repeatable__name">{typeof item === 'string' ? item || `${label} ${index + 1}` : item?.text || `${label} ${index + 1}`}</span>
               </div>
-              <div className="strapi-repeatable__actions">
+              <div className="admin-repeatable__actions">
                 <button
-                  className="strapi-repeatable__icon-button"
+                  className="admin-repeatable__icon-button"
                   type="button"
                   disabled={disabled}
                   onClick={(event) => {
                     event.preventDefault();
+                    event.stopPropagation();
                     onRemoveItem([...path, index]);
                   }}
+                  aria-label="Delete"
                 >
                   🗑
                 </button>
-                <span>⋮⋮</span>
+                <button
+                  className="admin-repeatable__drag-handle"
+                  type="button"
+                  draggable={!disabled}
+                  disabled={disabled}
+                  title="Drag to reorder"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onDragStart={(event) => {
+                    if (disabled) {
+                      return;
+                    }
+
+                    event.stopPropagation();
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', String(index));
+                    setDragIndex(index);
+                    setDragOverIndex(index);
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                >
+                  ⋮⋮
+                </button>
               </div>
             </summary>
-            <div className="strapi-repeatable__body">
-              <div className="strapi-field-grid">
-                <div className="strapi-field strapi-field--full">
-                  <label className="strapi-label">{label === 'Tags' ? 'Text' : label.slice(0, -1) || label}</label>
+            <div className="admin-repeatable__body">
+              <div className="admin-field-grid">
+                <div className="admin-field admin-field--full">
+                  <label className="admin-label">{label === 'Tags' ? 'Text' : label.slice(0, -1) || label}</label>
                   <input
-                    className="strapi-input"
+                    className="admin-input"
                     value={typeof item === 'string' ? item : item?.text ?? ''}
                     disabled={disabled}
                     onChange={(event) => onChange([...path, index], { text: event.target.value })}
@@ -943,7 +1148,7 @@ function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, dis
             </div>
           </details>
         ))}
-        <button className="strapi-repeatable__add" type="button" disabled={disabled} onClick={() => onAddItem(path, { text: '' })}>
+        <button className="admin-repeatable__add" type="button" disabled={disabled} onClick={() => onAddItem(path, { text: '' })}>
           + Add an entry
         </button>
       </div>
@@ -951,21 +1156,21 @@ function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, dis
   );
 }
 
-function FieldRenderer({ field, value, path, onChange, onAddItem, onRemoveItem, disabled }) {
+function FieldRenderer({ field, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   if (Array.isArray(value)) {
-    return <ArrayField field={field} value={value} path={path} onChange={onChange} onAddItem={onAddItem} onRemoveItem={onRemoveItem} disabled={disabled} />;
+    return <ArrayField field={field} value={value} path={path} onChange={onChange} onAddItem={onAddItem} onRemoveItem={onRemoveItem} onMoveItem={onMoveItem} disabled={disabled} />;
   }
   return <PrimitiveField field={field} value={value} path={path} onChange={onChange} disabled={disabled} />;
 }
 
 function renderListCell(field, value) {
   if (field === 'status') {
-    return <span className="strapi-list-status">{value}</span>;
+    return <span className="admin-list-status">{value}</span>;
   }
 
   if ((field === 'featured' || field === 'isFeatured' || field === 'isPopular') && (value === 'Yes' || value === 'No')) {
     return (
-      <span className={`strapi-list-boolean ${value === 'Yes' ? 'strapi-list-boolean--yes' : 'strapi-list-boolean--no'}`}>
+      <span className={`admin-list-boolean ${value === 'Yes' ? 'admin-list-boolean--yes' : 'admin-list-boolean--no'}`}>
         {value === 'Yes' ? '✓' : '✕'}
       </span>
     );
@@ -1029,25 +1234,25 @@ function ListView({
   );
 
   return (
-    <div className="strapi-editor">
+    <div className="admin-editor">
       <style>{STYLES}</style>
-      <div className="strapi-editor__inner">
-        <div className="strapi-header">
+      <div className="admin-editor__inner">
+        <div className="admin-header">
           <div>
-            <div className="strapi-meta">Collection Type</div>
-            <h1 className="strapi-title">{definition.label}</h1>
+            <div className="admin-meta">Collection Type</div>
+            <h1 className="admin-title">{definition.label}</h1>
           </div>
-          <div className="strapi-list-actions">
-            <button className="strapi-primary" type="button" onClick={onCreate}>+ Create new entry</button>
+          <div className="admin-list-actions">
+            <button className="admin-primary" type="button" onClick={onCreate}>+ Create new entry</button>
           </div>
         </div>
 
-        <div className="strapi-list-meta">{records.length} entries found</div>
+        <div className="admin-list-meta">{records.length} entries found</div>
 
-        <div className="strapi-list-toolbar">
-          <div className="strapi-toolbar-cluster">
+        <div className="admin-list-toolbar">
+          <div className="admin-toolbar-cluster">
             <button
-              className={`strapi-toolbar-button strapi-toolbar-button--icon${showSearch ? ' strapi-toolbar-button--active' : ''}`}
+              className={`admin-toolbar-button admin-toolbar-button--icon${showSearch ? ' admin-toolbar-button--active' : ''}`}
               type="button"
               onClick={() => setShowSearch((current) => !current)}
             >
@@ -1055,7 +1260,7 @@ function ListView({
             </button>
             {showSearch ? (
               <input
-                className="strapi-toolbar-search"
+                className="admin-toolbar-search"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder="Search"
@@ -1063,7 +1268,7 @@ function ListView({
               />
             ) : null}
             <button
-              className={`strapi-toolbar-button${showFilters ? ' strapi-toolbar-button--active' : ''}`}
+              className={`admin-toolbar-button${showFilters ? ' admin-toolbar-button--active' : ''}`}
               type="button"
               onClick={() => {
                 setShowFilters((current) => !current);
@@ -1073,16 +1278,16 @@ function ListView({
               Filters
             </button>
             {showFilters ? (
-              <div className="strapi-list-popover" style={{ left: showSearch ? 332 : 52, right: 'auto' }}>
-                <div className="strapi-list-popover__head">
-                  <div className="strapi-list-popover__title">Filters</div>
-                  <button className="strapi-list-popover__reset" type="button" onClick={onResetFilters}>Reset</button>
+              <div className="admin-list-popover" style={{ left: showSearch ? 332 : 52, right: 'auto' }}>
+                <div className="admin-list-popover__head">
+                  <div className="admin-list-popover__title">Filters</div>
+                  <button className="admin-list-popover__reset" type="button" onClick={onResetFilters}>Reset</button>
                 </div>
                 {controls.filters.map((filter) => (
-                  <div key={filter.field} className="strapi-list-popover__group">
-                    <label className="strapi-list-popover__label">{filter.label}</label>
+                  <div key={filter.field} className="admin-list-popover__group">
+                    <label className="admin-list-popover__label">{filter.label}</label>
                     <select
-                      className="strapi-list-popover__select"
+                      className="admin-list-popover__select"
                       value={controls.activeFilters[filter.field] ?? ''}
                       onChange={(event) => onSetFilter(filter.field, event.target.value)}
                     >
@@ -1096,10 +1301,10 @@ function ListView({
               </div>
             ) : null}
           </div>
-          <div className="strapi-list-actions">
-            <div className="strapi-toolbar-cluster">
+          <div className="admin-list-actions">
+            <div className="admin-toolbar-cluster">
               <button
-                className={`strapi-toolbar-button strapi-toolbar-button--icon${showDisplayed ? ' strapi-toolbar-button--active' : ''}`}
+                className={`admin-toolbar-button admin-toolbar-button--icon${showDisplayed ? ' admin-toolbar-button--active' : ''}`}
                 type="button"
                 onClick={() => {
                   setShowDisplayed((current) => !current);
@@ -1109,11 +1314,11 @@ function ListView({
                 ⚙
               </button>
               {showDisplayed ? (
-                <div className="strapi-list-popover">
-                  <div className="strapi-list-popover__head">
-                    <div className="strapi-list-popover__title">Displayed fields</div>
+                <div className="admin-list-popover">
+                  <div className="admin-list-popover__head">
+                    <div className="admin-list-popover__title">Displayed fields</div>
                     <button
-                      className="strapi-list-popover__reset"
+                      className="admin-list-popover__reset"
                       type="button"
                       onClick={onResetDisplayedFields}
                     >
@@ -1121,7 +1326,7 @@ function ListView({
                     </button>
                   </div>
                   {controls.availableFields.map((field) => (
-                    <label key={field.field} className="strapi-list-popover__check">
+                    <label key={field.field} className="admin-list-popover__check">
                       <input
                         type="checkbox"
                         checked={controls.displayedFields.includes(field.field)}
@@ -1136,12 +1341,12 @@ function ListView({
           </div>
         </div>
 
-        <section className="strapi-list-card">
-          <div className="strapi-list-card__head">
+        <section className="admin-list-card">
+          <div className="admin-list-card__head">
             <strong>{definition.label}</strong>
             <span>{loading ? 'Loading...' : `${records.length} entries`}</span>
           </div>
-          <table className="strapi-list-table">
+          <table className="admin-list-table">
             <thead>
               <tr>
                 {displayedColumns.map((column) => (
@@ -1161,9 +1366,9 @@ function ListView({
                   {displayedColumns.map((column) => (
                     <td key={`${record.documentId}-${column.field}`}>{renderListCell(column.field, record.columns[column.field])}</td>
                   ))}
-                  <td className="strapi-list-row-menu-cell">
+                  <td className="admin-list-row-menu-cell">
                     <button
-                      className="strapi-list-row-menu-trigger"
+                      className="admin-list-row-menu-trigger"
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -1175,28 +1380,28 @@ function ListView({
                     {openMenuId === record.id ? (
                       <div
                         ref={menuRef}
-                        className="strapi-list-row-menu"
+                        className="admin-list-row-menu"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <button className="strapi-list-row-menu__item" type="button" onClick={() => {
+                        <button className="admin-list-row-menu__item" type="button" onClick={() => {
                           setOpenMenuId(null);
                           onOpenRecord(record.id);
                         }}>
-                          <span className="strapi-list-row-menu__icon">✎</span>
+                          <span className="admin-list-row-menu__icon">✎</span>
                           <span>Edit</span>
                         </button>
-                        <button className="strapi-list-row-menu__item" type="button" onClick={() => {
+                        <button className="admin-list-row-menu__item" type="button" onClick={() => {
                           setOpenMenuId(null);
                           onDuplicateRecord(record.id);
                         }}>
-                          <span className="strapi-list-row-menu__icon">⧉</span>
+                          <span className="admin-list-row-menu__icon">⧉</span>
                           <span>Duplicate</span>
                         </button>
-                        <button className="strapi-list-row-menu__item strapi-list-row-menu__item--danger" type="button" onClick={() => {
+                        <button className="admin-list-row-menu__item admin-list-row-menu__item--danger" type="button" onClick={() => {
                           setOpenMenuId(null);
                           onDeleteRecord(record.id);
                         }}>
-                          <span className="strapi-list-row-menu__icon">🗑</span>
+                          <span className="admin-list-row-menu__icon">🗑</span>
                           <span>Delete entry</span>
                         </button>
                       </div>
@@ -1212,7 +1417,7 @@ function ListView({
   );
 }
 
-function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab, saving, error, onBack, onChange, onAddItem, onRemoveItem, onSave, onPublish, onDelete, onDiscardChanges, onUnpublish, canSave, canPublish, canDiscard, canUnpublish }) {
+function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab, saving, error, onBack, onChange, onAddItem, onRemoveItem, onMoveItem, onSave, onPublish, onDelete, onDiscardChanges, onUnpublish, canSave, canPublish, canDiscard, canUnpublish }) {
   const displayedRecord = activeTab === 'published' && publishedRecord ? publishedRecord : record;
   const isPublishedView = activeTab === 'published' && publishedRecord;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1236,32 +1441,32 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
   }, [menuOpen]);
 
   return (
-    <div className="strapi-editor">
+    <div className="admin-editor">
       <style>{STYLES}</style>
-      <div className="strapi-editor__inner">
-        <button className="strapi-back" type="button" onClick={onBack}>← Back</button>
+      <div className="admin-editor__inner">
+        <button className="admin-back" type="button" onClick={onBack}>← Back</button>
 
-        <div className="strapi-header">
+        <div className="admin-header">
           <div>
-            <div className="strapi-meta">Collection Type</div>
-            <h1 className="strapi-title">{getDisplayTitle(definition, displayedRecord)}</h1>
-            <div className="strapi-status">{publishedRecord ? 'Published' : (displayedRecord.status || 'Draft')}</div>
+            <div className="admin-meta">Collection Type</div>
+            <h1 className="admin-title">{getDisplayTitle(definition, displayedRecord)}</h1>
+            <div className="admin-status">{publishedRecord ? 'Published' : (displayedRecord.status || 'Draft')}</div>
           </div>
-          <button className="strapi-kebab" type="button">…</button>
+          <button className="admin-kebab" type="button">…</button>
         </div>
 
-        <div className="strapi-tabs">
-          <button className={`strapi-tab${activeTab === 'draft' ? ' strapi-tab--active' : ''}`} type="button" onClick={() => onSwitchTab('draft')}>DRAFT</button>
-          <button className={`strapi-tab${activeTab === 'published' ? ' strapi-tab--active' : ''}`} type="button" onClick={() => publishedRecord && onSwitchTab('published')}>PUBLISHED</button>
+        <div className="admin-tabs">
+          <button className={`admin-tab${activeTab === 'draft' ? ' admin-tab--active' : ''}`} type="button" onClick={() => onSwitchTab('draft')}>DRAFT</button>
+          <button className={`admin-tab${activeTab === 'published' ? ' admin-tab--active' : ''}`} type="button" onClick={() => publishedRecord && onSwitchTab('published')}>PUBLISHED</button>
         </div>
 
         {error ? <MessageBox variant="danger">{error}</MessageBox> : null}
 
-        <div className="strapi-layout">
-          <div className="strapi-main-card">
+        <div className="admin-layout">
+          <div className="admin-main-card">
             {definition.editLayout.map((row, index) => (
-              <div key={`row-${index}`} className="strapi-section">
-                <div className="strapi-field-grid">
+              <div key={`row-${index}`} className="admin-section">
+                <div className="admin-field-grid">
                   {row.map((field) => (
                     <FieldRenderer
                       key={field}
@@ -1271,6 +1476,7 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
                       onChange={onChange}
                       onAddItem={onAddItem}
                       onRemoveItem={onRemoveItem}
+                      onMoveItem={onMoveItem}
                       disabled={isPublishedView}
                     />
                   ))}
@@ -1280,16 +1486,16 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
           </div>
 
           <aside>
-            <div className="strapi-side-card">
-              <div className="strapi-side-card__head">Entry</div>
-              <div className="strapi-side-card__body">
-                <div className="strapi-side-button-row">
-                  <button className="strapi-side-button--secondary" type="button" onClick={onPublish} disabled={!canPublish}>Publish</button>
-                  <button className="strapi-side-button--secondary strapi-side-button--menu" type="button" onClick={() => setMenuOpen((current) => !current)}>…</button>
+            <div className="admin-side-card">
+              <div className="admin-side-card__head">Entry</div>
+              <div className="admin-side-card__body">
+                <div className="admin-side-button-row">
+                  <button className="admin-side-button--secondary" type="button" onClick={onPublish} disabled={!canPublish}>Publish</button>
+                  <button className="admin-side-button--secondary admin-side-button--menu" type="button" onClick={() => setMenuOpen((current) => !current)}>…</button>
                   {menuOpen ? (
-                    <div ref={menuRef} className="strapi-side-action-menu">
+                    <div ref={menuRef} className="admin-side-action-menu">
                       <button
-                        className="strapi-side-action-menu__item strapi-side-action-menu__item--danger"
+                        className="admin-side-action-menu__item admin-side-action-menu__item--danger"
                         type="button"
                         onClick={() => {
                           setMenuOpen(false);
@@ -1297,11 +1503,11 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
                         }}
                         disabled={!canUnpublish}
                       >
-                        <span className="strapi-side-action-menu__icon">×</span>
+                        <span className="admin-side-action-menu__icon">×</span>
                         Unpublish
                       </button>
                       <button
-                        className="strapi-side-action-menu__item strapi-side-action-menu__item--danger"
+                        className="admin-side-action-menu__item admin-side-action-menu__item--danger"
                         type="button"
                         onClick={() => {
                           setMenuOpen(false);
@@ -1309,22 +1515,22 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
                         }}
                         disabled={!canDiscard}
                       >
-                        <span className="strapi-side-action-menu__icon">×</span>
+                        <span className="admin-side-action-menu__icon">×</span>
                         Discard changes
                       </button>
                     </div>
                   ) : null}
                 </div>
-                <button className="strapi-side-button" type="button" onClick={onSave} disabled={!canSave}>
+                <button className="admin-side-button" type="button" onClick={onSave} disabled={!canSave}>
                   {saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
 
-            <div className="strapi-side-card">
-              <div className="strapi-side-card__head">Actions</div>
-              <div className="strapi-side-card__body">
-                <button className="strapi-side-button--secondary" type="button" onClick={onDelete} disabled={isPublishedView}>Delete</button>
+            <div className="admin-side-card">
+              <div className="admin-side-card__head">Actions</div>
+              <div className="admin-side-card__body">
+                <button className="admin-side-button--secondary" type="button" onClick={onDelete} disabled={isPublishedView}>Delete</button>
               </div>
             </div>
           </aside>
@@ -1464,6 +1670,10 @@ export default function CollectionManager() {
 
   const handleRemoveItem = (path) => {
     setRecord((current) => removeAtPath(current, path));
+  };
+
+  const handleMoveItem = (path, offset) => {
+    setRecord((current) => moveAtPath(current, path, offset));
   };
 
   const handleSaveIntent = async (intent) => {
@@ -1630,6 +1840,7 @@ export default function CollectionManager() {
       onChange={handleChange}
       onAddItem={handleAddItem}
       onRemoveItem={handleRemoveItem}
+      onMoveItem={handleMoveItem}
       onSave={() => handleSaveIntent('save')}
       onPublish={() => handleSaveIntent('publish')}
       onDelete={() => handleSaveIntent('delete')}
