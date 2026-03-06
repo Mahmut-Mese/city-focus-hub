@@ -438,9 +438,6 @@ function DetailView({ item, onBack }) {
       <div className="admin-media-page__top" style={{ marginBottom: 24 }}>
         <h1 className="admin-media-page__title" style={{ fontSize: '2.25rem', lineHeight: '2.75rem' }}>{item.name}</h1>
         <div className="admin-media-page__actions">
-          <button className="admin-media-page__button" type="button" onClick={() => navigator.clipboard?.writeText(item.url || '')}>
-            Copy URL
-          </button>
           <button className="admin-media-page__button--primary" type="button" onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}>
             Open asset
           </button>

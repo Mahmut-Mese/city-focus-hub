@@ -316,6 +316,13 @@ const STYLES = `
   padding: 14px 16px;
   cursor: pointer;
 }
+.admin-repeatable__image-preview {
+  margin-top: 10px;
+}
+.admin-repeatable__image-preview .admin-media__thumb {
+  max-width: 280px;
+  max-height: 180px;
+}
 .admin-toggle {
   min-height: 2.5rem;
   display: flex;
@@ -324,6 +331,12 @@ const STYLES = `
   padding: .625rem .875rem;
   border: 1px solid #dcdce4;
   border-radius: 4px;
+}
+.admin-field--boolean .admin-toggle {
+  width: auto;
+  min-width: 180px;
+  justify-content: flex-start;
+  gap: 10px;
 }
 .admin-toggle:has(input:disabled) {
   background: #f6f6f9;
@@ -781,6 +794,71 @@ function parseInputValue(nextRawValue, currentValue) {
   return nextRawValue;
 }
 
+function getRepeatableItemValue(item) {
+  if (typeof item === 'string') {
+    return item;
+  }
+
+  if (item && typeof item === 'object') {
+    return String(item.text ?? '');
+  }
+
+  return '';
+}
+
+function getMediaDisplayName(value, fallback = 'Uploaded image') {
+  const raw = String(value ?? '').trim();
+
+  if (!raw) {
+    return fallback;
+  }
+
+  const normalized = raw.split('?')[0].split('#')[0];
+  const parts = normalized.split('/').filter(Boolean);
+  return parts[parts.length - 1] || fallback;
+}
+
+function withRepeatableItemValue(item, nextValue) {
+  if (typeof item === 'string') {
+    return nextValue;
+  }
+
+  if (item && typeof item === 'object') {
+    return {
+      ...item,
+      text: nextValue,
+    };
+  }
+
+  return { text: nextValue };
+}
+
+function resolveMediaPreviewUrl(value) {
+  if (!value) {
+    return '';
+  }
+
+  const normalized = String(value).trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  if (normalized.startsWith('//')) {
+    return `https:${normalized}`;
+  }
+
+  if (normalized.startsWith('/uploads/') || normalized.startsWith('/admin-assets/')) {
+    return `http://localhost:3001${normalized}`;
+  }
+
+  return normalized;
+}
+
 function updateAtPath(value, path, nextValue) {
   if (!path.length) {
     return nextValue;
@@ -843,6 +921,32 @@ function getDisplayTitle(definition, record) {
   return record[definition.titleField] || definition.label;
 }
 
+function isBlogDisabledField(definition, field) {
+  return definition?.name === 'blog-posts' && field === 'featured';
+}
+
+function isFaqDisabledField(definition, field) {
+  return definition?.name === 'faq-items' && field === 'isFeatured';
+}
+
+function isMeetingRoomDisabledField(definition, field) {
+  return definition?.name === 'meeting-rooms' && field === 'isFeatured';
+}
+
+function isVisibilityToggleField(definition, field) {
+  return isBlogDisabledField(definition, field)
+    || isFaqDisabledField(definition, field)
+    || isMeetingRoomDisabledField(definition, field);
+}
+
+function getFieldDisplayLabel(definition, field) {
+  if (isVisibilityToggleField(definition, field)) {
+    return 'Visibility';
+  }
+
+  return toLabel(field);
+}
+
 async function requestPage(pageName, options = {}) {
   const searchParams = new URLSearchParams(options.query ?? {});
   const queryString = searchParams.toString();
@@ -851,6 +955,7 @@ async function requestPage(pageName, options = {}) {
     {
       method: options.method ?? 'GET',
       headers: {
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -858,10 +963,42 @@ async function requestPage(pageName, options = {}) {
     },
   );
 
-  const payload = await response.json();
+  const responseText = await response.text();
+  let payload = null;
 
-  if (!response.ok) {
-    throw new Error(payload.message ?? 'Request failed');
+  try {
+    payload = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok || !payload) {
+    const trimmedText = responseText.trim().toLowerCase();
+    const isHtml = trimmedText.startsWith('<!doctype') || trimmedText.startsWith('<html');
+    const redirectedToLogin = response.redirected && response.url.includes('/admin/login');
+    const isAuthError = response.status === 401 || response.status === 403 || redirectedToLogin;
+
+    if (isAuthError) {
+      throw new Error('Your admin session expired. Refresh and sign in again.');
+    }
+
+    if (payload?.message) {
+      throw new Error(payload.message);
+    }
+
+    if (payload?.error) {
+      throw new Error(payload.error);
+    }
+
+    if (isHtml) {
+      throw new Error(`Server returned an HTML error page (${response.status || 'unknown'}). Check backend logs.`);
+    }
+
+    if (response.status) {
+      throw new Error(`Request failed (${response.status}).`);
+    }
+
+    throw new Error('Request failed.');
   }
 
   return payload;
@@ -910,30 +1047,13 @@ function MediaField({ label, value, path, onChange, disabled }) {
                 <button className="admin-media__action" type="button" onClick={() => window.open(urls[0], '_blank', 'noopener,noreferrer')}>↗</button>
                 <button className="admin-media__action" type="button" disabled={disabled} onClick={() => onChange(path, Array.isArray(value) ? [] : '')}>✕</button>
               </div>
-              <div className="admin-media__filename">{urls[0].split('/').pop()}</div>
+              <div className="admin-media__filename">{getMediaDisplayName(urls[0])}</div>
             </div>
           ) : (
             <div>No media selected.</div>
           )}
         </div>
         <div className="admin-media__source">
-          {Array.isArray(value) ? (
-            <textarea
-              className="admin-textarea"
-              value={value.join('\n')}
-              disabled={disabled || uploading}
-              onChange={(event) => onChange(path, event.target.value.split('\n').map((item) => item.trim()).filter(Boolean))}
-              placeholder="One image URL per line"
-            />
-          ) : (
-            <input
-              className="admin-input"
-              value={value ?? ''}
-              disabled={disabled || uploading}
-              onChange={(event) => onChange(path, event.target.value)}
-              placeholder="https://..."
-            />
-          )}
           <div className="admin-media__source-actions">
             <button
               className="admin-media__upload-button"
@@ -987,19 +1107,21 @@ function MediaField({ label, value, path, onChange, disabled }) {
   );
 }
 
-function PrimitiveField({ field, value, path, onChange, disabled }) {
-  const label = toLabel(field);
+function PrimitiveField({ definition, field, value, path, onChange, disabled }) {
+  const label = getFieldDisplayLabel(definition, field);
 
   if (IMAGE_FIELD_PATTERN.test(field)) {
     return <MediaField label={label} value={value} path={path} onChange={onChange} disabled={disabled} />;
   }
 
   if (BOOLEAN_FIELD_PATTERN.test(field)) {
+    const isDisabledField = isVisibilityToggleField(definition, field);
+
     return (
-      <div className="admin-field admin-field--full">
+      <div className="admin-field admin-field--boolean">
         <label className="admin-label">{label}</label>
         <div className="admin-toggle">
-          <span>{value ? 'Enabled' : 'Disabled'}</span>
+          <span>{isDisabledField ? 'Hide on website' : (value ? 'Active' : 'Disabled')}</span>
           <input type="checkbox" checked={Boolean(value)} disabled={disabled} onChange={(event) => onChange(path, event.target.checked)} />
         </div>
       </div>
@@ -1037,8 +1159,12 @@ function PrimitiveField({ field, value, path, onChange, disabled }) {
 function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   const label = toLabel(field);
   const items = Array.isArray(value) ? value : [];
+  const isImageArray = IMAGE_FIELD_PATTERN.test(field);
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [uploadingIndex, setUploadingIndex] = useState(null);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRefs = useRef({});
 
   return (
     <div className="admin-field admin-field--full">
@@ -1087,7 +1213,11 @@ function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, onM
             <summary className="admin-repeatable__summary">
               <div className="admin-repeatable__summary-left">
                 <span className="admin-repeatable__bullet">▼</span>
-                <span className="admin-repeatable__name">{typeof item === 'string' ? item || `${label} ${index + 1}` : item?.text || `${label} ${index + 1}`}</span>
+                <span className="admin-repeatable__name">
+                  {isImageArray
+                    ? `Image ${index + 1}`
+                    : (typeof item === 'string' ? item || `${label} ${index + 1}` : item?.text || `${label} ${index + 1}`)}
+                </span>
               </div>
               <div className="admin-repeatable__actions">
                 <button
@@ -1136,13 +1266,89 @@ function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, onM
             <div className="admin-repeatable__body">
               <div className="admin-field-grid">
                 <div className="admin-field admin-field--full">
-                  <label className="admin-label">{label === 'Tags' ? 'Text' : label.slice(0, -1) || label}</label>
-                  <input
-                    className="admin-input"
-                    value={typeof item === 'string' ? item : item?.text ?? ''}
-                    disabled={disabled}
-                    onChange={(event) => onChange([...path, index], { text: event.target.value })}
-                  />
+                  {isImageArray ? null : <label className="admin-label">{label === 'Tags' ? 'Text' : label.slice(0, -1) || label}</label>}
+                  {isImageArray ? null : (
+                    <input
+                      className="admin-input"
+                      value={getRepeatableItemValue(item)}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        onChange([...path, index], withRepeatableItemValue(item, event.target.value));
+                      }}
+                    />
+                  )}
+                  {isImageArray && resolveMediaPreviewUrl(getRepeatableItemValue(item)) ? (
+                    <>
+                      <div className="admin-media__canvas admin-repeatable__image-preview">
+                        <img
+                          className="admin-media__thumb"
+                          src={resolveMediaPreviewUrl(getRepeatableItemValue(item))}
+                          alt={`${label} ${index + 1}`}
+                        />
+                      </div>
+                      <div className="admin-media__source-actions" style={{ marginTop: '10px' }}>
+                        <button
+                          className="admin-media__action"
+                          type="button"
+                          onClick={() => window.open(resolveMediaPreviewUrl(getRepeatableItemValue(item)), '_blank', 'noopener,noreferrer')}
+                        >
+                          ↗
+                        </button>
+                        <button
+                          className="admin-media__action"
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => onChange([...path, index], withRepeatableItemValue(item, ''))}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                  {isImageArray ? (
+                    <div className="admin-media__source-actions">
+                      <button
+                        className="admin-media__upload-button"
+                        type="button"
+                        disabled={disabled || uploadingIndex === index}
+                        onClick={() => fileInputRefs.current[index]?.click()}
+                      >
+                        {uploadingIndex === index ? 'Uploading...' : 'Upload from computer'}
+                      </button>
+                      <input
+                        ref={(element) => {
+                          if (element) {
+                            fileInputRefs.current[index] = element;
+                          } else {
+                            delete fileInputRefs.current[index];
+                          }
+                        }}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+
+                          if (!file) {
+                            return;
+                          }
+
+                          setUploadError('');
+                          setUploadingIndex(index);
+
+                          try {
+                            const uploadedUrl = await uploadAdminImage(file);
+                            onChange([...path, index], withRepeatableItemValue(item, uploadedUrl));
+                          } catch (error) {
+                            setUploadError(error?.message || 'Failed to upload image.');
+                          } finally {
+                            setUploadingIndex(null);
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1151,16 +1357,17 @@ function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, onM
         <button className="admin-repeatable__add" type="button" disabled={disabled} onClick={() => onAddItem(path, { text: '' })}>
           + Add an entry
         </button>
+        {uploadError ? <div className="admin-media__error" style={{ padding: '10px 16px 14px' }}>{uploadError}</div> : null}
       </div>
     </div>
   );
 }
 
-function FieldRenderer({ field, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
+function FieldRenderer({ definition, field, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
   if (Array.isArray(value)) {
     return <ArrayField field={field} value={value} path={path} onChange={onChange} onAddItem={onAddItem} onRemoveItem={onRemoveItem} onMoveItem={onMoveItem} disabled={disabled} />;
   }
-  return <PrimitiveField field={field} value={value} path={path} onChange={onChange} disabled={disabled} />;
+  return <PrimitiveField definition={definition} field={field} value={value} path={path} onChange={onChange} disabled={disabled} />;
 }
 
 function renderListCell(field, value) {
@@ -1452,7 +1659,6 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
             <h1 className="admin-title">{getDisplayTitle(definition, displayedRecord)}</h1>
             <div className="admin-status">{publishedRecord ? 'Published' : (displayedRecord.status || 'Draft')}</div>
           </div>
-          <button className="admin-kebab" type="button">…</button>
         </div>
 
         <div className="admin-tabs">
@@ -1469,6 +1675,7 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
                 <div className="admin-field-grid">
                   {row.map((field) => (
                     <FieldRenderer
+                      definition={definition}
                       key={field}
                       field={field}
                       value={displayedRecord[field]}
@@ -1577,8 +1784,12 @@ export default function CollectionManager() {
     [record, originalRecord],
   );
   const hasDraftContent = useMemo(() => hasMeaningfulValue(record), [record]);
+  const hasUnpublishedChanges = useMemo(
+    () => JSON.stringify(toComparableValue(record)) !== JSON.stringify(toComparableValue(publishedRecord)),
+    [record, publishedRecord],
+  );
   const canSave = mode === 'edit' && !saving && activeTab !== 'published' && isDirty;
-  const canPublish = mode === 'edit' && !saving && activeTab !== 'published' && (publishedRecord ? isDirty : hasDraftContent);
+  const canPublish = mode === 'edit' && !saving && activeTab !== 'published' && (publishedRecord ? hasUnpublishedChanges : hasDraftContent);
   const canDiscard = mode === 'edit' && !saving && activeTab !== 'published' && hasDraftContent;
   const canUnpublish = mode === 'edit' && !saving && Boolean(publishedRecord);
 

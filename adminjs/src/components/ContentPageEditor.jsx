@@ -7,8 +7,22 @@ const api = new ApiClient();
 
 const MULTILINE_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|hours|address|text|paragraph|overview|challenge|result)/i;
 const IMAGE_FIELD_PATTERN = /(image|background|logo|thumbnail|featured)/i;
+const PATH_FIELD_PATTERN = /(^path$|Path$)/;
 const FULL_WIDTH_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|overview|challenge|result|background|image|gallery|sections|testimonials|services|whyChooseItems|featureChips|socialLinks|faqItems|comparisonRows|comparisonColumns|storyParagraphs|relatedWorkspaces|challengeItems|amenities|navigation|footer|form)/i;
 const REQUIRED_FIELD_PATTERN = /(heroTitle|heroSubtitle|storyTitle|whyChooseTitle|amenitiesTitle|title)$/i;
+const ROUTE_OPTIONS = [
+  { value: '/', label: 'Home' },
+  { value: '/pricing', label: 'Pricing' },
+  { value: '/meeting-rooms', label: 'Meeting Rooms' },
+  { value: '/virtual-office', label: 'Virtual Office' },
+  { value: '/about', label: 'About' },
+  { value: '/contact', label: 'Contact' },
+  { value: '/faq', label: 'FAQ' },
+  { value: '/blog', label: 'Blog' },
+  { value: '/privacy', label: 'Privacy Policy' },
+  { value: '/terms', label: 'Terms' },
+  { value: '/dashboard', label: 'Dashboard' },
+];
 
 const PAGE_LAYOUTS = {
   'site-settings': [
@@ -716,6 +730,31 @@ function toLabel(name) {
     .replace(/^./, (value) => value.toUpperCase());
 }
 
+function getFieldLabel(fieldKey) {
+  if (fieldKey === 'path') {
+    return 'Destination';
+  }
+
+  if (fieldKey.endsWith('Path')) {
+    return toLabel(fieldKey.replace(/Path$/, 'Destination'));
+  }
+
+  return toLabel(fieldKey);
+}
+
+function getPathOptions(currentValue) {
+  const options = [...ROUTE_OPTIONS];
+
+  if (currentValue && !options.some((option) => option.value === currentValue)) {
+    options.unshift({
+      value: currentValue,
+      label: 'Current destination',
+    });
+  }
+
+  return options;
+}
+
 function cloneValue(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -1007,10 +1046,11 @@ function buildSections(pageName, content) {
 }
 
 function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
-  const label = toLabel(fieldKey);
+  const label = getFieldLabel(fieldKey);
   const inputValue = value ?? '';
   const required = isRequiredField(fieldKey);
   const isImageField = typeof inputValue === 'string' && IMAGE_FIELD_PATTERN.test(fieldKey);
+  const isPathField = typeof inputValue === 'string' && PATH_FIELD_PATTERN.test(fieldKey);
   const previewUrl = isImageField ? resolveMediaPreviewUrl(inputValue) : '';
   const showPreview = Boolean(previewUrl);
   const fileInputRef = useRef(null);
@@ -1062,19 +1102,6 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
                     className="admin-media__action"
                     type="button"
                     disabled={disabled}
-                    onClick={() => {
-                      const nextValue = window.prompt(`Update ${label} URL`, inputValue);
-                      if (nextValue !== null) {
-                        onChange(path, nextValue);
-                      }
-                    }}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="admin-media__action"
-                    type="button"
-                    disabled={disabled}
                     onClick={() => onChange(path, '')}
                   >
                     ✕
@@ -1083,18 +1110,10 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
                 <div className="admin-media__filename">{getFilename(inputValue)}</div>
               </div>
             ) : (
-              <div className="admin-media__empty">Paste an image URL below to attach media.</div>
+              <div className="admin-media__empty">Upload an image to attach media.</div>
             )}
           </div>
           <div className="admin-media__source">
-            <input
-              className="admin-input"
-              type="text"
-              value={inputValue}
-              disabled={disabled || uploading}
-              onChange={(event) => onChange(path, event.target.value)}
-              placeholder="https://..."
-            />
             <div className="admin-media__source-actions">
               <button
                 className="admin-media__upload-button"
@@ -1144,7 +1163,21 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
         {label}
         {required ? <span className="admin-label__required">*</span> : null}
       </label>
-      {MULTILINE_FIELD_PATTERN.test(fieldKey) ? (
+      {isPathField ? (
+        <select
+          className="admin-input"
+          value={inputValue}
+          disabled={disabled}
+          onChange={(event) => onChange(path, event.target.value)}
+        >
+          <option value="">Select destination</option>
+          {getPathOptions(inputValue).map((option) => (
+            <option key={option.value || 'empty'} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : MULTILINE_FIELD_PATTERN.test(fieldKey) ? (
         <textarea
           className="admin-textarea"
           value={inputValue}
@@ -1396,8 +1429,12 @@ export default function ContentPageEditor() {
     [content, originalContent],
   );
   const hasDraftContent = useMemo(() => hasMeaningfulValue(content), [content]);
+  const hasUnpublishedChanges = useMemo(
+    () => JSON.stringify(toComparableValue(content)) !== JSON.stringify(toComparableValue(publishedContent)),
+    [content, publishedContent],
+  );
   const canSave = !isPublishedView && !saving && isDirty;
-  const canPublish = !isPublishedView && !saving && (publishedContent ? isDirty : hasDraftContent);
+  const canPublish = !isPublishedView && !saving && (publishedContent ? hasUnpublishedChanges : hasDraftContent);
   const canDiscard = !saving && !isPublishedView && hasDraftContent;
   const canUnpublish = !saving && Boolean(publishedContent);
   const sections = useMemo(() => buildSections(pageName, displayedContent), [pageName, displayedContent]);
@@ -1543,8 +1580,6 @@ export default function ContentPageEditor() {
               <h1 className="admin-title">{entryTitle}</h1>
             <div className="admin-status">{publishedContent ? 'Published' : 'Draft'}</div>
           </div>
-
-            <button className="admin-kebab" type="button">…</button>
           </div>
 
           <div className="admin-tabs">

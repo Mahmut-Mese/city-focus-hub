@@ -14,12 +14,12 @@ const COLLECTION_DEFINITIONS = [
     filterFields: ['status', 'category', 'featured'],
     sortableFields: ['title', 'category', 'publishedDate', 'featured', 'updatedAt', 'status'],
     editLayout: [
-      ['title', 'slug'],
+      ['title'],
       ['excerpt'],
       ['content'],
       ['contentImages'],
       ['proTipTitle', 'proTipText'],
-      ['category', 'publishedDate'],
+      ['category'],
       ['readTime', 'author'],
       ['tags'],
       ['featured'],
@@ -55,7 +55,7 @@ const COLLECTION_DEFINITIONS = [
     filterFields: ['status', 'isFeatured'],
     sortableFields: ['name', 'capacity', 'sortOrder', 'isFeatured', 'updatedAt', 'status'],
     editLayout: [
-      ['name', 'slug'],
+      ['name'],
       ['description'],
       ['capacity', 'sortOrder'],
       ['features'],
@@ -76,7 +76,7 @@ const COLLECTION_DEFINITIONS = [
     filterFields: ['status', 'planType', 'isPopular'],
     sortableFields: ['name', 'planType', 'price', 'sortOrder', 'isPopular', 'updatedAt', 'status'],
     editLayout: [
-      ['name', 'slug'],
+      ['name'],
       ['planType', 'price'],
       ['period', 'sortOrder'],
       ['description'],
@@ -114,6 +114,70 @@ function parseJson(value, fallback) {
   }
 
   return value;
+}
+
+function slugify(value) {
+  const normalized = String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return normalized.slice(0, 240).replace(/-+$/g, '');
+}
+
+function getAutoSlug(definition, content) {
+  const primaryValue = definition.kind === 'blog-posts'
+    ? content.title
+    : content.name;
+  const preferredSlug = slugify(primaryValue);
+
+  if (preferredSlug) {
+    return preferredSlug;
+  }
+
+  const existingSlug = slugify(content.slug);
+  if (existingSlug) {
+    return existingSlug;
+  }
+
+  return slugify(`${definition.kind}-${randomUUID().slice(0, 8)}`);
+}
+
+function getCurrentPublishedDate() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+function normalizePlanType(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+
+  if (normalized.includes('meeting')) {
+    return 'meeting-room';
+  }
+
+  return 'coworking';
+}
+
+function getSortTieBreakerValue(record) {
+  return String(record?.title ?? record?.name ?? record?.question ?? record?.slug ?? record?.documentId ?? '').toLowerCase();
+}
+
+function normalizeReadTimeForStorage(value) {
+  const raw = String(value ?? '').trim();
+
+  if (!raw) {
+    return '';
+  }
+
+  return raw.replace(/\s*read\s*$/i, '').trim();
+}
+
+function normalizeReadTimeForAdmin(value) {
+  return normalizeReadTimeForStorage(value);
 }
 
 function normalizeForSave(value) {
@@ -191,7 +255,7 @@ function mapRowFromTable(definition, row) {
         proTipText: row.pro_tip_text ?? '',
         category: row.category ?? '',
         publishedDate: row.published_date ?? '',
-        readTime: row.read_time ?? '',
+        readTime: normalizeReadTimeForAdmin(row.read_time),
         author: row.author ?? '',
         tags: [],
         featured: Boolean(row.featured),
@@ -232,7 +296,7 @@ function mapRowFromTable(definition, row) {
         documentId: row.document_id,
         name: row.name ?? '',
         slug: row.slug ?? '',
-        planType: row.plan_type ?? 'coworking',
+        planType: normalizePlanType(row.plan_type),
         price: row.price ?? 0,
         period: row.period ?? 'month',
         description: row.description ?? '',
@@ -247,7 +311,17 @@ function mapRowFromTable(definition, row) {
   }
 }
 
-function mapListValue(field, value) {
+function isVisibilityField(definition, field) {
+  return (definition?.name === 'blog-posts' && field === 'featured')
+    || (definition?.name === 'faq-items' && field === 'isFeatured')
+    || (definition?.name === 'meeting-rooms' && field === 'isFeatured');
+}
+
+function mapListValue(definition, field, value) {
+  if (isVisibilityField(definition, field)) {
+    return Boolean(value) ? 'Hidden' : 'Visible';
+  }
+
   if (field === 'featured' || field === 'isFeatured' || field === 'isPopular') {
     return Boolean(value) ? 'Yes' : 'No';
   }
@@ -277,13 +351,17 @@ function getAvailableFields(definition) {
   });
 }
 
-function getFieldLabel(field) {
+function getFieldLabel(definition, field) {
   if (field === 'updatedAt') {
     return 'Updated At';
   }
 
   if (field === 'status') {
     return 'Status';
+  }
+
+  if (isVisibilityField(definition, field)) {
+    return 'Visibility';
   }
 
   return toLabel(field);
@@ -320,7 +398,7 @@ function getFilterOptions(definition, records) {
     if (definition.filterFields.includes(field)) {
       filters.push({
         field,
-        label: getFieldLabel(field),
+        label: getFieldLabel(definition, field),
         options: ['Yes', 'No'],
       });
     }
@@ -475,7 +553,7 @@ async function loadCollectionList(definition, query = {}) {
         raw,
         searchBlob,
         columns: Object.fromEntries(
-          availableFields.map((field) => [field, mapListValue(field, raw[field])]),
+          availableFields.map((field) => [field, mapListValue(definition, field, raw[field])]),
         ),
       };
     })
@@ -519,7 +597,7 @@ async function loadCollectionList(definition, query = {}) {
     records: list,
     controls: {
       displayedFields,
-      availableFields: availableFields.map((field) => ({ field, label: getFieldLabel(field) })),
+      availableFields: availableFields.map((field) => ({ field, label: getFieldLabel(definition, field) })),
       filters: getFilterOptions(definition, list),
       activeFilters,
       sortBy,
@@ -590,12 +668,12 @@ function mapPayloadForTable(definition, content) {
     case 'blog-posts':
       return {
         title: content.title ?? '',
-        slug: content.slug ?? '',
+        slug: getAutoSlug(definition, content),
         excerpt: content.excerpt ?? '',
         content: content.content ?? '',
         category: content.category ?? '',
-        published_date: content.publishedDate || null,
-        read_time: content.readTime ?? '',
+        published_date: content.publishedDate ?? '',
+        read_time: normalizeReadTimeForStorage(content.readTime),
         author: content.author ?? '',
         featured: content.featured ? 1 : 0,
         cover_image_url: content.coverImage ?? '',
@@ -613,7 +691,7 @@ function mapPayloadForTable(definition, content) {
     case 'meeting-rooms':
       return {
         name: content.name ?? '',
-        slug: content.slug ?? '',
+        slug: getAutoSlug(definition, content),
         description: content.description ?? '',
         capacity: Number(content.capacity ?? 0),
         sort_order: Number(content.sortOrder ?? 1),
@@ -623,8 +701,8 @@ function mapPayloadForTable(definition, content) {
     case 'pricing-plans':
       return {
         name: content.name ?? '',
-        slug: content.slug ?? '',
-        plan_type: content.planType ?? 'coworking',
+        slug: getAutoSlug(definition, content),
+        plan_type: normalizePlanType(content.planType),
         price: Number(content.price ?? 0),
         period: content.period ?? 'month',
         description: content.description ?? '',
@@ -932,6 +1010,9 @@ async function publishCollectionRecord(definition, recordId) {
       : null;
 
     const mapped = mapPayloadForTable(definition, mapRowFromTable(definition, draftRow));
+    if (definition.kind === 'blog-posts') {
+      mapped.published_date = getCurrentPublishedDate();
+    }
     let publishedId = publishedRow?.id ?? null;
 
     if (publishedId) {
@@ -1243,7 +1324,7 @@ export async function getCollectionPublicData(pageName, options = {}) {
   const slugFilter = options.slug ? String(options.slug) : '';
   const documentIdFilter = options.documentId ? String(options.documentId) : '';
   const featuredOnly = options.isFeatured === 'true';
-  const planType = options.planType ? String(options.planType) : '';
+  const planType = options.planType ? normalizePlanType(options.planType) : '';
 
   let filtered = hydrated.filter(Boolean);
 
@@ -1259,7 +1340,7 @@ export async function getCollectionPublicData(pageName, options = {}) {
   }
 
   if (planType) {
-    filtered = filtered.filter((record) => String(record.planType ?? '') === planType);
+    filtered = filtered.filter((record) => normalizePlanType(record.planType) === planType);
   }
 
   const sortBy = options.sortBy ? String(options.sortBy) : '';
@@ -1272,11 +1353,19 @@ export async function getCollectionPublicData(pageName, options = {}) {
 
       if (typeof leftValue === 'number' || typeof rightValue === 'number') {
         const diff = Number(leftValue ?? 0) - Number(rightValue ?? 0);
-        return sortOrder === 'asc' ? diff : -diff;
+        if (diff !== 0) {
+          return sortOrder === 'asc' ? diff : -diff;
+        }
+
+        return getSortTieBreakerValue(left).localeCompare(getSortTieBreakerValue(right));
       }
 
       const compared = String(leftValue ?? '').localeCompare(String(rightValue ?? ''));
-      return sortOrder === 'asc' ? compared : -compared;
+      if (compared !== 0) {
+        return sortOrder === 'asc' ? compared : -compared;
+      }
+
+      return getSortTieBreakerValue(left).localeCompare(getSortTieBreakerValue(right));
     });
   }
 
@@ -1319,7 +1408,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       ...result,
@@ -1339,7 +1428,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       ...result,
@@ -1367,7 +1456,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       ...result,
@@ -1387,7 +1476,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       ...result,
@@ -1407,7 +1496,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       ...result,
@@ -1427,7 +1516,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       deleted: true,
@@ -1452,7 +1541,7 @@ export async function handleCollectionPage(pageName, request) {
         label: definition.label,
         pluralLabel: definition.pluralLabel,
         titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
         editLayout: definition.editLayout,
       },
       ...result,
@@ -1467,7 +1556,7 @@ export async function handleCollectionPage(pageName, request) {
       label: definition.label,
       pluralLabel: definition.pluralLabel,
       titleField: definition.titleField,
-      listColumns: definition.listColumns.map((field) => ({ field, label: toLabel(field) })),
+      listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
       editLayout: definition.editLayout,
     },
     records: listResult.records,

@@ -37,6 +37,7 @@ const RESOURCE_DEFINITIONS = [
 const HIDDEN_PROPERTIES = [
   'created_by_id',
   'updated_by_id',
+  'slug',
 ];
 
 const EXACT_LABELS = {
@@ -238,7 +239,7 @@ async function defineModelForTable(definition) {
       label: definition.label,
       titleProperty: titleColumn,
       listProperties,
-      filterProperties: ['id', 'slug', 'name', 'title', 'question', 'published_at'].filter((column) => columns.includes(column)),
+      filterProperties: ['id', 'name', 'title', 'question', 'published_at'].filter((column) => columns.includes(column)),
       editProperties,
       showProperties: columns,
       sort: {

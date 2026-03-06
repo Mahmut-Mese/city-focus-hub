@@ -190,7 +190,7 @@ export default function Home() {
               {content.testimonials.map((testimonial) => (
                 <article key={testimonial.name} className="rounded-xl border border-black/10 bg-white p-4 md:p-5">
                   <div className="flex gap-1 mb-3 text-black">
-                    {Array.from({ length: 5 }).map((_, index) => (
+                    {Array.from({ length: testimonial.stars }).map((_, index) => (
                       <Star key={index} size={13} className="fill-black text-black" />
                     ))}
                   </div>

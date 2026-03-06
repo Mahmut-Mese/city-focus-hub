@@ -43,6 +43,7 @@ export default function BlogDetail() {
     || blogPostsQuery.isError
     || blogPageQuery.isError
     || !blogPostQuery.data
+    || blogPostQuery.data.featured
     || !blogPostsQuery.data
     || !blogPageQuery.data
     || blogPostsQuery.data.length === 0
@@ -55,7 +56,7 @@ export default function BlogDetail() {
   }
 
   const cmsPost = blogPostQuery.data;
-  const cmsPosts = blogPostsQuery.data;
+  const cmsPosts = blogPostsQuery.data.filter((post) => !post.featured);
   const content = blogPageQuery.data;
 
   const allPosts = cmsPosts.map((post) => ({

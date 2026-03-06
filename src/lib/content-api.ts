@@ -1,6 +1,8 @@
-const DEFAULT_API_URL = 'http://localhost:3001';
+const DEFAULT_API_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
 const API_BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
-const API_URL = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
+const API_URL = API_BASE_URL
+  ? (API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`)
+  : '/api';
 
 function normalizeEntity<T>(entity: unknown): T {
   if (!entity || typeof entity !== 'object') {
@@ -68,7 +70,7 @@ export function getMediaUrl(media: unknown): string {
     }
 
     if (media.startsWith('/')) {
-      return `${API_BASE_URL}${media}`;
+      return API_BASE_URL ? `${API_BASE_URL}${media}` : media;
     }
 
     return media;
@@ -85,7 +87,7 @@ export function getMediaUrl(media: unknown): string {
     return rawUrl;
   }
 
-  return `${API_BASE_URL}${rawUrl}`;
+  return API_BASE_URL ? `${API_BASE_URL}${rawUrl}` : rawUrl;
 }
 
 export function getMediaUrls(media: unknown): string[] {

@@ -37,7 +37,7 @@ export default function Blog() {
     );
   }
 
-  const cmsPosts = blogPostsQuery.data;
+  const cmsPosts = blogPostsQuery.data.filter((post) => !post.featured);
   const content = blogPageQuery.data;
 
   const allPosts = cmsPosts.map((post) => ({
@@ -54,13 +54,12 @@ export default function Blog() {
   }));
 
   const hasSearchQuery = searchQuery.trim().length > 0;
-  const featuredPosts = allPosts.filter((post) => post.featured);
-  const categorySourcePosts = hasSearchQuery ? allPosts : featuredPosts;
+  const categorySourcePosts = allPosts;
   const categories = ['All', ...Array.from(new Set(categorySourcePosts.map((post) => post.category)))];
   const tags = getPopularTags(allPosts);
   const selectedCategory = categories.includes(activeCategory) ? activeCategory : 'All';
 
-  const visiblePosts = hasSearchQuery ? allPosts : featuredPosts;
+  const visiblePosts = allPosts;
 
   const filteredPosts = visiblePosts.filter((post) => {
     const matchesSearch =

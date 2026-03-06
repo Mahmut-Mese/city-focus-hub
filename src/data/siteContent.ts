@@ -31,6 +31,7 @@ export interface TestimonialItem {
   name: string;
   role: string;
   content: string;
+  stars: number;
 }
 
 export interface WorkspaceItem {
@@ -410,16 +411,19 @@ export const defaultSiteSettingsContent: SiteSettingsContent = {
         name: 'John Smith',
         role: 'Product Lead',
         content: 'A calm, professional space that makes it easy to focus and meet clients.',
+        stars: 5,
       },
       {
         name: 'Michael Brown',
         role: 'Startup Founder',
         content: 'The meeting rooms are excellent, and the staff is always helpful and responsive.',
+        stars: 5,
       },
       {
         name: 'Daniel Wilson',
         role: 'Business Consultant',
         content: 'Flexible terms, central location, and a community that feels welcoming.',
+        stars: 5,
       },
     ],
     galleryEyebrow: 'Gallery',

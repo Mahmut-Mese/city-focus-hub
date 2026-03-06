@@ -140,7 +140,7 @@ export async function createMediaAssetFromUpload(file) {
   const extFromOriginalName = file.originalname?.includes('.') ? `.${file.originalname.split('.').pop()}` : '';
   const extFromMime = file.mimetype?.includes('/') ? `.${file.mimetype.split('/').pop()}` : '';
   const ext = extFromOriginalName || extFromMime;
-  const relativeUrl = `/uploads/${file.filename}`;
+  const relativeUrl = `${config.uploads.publicPath}/${file.filename}`;
   const baseHash = file.filename.replace(/\.[^/.]+$/, '').slice(0, 255);
   const sizeInKb = Number((Number(file.size ?? 0) / 1024).toFixed(2));
 
@@ -165,7 +165,7 @@ export async function createMediaAssetFromUpload(file) {
         url: relativeUrl,
         previewUrl: null,
         provider: 'local',
-        folderPath: '/uploads',
+        folderPath: config.uploads.publicPath,
         createdAt: now,
         updatedAt: now,
       },

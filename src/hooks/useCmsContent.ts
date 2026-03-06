@@ -118,6 +118,35 @@ function getBoolean(value: unknown, fallback = false): boolean {
   return fallback;
 }
 
+function getNumber(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
+function formatReadTime(value: unknown): string {
+  const raw = String(value ?? '').trim();
+
+  if (!raw) {
+    return '5 min read';
+  }
+
+  if (/\bread$/i.test(raw)) {
+    return raw;
+  }
+
+  return `${raw} read`;
+}
+
 function usePreviewStatus(): PreviewStatus | undefined {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -199,6 +228,7 @@ function toTestimonialItems(
       name: getString(source.name, fallback[index]?.name ?? ''),
       role: getString(source.role, fallback[index]?.role ?? ''),
       content: getString(source.content, fallback[index]?.content ?? ''),
+      stars: Math.max(1, Math.min(5, getNumber(source.stars, fallback[index]?.stars ?? 5))),
     };
   });
 }
@@ -677,7 +707,7 @@ export function useBlogPosts() {
         const directUrl = typeof post.coverImageUrl === 'string' ? post.coverImageUrl : '';
         const contentImages = [
           ...getMediaUrls(post.contentImages),
-          ...toStringArray(post.contentImageUrls),
+          ...toStringArray(post.contentImageUrls).map((item) => getMediaUrl(item)).filter(Boolean),
         ];
         return {
           id: fallbackId,
@@ -690,7 +720,7 @@ export function useBlogPosts() {
           proTipText: typeof post.proTipText === 'string' ? post.proTipText : undefined,
           category: String(post.category ?? 'General'),
           date: String(post.publishedDate ?? ''),
-          readTime: String(post.readTime ?? '5 min read'),
+          readTime: formatReadTime(post.readTime),
           author: String(post.author ?? 'CoworkingHub Team'),
           tags: toStringArray(post.tags),
           featured: Boolean(post.featured),
@@ -727,7 +757,7 @@ export function useBlogPostBySlug(slug?: string, status?: 'draft' | 'published')
       const directUrl = typeof post.coverImageUrl === 'string' ? post.coverImageUrl : '';
       const contentImages = [
         ...getMediaUrls(post.contentImages),
-        ...toStringArray(post.contentImageUrls),
+        ...toStringArray(post.contentImageUrls).map((item) => getMediaUrl(item)).filter(Boolean),
       ];
       return {
         id: fallbackId,
@@ -740,7 +770,7 @@ export function useBlogPostBySlug(slug?: string, status?: 'draft' | 'published')
         proTipText: typeof post.proTipText === 'string' ? post.proTipText : undefined,
         category: String(post.category ?? 'General'),
         date: String(post.publishedDate ?? ''),
-        readTime: String(post.readTime ?? '5 min read'),
+        readTime: formatReadTime(post.readTime),
         author: String(post.author ?? 'CoworkingHub Team'),
         tags: toStringArray(post.tags),
         featured: Boolean(post.featured),
@@ -758,7 +788,7 @@ export function useFaqItems() {
     queryKey: ['cms', 'faq-items', previewStatus ?? 'published'],
     queryFn: async (): Promise<CmsFaqItem[]> => {
       const payload = await fetchApi<unknown>(
-        appendStatusParam('/faq-items?filters[isFeatured][$eq]=true&sort=sortOrder:asc&pagination[pageSize]=200', previewStatus),
+        appendStatusParam('/faq-items?sort=sortOrder:asc&pagination[pageSize]=200', previewStatus),
       );
       const items = unwrapCollection<Record<string, unknown>>(payload);
 
@@ -770,7 +800,7 @@ export function useFaqItems() {
           isFeatured: getBoolean(item.isFeatured),
           sortOrder: Number(item.sortOrder ?? 1),
         }))
-        .filter((item) => item.isFeatured)
+        .filter((item) => !item.isFeatured)
         .sort((left, right) => left.sortOrder - right.sortOrder);
     },
     staleTime: 60_000,
@@ -800,7 +830,15 @@ export function usePricingPlans(planType?: PlanType) {
         features: toStringArray(plan.features),
         isPopular: Boolean(plan.isPopular),
         sortOrder: Number(plan.sortOrder ?? 1),
-      }));
+      }))
+        .sort((left, right) => {
+          const diff = left.sortOrder - right.sortOrder;
+          if (diff !== 0) {
+            return diff;
+          }
+
+          return left.name.localeCompare(right.name);
+        });
     },
     staleTime: 60_000,
   });
@@ -813,7 +851,7 @@ export function useMeetingRooms() {
     queryKey: ['cms', 'meeting-rooms', previewStatus ?? 'published'],
     queryFn: async (): Promise<CmsMeetingRoom[]> => {
       const payload = await fetchApi<unknown>(
-        appendStatusParam('/meeting-rooms?filters[isFeatured][$eq]=true&sort=sortOrder:asc&pagination[pageSize]=100&populate=*', previewStatus),
+        appendStatusParam('/meeting-rooms?sort=sortOrder:asc&pagination[pageSize]=100&populate=*', previewStatus),
       );
       const rooms = unwrapCollection<Record<string, unknown>>(payload);
 
@@ -830,7 +868,7 @@ export function useMeetingRooms() {
           isFeatured: getBoolean(room.isFeatured),
           sortOrder: Number(room.sortOrder ?? 1),
         }))
-        .filter((room) => room.isFeatured)
+        .filter((room) => !room.isFeatured)
         .sort((left, right) => left.sortOrder - right.sortOrder);
     },
     staleTime: 60_000,

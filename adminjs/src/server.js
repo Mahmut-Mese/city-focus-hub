@@ -1,10 +1,12 @@
 import AdminJS from 'adminjs';
 import AdminJSExpress from '@adminjs/express';
 import session from 'express-session';
+import MySQLStoreFactory from 'express-mysql-session';
 import express from 'express';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAdmin } from './admin.js';
@@ -17,7 +19,23 @@ import { registerPublicApi } from './public-api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDirectory = path.join(__dirname, '..', 'public', 'uploads');
+const projectRoot = path.join(__dirname, '..', '..');
+const frontendDistDirectory = path.join(projectRoot, 'dist');
+const frontendIndexFile = path.join(frontendDistDirectory, 'index.html');
+const MySQLStore = MySQLStoreFactory(session);
+
+function getApiErrorMessage(error) {
+  const sequelizeMessage = error?.parent?.sqlMessage
+    || error?.parent?.message
+    || error?.original?.sqlMessage
+    || error?.original?.message;
+
+  if (sequelizeMessage) {
+    return sequelizeMessage;
+  }
+
+  return String(error?.message || 'Request failed.');
+}
 
 const start = async () => {
   await sequelize.authenticate();
@@ -25,6 +43,23 @@ const start = async () => {
   const { resources, resourceDefinitions } = await buildResources();
   const admin = createAdmin(resources);
   const app = express();
+  const hasFrontendBuild = existsSync(frontendIndexFile);
+  const sessionStore = new MySQLStore({
+    host: config.database.host,
+    port: config.database.port,
+    user: config.database.user,
+    password: config.database.password,
+    database: config.database.name,
+    clearExpired: true,
+    checkExpirationInterval: 15 * 60 * 1000,
+    expiration: config.session.cookieMaxAgeMs,
+    createDatabaseTable: true,
+    schema: {
+      tableName: config.session.tableName,
+    },
+  });
+
+  app.set('trust proxy', 1);
 
   if (process.env.NODE_ENV !== 'production') {
     await admin.watch();
@@ -54,14 +89,12 @@ const start = async () => {
     next();
   });
 
+  await mkdir(config.uploads.directory, { recursive: true });
+
   app.use('/api', express.json({ limit: '2mb' }));
   app.use('/admin-assets', express.static(path.join(__dirname, '..', 'public')));
-  app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+  app.use(config.uploads.publicPath, express.static(config.uploads.directory));
   registerPublicApi(app);
-
-  app.get('/', (_request, response) => {
-    response.redirect(302, `${config.rootPath}`);
-  });
 
   app.get('/health', (_request, response) => {
     response.json({
@@ -82,19 +115,22 @@ const start = async () => {
 
         return null;
       },
-      cookieName: 'adminjs',
+      cookieName: config.session.cookieName,
       cookiePassword: config.sessionSecret,
     },
     null,
     {
+      name: config.session.cookieName,
       secret: config.sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: false,
+        sameSite: 'lax',
+        maxAge: config.session.cookieMaxAgeMs,
+        secure: config.publicOrigin.startsWith('https://'),
       },
-      store: new session.MemoryStore(),
+      store: sessionStore,
     },
   );
 
@@ -102,8 +138,8 @@ const start = async () => {
     storage: multer.diskStorage({
       destination: async (_request, _file, callback) => {
         try {
-          await mkdir(uploadsDirectory, { recursive: true });
-          callback(null, uploadsDirectory);
+          await mkdir(config.uploads.directory, { recursive: true });
+          callback(null, config.uploads.directory);
         } catch (error) {
           callback(error);
         }
@@ -155,6 +191,32 @@ const start = async () => {
   app.post('/admin/api/media/upload', handleMediaUpload);
 
   app.use(admin.options.rootPath, adminRouter);
+
+  if (hasFrontendBuild) {
+    app.use(express.static(frontendDistDirectory));
+
+    app.get(/^\/(?!api(?:\/|$)|admin(?:\/|$)|uploads(?:\/|$)|admin-assets(?:\/|$)|health$).*/, (_request, response) => {
+      response.sendFile(frontendIndexFile);
+    });
+  } else {
+    app.get('/', (_request, response) => {
+      response.redirect(302, `${config.rootPath}`);
+    });
+  }
+
+  app.use((error, request, response, next) => {
+    const isAdminApi = request.originalUrl?.startsWith(`${config.rootPath}/api/`);
+
+    if (!isAdminApi) {
+      next(error);
+      return;
+    }
+
+    const statusCode = Number(error?.statusCode || error?.status || 500);
+    response.status(statusCode).json({
+      message: getApiErrorMessage(error),
+    });
+  });
 
   app.listen(config.port, () => {
     console.log(`AdminJS started on http://localhost:${config.port}${admin.options.rootPath}`);

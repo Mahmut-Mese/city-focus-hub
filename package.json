@@ -7,6 +7,8 @@
     "dev": "vite",
     "adminjs:dev": "npm run dev --prefix adminjs",
     "adminjs:start": "npm run start --prefix adminjs",
+    "postinstall": "npm install --prefix adminjs",
+    "start": "npm run adminjs:start",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
