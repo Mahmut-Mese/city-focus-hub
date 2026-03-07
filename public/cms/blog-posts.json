@@ -1,0 +1,120 @@
+{
+  "data": [
+    {
+      "id": 6,
+      "documentId": "de6061b8-67eb-46ca-a8c2-f89e6182dc8d",
+      "title": "Building Community in Your Workspace23",
+      "slug": "building-community-in-your-workspace23",
+      "excerpt": "Learn how to create meaningful connections and build a supportive professional network in shared workspaces.1",
+      "content": "Learn how to create meaningful connections and build a supportive professional network in shared workspaces.1",
+      "contentImages": [
+        "/uploads/1772750374700-a77677f3-5277-434a-9fdc-12e19bb21b14.jpeg",
+        "/uploads/1772750387274-8190d681-8ea9-4d7b-95d6-1dc8918c101f.png"
+      ],
+      "proTipTitle": "Key takeaway1",
+      "proTipText": "Learn how to create meaningful connections and build a supportive professional network in shared workspaces.1",
+      "category": "Community1",
+      "publishedDate": "2026-03-05",
+      "readTime": "5 min",
+      "author": "Emily Roberts1",
+      "tags": [
+        "Community1",
+        "Networking1",
+        "Culture1",
+        "222"
+      ],
+      "featured": false,
+      "coverImage": "/uploads/1772748843067-4987c1ac-9f9f-4216-97b7-6db9ebf63447.png"
+    },
+    {
+      "id": 4,
+      "documentId": "6da8d8e7-bc7a-45d7-917f-efc170214ef0",
+      "title": "The Future of Coworking in 2026 and Beyond",
+      "slug": "the-future-of-coworking-in-2026-and-beyond",
+      "excerpt": "Explore the latest trends shaping the coworking industry and what they mean for businesses and freelancers.",
+      "content": "Explore the latest trends shaping the coworking industry and what they mean for businesses and freelancers.",
+      "contentImages": [
+        "/uploads/1772749304483-7d63ce95-f817-4fdd-bbe7-55b3cf5cb1fb.jpeg"
+      ],
+      "proTipTitle": "Key takeaway",
+      "proTipText": "Explore the latest trends shaping the coworking industry and what they mean for businesses and freelancers.",
+      "category": "Industry",
+      "publishedDate": "2026-03-05",
+      "readTime": "5 min",
+      "author": "Michael Chen",
+      "tags": [
+        "Trends",
+        "Industry",
+        "Future"
+      ],
+      "featured": false,
+      "coverImage": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=600"
+    },
+    {
+      "id": 8,
+      "documentId": "e8f7b3fd-fecf-41d5-99cf-fce7dfd7f94f",
+      "title": "Choosing the Right Membership for Your Needs",
+      "slug": "choosing-the-right-membership-for-your-needs",
+      "excerpt": "A comprehensive guide to selecting the perfect coworking membership based on your work style and requirements.",
+      "content": "A comprehensive guide to selecting the perfect coworking membership based on your work style and requirements.",
+      "contentImages": [],
+      "proTipTitle": "Key takeaway",
+      "proTipText": "A comprehensive guide to selecting the perfect coworking membership based on your work style and requirements.",
+      "category": "Guide",
+      "publishedDate": "2026-03-05",
+      "readTime": "6 min",
+      "author": "David Wilson",
+      "tags": [
+        "Guide",
+        "Membership",
+        "Tips"
+      ],
+      "featured": false,
+      "coverImage": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600"
+    },
+    {
+      "id": 10,
+      "documentId": "fc5302a1-852d-4d7c-a19a-feb12bfc6987",
+      "title": "Remote Work Best Practices for 2026",
+      "slug": "remote-work-best-practices-for-2026",
+      "excerpt": "Essential tips and strategies for maintaining productivity and well-being while working remotely.",
+      "content": "Essential tips and strategies for maintaining productivity and well-being while working remotely.",
+      "contentImages": [],
+      "proTipTitle": "Key takeaway",
+      "proTipText": "Essential tips and strategies for maintaining productivity and well-being while working remotely.",
+      "category": "Remote Work",
+      "publishedDate": "2026-03-05",
+      "readTime": "8 min",
+      "author": "Lisa Anderson",
+      "tags": [
+        "Remote Work",
+        "Tips",
+        "Wellness"
+      ],
+      "featured": false,
+      "coverImage": "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600"
+    },
+    {
+      "id": 2,
+      "documentId": "d4ef8e1b-3d3a-4693-bfcf-a10a329d18bd",
+      "title": "How Flexible Workspaces Help You Stay Productive",
+      "slug": "how-flexible-workspaces-help-you-stay-productive",
+      "excerpt": "Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
+      "content": "Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
+      "contentImages": [],
+      "proTipTitle": "Key takeaway",
+      "proTipText": "Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
+      "category": "Productivity",
+      "publishedDate": "2026-03-04",
+      "readTime": "5 min",
+      "author": "Sarah Johnson",
+      "tags": [
+        "Productivity",
+        "Remote Work",
+        "Workspace"
+      ],
+      "featured": false,
+      "coverImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600"
+    }
+  ]
+}

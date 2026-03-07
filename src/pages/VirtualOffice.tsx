@@ -1,3 +1,4 @@
+import { FormEvent, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -7,10 +8,28 @@ import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Globe, Phone, Check } from 'lucide-react';
 import { useSiteSettings, useVirtualOfficePageContent } from '@/hooks/useCmsContent';
+import { postApi } from '@/lib/content-api';
+
+type VirtualOfficeContactFormState = {
+  name: string;
+  email: string;
+  message: string;
+};
+
+const EMPTY_VIRTUAL_OFFICE_FORM: VirtualOfficeContactFormState = {
+  name: '',
+  email: '',
+  message: '',
+};
 
 export default function VirtualOffice() {
   const siteSettingsQuery = useSiteSettings();
   const virtualOfficeQuery = useVirtualOfficePageContent();
+  const [formState, setFormState] = useState<VirtualOfficeContactFormState>(EMPTY_VIRTUAL_OFFICE_FORM);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
+  const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim());
 
   if (siteSettingsQuery.isLoading || virtualOfficeQuery.isLoading) {
     return null;
@@ -26,6 +45,55 @@ export default function VirtualOffice() {
 
   const siteSettings = siteSettingsQuery.data;
   const content = virtualOfficeQuery.data;
+
+  const handleFieldChange = (field: keyof VirtualOfficeContactFormState, value: string) => {
+    setFormState((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    if (!formState.name.trim()) {
+      setSubmitError('Name is required.');
+      return;
+    }
+
+    if (!formState.email.trim()) {
+      setSubmitError('Email is required.');
+      return;
+    }
+
+    if (!emailLooksValid) {
+      setSubmitError('Enter a valid email address.');
+      return;
+    }
+
+    if (!formState.message.trim()) {
+      setSubmitError('Message is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await postApi('/contact-submissions', {
+        name: formState.name,
+        phone: '',
+        email: formState.email,
+        message: formState.message,
+        sourcePage: 'virtual-office',
+      });
+
+      setFormState(EMPTY_VIRTUAL_OFFICE_FORM);
+      setSubmitSuccess('Your request has been submitted.');
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit your request.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Layout
@@ -131,11 +199,37 @@ export default function VirtualOffice() {
 
               <div className="rounded-2xl border border-black/10 bg-white p-6">
                 <h3 className="font-sans text-4xl leading-none mb-4">{content.contactForm.title}</h3>
-                <form className="space-y-4">
-                  <Input placeholder={content.contactForm.namePlaceholder} className="h-11 border-black/15" />
-                  <Input type="email" placeholder={content.contactForm.emailPlaceholder} className="h-11 border-black/15" />
-                  <Textarea placeholder={content.contactForm.messagePlaceholder} className="min-h-[100px] border-black/15" />
-                  <Button className="h-10 rounded-lg px-5 text-sm w-full bg-black text-white hover:bg-black/90">{content.contactForm.submitLabel}</Button>
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                  <Input
+                    value={formState.name}
+                    onChange={(event) => handleFieldChange('name', event.target.value)}
+                    placeholder={content.contactForm.namePlaceholder}
+                    className="h-11 border-black/15"
+                    autoComplete="name"
+                  />
+                  <Input
+                    type="email"
+                    value={formState.email}
+                    onChange={(event) => handleFieldChange('email', event.target.value)}
+                    placeholder={content.contactForm.emailPlaceholder}
+                    className="h-11 border-black/15"
+                    autoComplete="email"
+                  />
+                  <Textarea
+                    value={formState.message}
+                    onChange={(event) => handleFieldChange('message', event.target.value)}
+                    placeholder={content.contactForm.messagePlaceholder}
+                    className="min-h-[100px] border-black/15"
+                  />
+                  {submitError ? <p className="text-sm font-medium text-red-600">{submitError}</p> : null}
+                  {submitSuccess ? <p className="text-sm font-medium text-green-700">{submitSuccess}</p> : null}
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="h-10 rounded-lg px-5 text-sm w-full bg-black text-white hover:bg-black/90"
+                  >
+                    {isSubmitting ? 'Submitting...' : content.contactForm.submitLabel}
+                  </Button>
                 </form>
               </div>
             </div>

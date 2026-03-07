@@ -1,0 +1,72 @@
+{
+  "data": [
+    {
+      "id": 6,
+      "documentId": "cdebc606-78ab-47e1-bac4-c8dc17defacd",
+      "name": "Open Lounge1",
+      "slug": "open-lounge1",
+      "description": "A relaxed, open environment for informal meetings and collaborative sessions. Perfect for brainstorming and creative work with your team.1",
+      "capacity": 21,
+      "image": "/uploads/1772751686884-8e933d77-bb1d-40ef-b886-4aac3c295cd4.jpeg",
+      "features": [
+        "Flexible seating1",
+        "Coffee bar access1",
+        "Natural light1",
+        "Collaborative space1",
+        "1111"
+      ],
+      "badges": [
+        "20 people1",
+        "Flexible1",
+        "Coffee1",
+        "222"
+      ],
+      "isFeatured": false,
+      "sortOrder": 1
+    },
+    {
+      "id": 4,
+      "documentId": "3e08ce67-11e3-4730-ad15-d86895914859",
+      "name": "Meeting Suite",
+      "slug": "meeting-suite",
+      "description": "Our flagship meeting room perfect for client presentations, team meetings, and workshops. Features state-of-the-art AV equipment and comfortable seating.",
+      "capacity": 12,
+      "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800",
+      "features": [
+        "Large display",
+        "Video conferencing",
+        "Catering available",
+        "Natural light"
+      ],
+      "badges": [
+        "12 people",
+        "Display",
+        "Catering"
+      ],
+      "isFeatured": false,
+      "sortOrder": 2
+    },
+    {
+      "id": 2,
+      "documentId": "434569ea-e8d6-4319-9ae2-5e578326e819",
+      "name": "Focus Room",
+      "slug": "focus-room",
+      "description": "A quiet, private space designed for deep work and one-on-one meetings. Equipped with ergonomic furniture and soundproofing for maximum concentration.",
+      "capacity": 4,
+      "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
+      "features": [
+        "Whiteboard",
+        "Video conferencing",
+        "Soundproof",
+        "Ergonomic chairs"
+      ],
+      "badges": [
+        "4 people",
+        "Whiteboard",
+        "Video call"
+      ],
+      "isFeatured": true,
+      "sortOrder": 1
+    }
+  ]
+}

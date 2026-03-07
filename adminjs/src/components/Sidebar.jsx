@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useSelector } from 'react-redux';
 
@@ -111,8 +111,13 @@ const STYLES = `
 }
 
 .admin-avatar {
+  position: relative;
+}
+
+.admin-avatar__button {
   width: 30px;
   height: 30px;
+  border: 0;
   border-radius: 999px;
   background: #4945ff;
   color: #ffffff;
@@ -120,6 +125,37 @@ const STYLES = `
   place-items: center;
   font-size: 12px;
   font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-avatar__menu {
+  position: absolute;
+  left: 42px;
+  bottom: 0;
+  min-width: 156px;
+  border: 1px solid #dcdce4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(33, 33, 52, 0.16);
+  padding: 6px;
+  z-index: 90;
+}
+
+.admin-avatar__menu button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #32324d;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.admin-avatar__menu button:hover {
+  background: #f6f6f9;
 }
 
 .admin-sidebar-panel {
@@ -311,6 +347,8 @@ export default function Sidebar({ isVisible }) {
   const pages = useSelector((state) => state.pages);
   const session = useSelector((state) => state.session);
   const [search, setSearch] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const avatarRef = useRef(null);
 
   const pageItems = useMemo(
     () => CONTENT_PAGE_ORDER
@@ -348,6 +386,21 @@ export default function Sidebar({ isVisible }) {
   const isMedia = location.pathname.startsWith('/admin/pages/media-library');
   const showPanel = !isMedia;
 
+  useEffect(() => {
+    if (!menuOpen) {
+      return undefined;
+    }
+
+    const handleOutsideClick = (event) => {
+      if (!avatarRef.current?.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [menuOpen]);
+
   return (
     <>
       <style>{STYLES}</style>
@@ -380,7 +433,37 @@ export default function Sidebar({ isVisible }) {
             <MediaIcon />
           </button>
           <div className="admin-rail-spacer" />
-          <div className="admin-avatar">{initial}</div>
+          <div className="admin-avatar" ref={avatarRef}>
+            <button
+              className="admin-avatar__button"
+              type="button"
+              onClick={() => setMenuOpen((current) => !current)}
+            >
+              {initial}
+            </button>
+            {menuOpen ? (
+              <div className="admin-avatar__menu">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate('/admin/pages/account');
+                  }}
+                >
+                  Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    window.location.assign('/admin/logout');
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {showPanel ? (

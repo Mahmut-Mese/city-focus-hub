@@ -1,0 +1,49 @@
+{
+  "data": {
+    "heroTitle": "News, guides & workspace insights1",
+    "heroSubtitle": "Stay updated with the latest trends in coworking and remote work1",
+    "noResultsText": "No articles found matching your criteria.1",
+    "categoriesTitle": "Categories1",
+    "detailBackLabel": "Back to Blog1",
+    "popularTagsTitle": "Popular Tags1",
+    "quickSearchTitle": "Quick Search1",
+    "recentPostsTitle": "Recent Posts1",
+    "detailCommentForm": {
+      "title": "Post a comment1",
+      "submitLabel": "Post Comment1",
+      "namePlaceholder": "Name1",
+      "emailPlaceholder": "1Email",
+      "messagePlaceholder": "Comment1"
+    },
+    "detailSearchTitle": "Search1",
+    "relatedWorkspaces": [
+      {
+        "id": "private-office-1",
+        "link": "/virtual-office",
+        "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400",
+        "title": "Executive Suite1",
+        "category": "Private Office"
+      },
+      {
+        "id": "private-office-2",
+        "link": "/virtual-office",
+        "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=400",
+        "title": "Team Space",
+        "category": "Private Office"
+      },
+      {
+        "id": "private-office-3",
+        "link": "/virtual-office",
+        "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400",
+        "title": "Corner Office",
+        "category": "Private Office"
+      }
+    ],
+    "searchPlaceholder": "Search articles...1",
+    "heroBackgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
+    "detailPopularTagsTitle": "Popular tags1",
+    "detailRecentPostsTitle": "Recent posts1",
+    "detailSearchButtonLabel": "Go1",
+    "detailRelatedWorkspacesTitle": "Related workspaces1"
+  }
+}

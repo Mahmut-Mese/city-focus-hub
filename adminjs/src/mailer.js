@@ -42,11 +42,23 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function withTimeout(promise, timeoutMs = 15000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Email send timed out.')), timeoutMs);
+    }),
+  ]);
+}
+
 export async function sendContactSubmissionEmail(submission) {
   const transporter = await getTransporter();
 
   if (!transporter) {
-    throw new Error('Email notifications are not configured. Set SMTP_HOST and related mail settings in adminjs/.env.');
+    return {
+      ok: false,
+      reason: 'Email notifications are not configured. Set SMTP_HOST and related mail settings in adminjs/.env.',
+    };
   }
 
   const subject = `New contact submission from ${submission.name}`;
@@ -60,22 +72,33 @@ export async function sendContactSubmissionEmail(submission) {
     submission.message,
   ];
 
-  await transporter.sendMail({
-    from: config.mail.from,
-    to: config.mail.to,
-    replyTo: submission.email,
-    subject,
-    text: lines.join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; color: #111;">
-        <h2 style="margin-bottom: 16px;">${escapeHtml(subject)}</h2>
-        <p><strong>Name:</strong> ${escapeHtml(submission.name)}</p>
-        <p><strong>Email:</strong> ${escapeHtml(submission.email)}</p>
-        <p><strong>Phone:</strong> ${escapeHtml(submission.phone || '-')}</p>
-        <p><strong>Source:</strong> ${escapeHtml(submission.sourcePage)}</p>
-        <p><strong>Message:</strong></p>
-        <div style="white-space: pre-wrap; line-height: 1.5;">${escapeHtml(submission.message)}</div>
-      </div>
-    `,
-  });
+  try {
+    await withTimeout(
+      transporter.sendMail({
+      from: config.mail.from,
+      to: config.mail.to,
+      replyTo: submission.email,
+      subject,
+      text: lines.join('\n'),
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #111;">
+          <h2 style="margin-bottom: 16px;">${escapeHtml(subject)}</h2>
+          <p><strong>Name:</strong> ${escapeHtml(submission.name)}</p>
+          <p><strong>Email:</strong> ${escapeHtml(submission.email)}</p>
+          <p><strong>Phone:</strong> ${escapeHtml(submission.phone || '-')}</p>
+          <p><strong>Source:</strong> ${escapeHtml(submission.sourcePage)}</p>
+          <p><strong>Message:</strong></p>
+          <div style="white-space: pre-wrap; line-height: 1.5;">${escapeHtml(submission.message)}</div>
+        </div>
+      `,
+      }),
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      reason: String(error?.message ?? error),
+    };
+  }
+
+  return { ok: true };
 }

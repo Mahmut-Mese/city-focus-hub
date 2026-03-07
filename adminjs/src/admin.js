@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AdminJS, { ComponentLoader } from 'adminjs';
@@ -31,6 +32,10 @@ const contentPageEditorComponent = componentLoader.add(
 const mediaLibraryComponent = componentLoader.add(
   'MediaLibrary',
   path.join(__dirname, 'components', 'MediaLibrary.jsx'),
+);
+const accountSettingsComponent = componentLoader.add(
+  'AccountSettings',
+  path.join(__dirname, 'components', 'AccountSettings.jsx'),
 );
 
 componentLoader.override(
@@ -87,6 +92,18 @@ const mediaPages = Object.fromEntries(
   ]),
 );
 
+const accountPages = {
+  account: {
+    label: 'Account',
+    icon: 'User',
+    component: accountSettingsComponent,
+    handler: async (request) => {
+      const { handleAdminAccountPage } = await import('./account-page.js');
+      return handleAdminAccountPage(request);
+    },
+  },
+};
+
 export function createAdmin(resources) {
   return new AdminJS({
     rootPath: config.rootPath,
@@ -103,6 +120,7 @@ export function createAdmin(resources) {
       ...contentPages,
       ...collectionPages,
       ...mediaPages,
+      ...accountPages,
     },
     locale: {
       translations: {
@@ -114,9 +132,14 @@ export function createAdmin(resources) {
       },
     },
     dashboard: {
-      handler: async () => ({
-        message: 'AdminJS is connected to the content database and exposes the client-facing content surface.',
-      }),
+      handler: async () => {
+        const { getRecentContactSubmissions } = await import('./contact-submissions.js');
+        const recentSubmissions = await getRecentContactSubmissions(50);
+
+        return {
+          recentSubmissions,
+        };
+      },
       component: dashboardComponent,
     },
   });

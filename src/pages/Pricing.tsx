@@ -3,7 +3,18 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { SectionTitle } from '@/components/shared/SectionTitle';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Check, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { usePricingPageContent, usePricingPlans } from '@/hooks/useCmsContent';
+
+function buildPricingContactPath(planName: string, price: number, period: string) {
+  const searchParams = new URLSearchParams({
+    plan: planName,
+    intent: 'purchase',
+    message: `Hello, I would like to buy the ${planName} plan for $${price}/${period}. Please contact me with the next steps.`,
+  });
+
+  return `/contact?${searchParams.toString()}`;
+}
 
 export default function Pricing() {
   const pricingPlansQuery = usePricingPlans('coworking');
@@ -80,9 +91,12 @@ export default function Pricing() {
                 </div>
                 <p className="text-sm text-black/50 mb-4">{plan.description}</p>
 
-                <button className="w-full h-11 rounded-xl bg-black text-white text-sm font-semibold uppercase tracking-[0.02em]">
+                <Link
+                  to={buildPricingContactPath(plan.name, plan.price, plan.period)}
+                  className="flex h-11 w-full items-center justify-center rounded-xl bg-black text-sm font-semibold uppercase tracking-[0.02em] text-white"
+                >
                   {content.purchaseButtonLabel}
-                </button>
+                </Link>
 
                 <div className="mt-6 pt-5 border-t border-black/10">
                   <p className="text-[11px] font-semibold tracking-[0.14em] uppercase mb-1.5">{content.featureListTitle}</p>

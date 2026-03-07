@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { Loader, MessageBox } from '@adminjs/design-system';
 
+const MEDIA_PICKER_EVENT = 'adminjs-media-select';
+
 const STYLES = `
 .admin-media-page {
   min-height: 100%;
@@ -408,11 +410,10 @@ async function uploadAdminImage(file) {
   return payload;
 }
 
-function AssetCard({ item, onOpen }) {
+function AssetCard({ item, onOpen, pickerMode }) {
   return (
-    <article className="admin-asset-card" onClick={() => onOpen(item.id)}>
+    <article className="admin-asset-card" onClick={() => onOpen(item)}>
       <div className="admin-asset-card__preview">
-        <div className="admin-asset-card__checkbox" />
         <img className="admin-asset-card__image" src={item.thumbnailUrl || item.url} alt={item.alternativeText || item.name} />
       </div>
       <div className="admin-asset-card__body">
@@ -423,12 +424,17 @@ function AssetCard({ item, onOpen }) {
         <div className="admin-asset-card__meta">
           {item.ext.replace('.', '').toUpperCase()} - {item.width}×{item.height}
         </div>
+        {pickerMode ? (
+          <div className="admin-asset-card__meta" style={{ marginTop: 8, color: '#4945ff', fontWeight: 700 }}>
+            Use this asset
+          </div>
+        ) : null}
       </div>
     </article>
   );
 }
 
-function DetailView({ item, onBack }) {
+function DetailView({ item, onBack, onSelect, pickerMode }) {
   return (
     <div>
       <button className="admin-media-detail__back" type="button" onClick={onBack}>
@@ -438,6 +444,11 @@ function DetailView({ item, onBack }) {
       <div className="admin-media-page__top" style={{ marginBottom: 24 }}>
         <h1 className="admin-media-page__title" style={{ fontSize: '2.25rem', lineHeight: '2.75rem' }}>{item.name}</h1>
         <div className="admin-media-page__actions">
+          {pickerMode ? (
+            <button className="admin-media-page__button--primary" type="button" onClick={() => onSelect(item)}>
+              Use this asset
+            </button>
+          ) : null}
           <button className="admin-media-page__button--primary" type="button" onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}>
             Open asset
           </button>
@@ -521,6 +532,7 @@ export default function MediaLibrary() {
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const search = query.get('search') || '';
   const fileId = query.get('fileId') || '';
+  const pickerMode = query.get('picker') === '1';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
@@ -566,7 +578,26 @@ export default function MediaLibrary() {
   }, [fileId, search]);
 
   const openList = (nextSearch = search) => {
-    navigate(buildPagePath('/admin/pages/media-library', nextSearch ? { search: nextSearch } : {}));
+    navigate(buildPagePath('/admin/pages/media-library', {
+      ...(nextSearch ? { search: nextSearch } : {}),
+      ...(pickerMode ? { picker: 1 } : {}),
+    }));
+  };
+
+  const selectAsset = (selectedItem) => {
+    if (!pickerMode) {
+      navigate(buildPagePath('/admin/pages/media-library', { fileId: selectedItem.id }));
+      return;
+    }
+
+    if (window.opener) {
+      window.opener.postMessage(
+        { type: MEDIA_PICKER_EVENT, url: selectedItem.relativeUrl || selectedItem.url || '' },
+        window.location.origin,
+      );
+    }
+
+    window.close();
   };
 
   if (loading) {
@@ -585,13 +616,12 @@ export default function MediaLibrary() {
           {error ? <MessageBox variant="danger">{error}</MessageBox> : null}
 
           {fileId && item ? (
-            <DetailView item={item} onBack={() => openList()} />
+            <DetailView item={item} onBack={() => openList()} onSelect={selectAsset} pickerMode={pickerMode} />
           ) : (
             <>
               <div className="admin-media-page__top">
-                <h1 className="admin-media-page__title">Media Library</h1>
+                <h1 className="admin-media-page__title">{pickerMode ? 'Choose Media' : 'Media Library'}</h1>
                 <div className="admin-media-page__actions">
-                  <button className="admin-media-page__button" type="button">+ Add new folder</button>
                   <button
                     className="admin-media-page__button--primary"
                     type="button"
@@ -634,15 +664,12 @@ export default function MediaLibrary() {
 
               <div className="admin-media-page__toolbar">
                 <div className="admin-media-page__toolbar-left">
-                  <div className="admin-media-page__square" />
                   <select className="admin-media-page__select" defaultValue="recent">
                     <option value="recent">Most recent uploads</option>
                   </select>
                   <button className="admin-media-page__button" type="button">Filters</button>
                 </div>
                 <div className="admin-media-page__toolbar-right">
-                  <button className="admin-media-page__icon-button" type="button">⚙</button>
-                  <button className="admin-media-page__icon-button" type="button">☰</button>
                   <input
                     className="admin-media-page__search"
                     value={search}
@@ -658,7 +685,12 @@ export default function MediaLibrary() {
 
               <div className="admin-media-grid">
                 {items.map((mediaItem) => (
-                  <AssetCard key={mediaItem.id} item={mediaItem} onOpen={(nextId) => navigate(buildPagePath('/admin/pages/media-library', { fileId: nextId }))} />
+                  <AssetCard
+                    key={mediaItem.id}
+                    item={mediaItem}
+                    pickerMode={pickerMode}
+                    onOpen={pickerMode ? selectAsset : (nextItem) => navigate(buildPagePath('/admin/pages/media-library', { fileId: nextItem.id }))}
+                  />
                 ))}
               </div>
             </>

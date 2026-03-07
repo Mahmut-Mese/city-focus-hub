@@ -1,0 +1,154 @@
+{
+  "data": {
+    "faqItems": [
+      {
+        "answer": "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.",
+        "question": "Can I switch plans later?"
+      },
+      {
+        "answer": "Yes, we offer a 14-day free trial for the Smart Office plan. No credit card required to start your trial.",
+        "question": "Is there a free trial available?"
+      },
+      {
+        "answer": "We accept all major credit cards, PayPal, and bank transfers for enterprise plans.",
+        "question": "What payment methods do you accept?"
+      }
+    ],
+    "faqTitle": "Frequently Asked Questions",
+    "heroTitle": "Pricing",
+    "faqSubtitle": "Everything you need to know about our memberships",
+    "heroSubtitle": "Flexible plans designed to fit your needs",
+    "comparisonRows": [
+      {
+        "values": [
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          }
+        ],
+        "feature": "Free Resources"
+      },
+      {
+        "values": [
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          }
+        ],
+        "feature": "Premium Resources"
+      },
+      {
+        "values": [
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          }
+        ],
+        "feature": "Webinars & Workshops"
+      },
+      {
+        "values": [
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          }
+        ],
+        "feature": "Download for Offline"
+      },
+      {
+        "values": [
+          {
+            "textValue": "1",
+            "valueType": "text"
+          },
+          {
+            "textValue": "5",
+            "valueType": "text"
+          },
+          {
+            "textValue": "Unlimited",
+            "valueType": "text"
+          }
+        ],
+        "feature": "Team Members"
+      },
+      {
+        "values": [
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          }
+        ],
+        "feature": "API Access"
+      },
+      {
+        "values": [
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": false
+          },
+          {
+            "valueType": "boolean",
+            "booleanValue": true
+          }
+        ],
+        "feature": "Dedicated Support"
+      }
+    ],
+    "comparisonTitle": "Compare All Features",
+    "featureListTitle": "Features",
+    "recommendedLabel": "Recommend",
+    "comparisonColumns": [
+      "Lounge",
+      "Smart Office",
+      "Full Space"
+    ],
+    "featureListSubtitle": "Everything in our free plan plus",
+    "heroBackgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
+    "purchaseButtonLabel": "Purchase Now"
+  }
+}

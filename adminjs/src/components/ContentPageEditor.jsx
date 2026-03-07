@@ -985,6 +985,58 @@ async function uploadAdminImage(file) {
   return uploadedUrl;
 }
 
+const MEDIA_PICKER_EVENT = 'adminjs-media-select';
+
+function chooseAdminLibraryImage() {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      resolve('');
+      return;
+    }
+
+    const pickerWindow = window.open(
+      '/admin/pages/media-library?picker=1',
+      'admin-media-library-picker',
+      'popup=yes,width=1440,height=900,resizable=yes,scrollbars=yes',
+    );
+
+    if (!pickerWindow) {
+      reject(new Error('Media library popup was blocked.'));
+      return;
+    }
+
+    let finished = false;
+
+    const cleanup = () => {
+      window.removeEventListener('message', handleMessage);
+      window.clearInterval(closeWatcher);
+    };
+
+    const handleMessage = (event) => {
+      if (event.origin !== window.location.origin || event.source !== pickerWindow) {
+        return;
+      }
+
+      if (event.data?.type !== MEDIA_PICKER_EVENT) {
+        return;
+      }
+
+      finished = true;
+      cleanup();
+      resolve(typeof event.data.url === 'string' ? event.data.url : '');
+    };
+
+    const closeWatcher = window.setInterval(() => {
+      if (pickerWindow.closed && !finished) {
+        cleanup();
+        resolve('');
+      }
+    }, 500);
+
+    window.addEventListener('message', handleMessage);
+  });
+}
+
 function isRequiredField(fieldKey) {
   return REQUIRED_FIELD_PATTERN.test(fieldKey);
 }
@@ -993,6 +1045,10 @@ function fieldClassName(fieldKey, value) {
   return FULL_WIDTH_FIELD_PATTERN.test(fieldKey) || typeof value === 'boolean'
     ? 'admin-field admin-field--full'
     : 'admin-field';
+}
+
+function isHiddenEditorField(fieldKey) {
+  return String(fieldKey).toLowerCase() === 'icon';
 }
 
 function getItemTitle(item, fallbackLabel, index) {
@@ -1123,6 +1179,26 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
               >
                 {uploading ? 'Uploading...' : 'Upload from computer'}
               </button>
+              <button
+                className="admin-media__upload-button"
+                type="button"
+                disabled={disabled || uploading}
+                onClick={async () => {
+                  setUploadError('');
+
+                  try {
+                    const selectedUrl = await chooseAdminLibraryImage();
+
+                    if (selectedUrl) {
+                      onChange(path, selectedUrl);
+                    }
+                  } catch (error) {
+                    setUploadError(error?.message || 'Failed to choose image from media library.');
+                  }
+                }}
+              >
+                Choose from media library
+              </button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1198,7 +1274,7 @@ function PrimitiveField({ fieldKey, value, path, onChange, disabled }) {
 }
 
 function ObjectField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, onMoveItem, disabled }) {
-  const entries = Object.entries(value ?? {}).filter(([nestedKey]) => nestedKey !== 'id');
+  const entries = Object.entries(value ?? {}).filter(([nestedKey]) => nestedKey !== 'id' && !isHiddenEditorField(nestedKey));
 
   return (
     <div className="admin-field admin-field--full">
@@ -1328,7 +1404,7 @@ function ArrayField({ fieldKey, value, path, onChange, onAddItem, onRemoveItem, 
               {isPlainObject(item) ? (
                 <div className="admin-field-grid">
                   {Object.entries(item)
-                    .filter(([nestedKey]) => nestedKey !== 'id')
+                    .filter(([nestedKey]) => nestedKey !== 'id' && !isHiddenEditorField(nestedKey))
                     .map(([nestedKey, nestedValue]) => (
                       <FieldRenderer
                         key={`${fieldKey}-${index}-${nestedKey}`}
@@ -1388,6 +1464,7 @@ function FormSection({ entries, onChange, onAddItem, onRemoveItem, onMoveItem, d
     <div className="admin-section">
       <div className="admin-field-grid">
         {entries.map(([fieldKey, value]) => (
+          isHiddenEditorField(fieldKey) ? null : (
           <FieldRenderer
             key={fieldKey}
             fieldKey={fieldKey}
@@ -1399,6 +1476,7 @@ function FormSection({ entries, onChange, onAddItem, onRemoveItem, onMoveItem, d
             onMoveItem={onMoveItem}
             disabled={disabled}
           />
+          )
         ))}
       </div>
     </div>

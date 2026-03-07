@@ -1,4 +1,4 @@
-import AdminJS from 'adminjs';
+import 'dotenv/config';
 import AdminJSExpress from '@adminjs/express';
 import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
@@ -9,19 +9,13 @@ import { mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createAdmin } from './admin.js';
-import { ensureContentDatabase } from './bootstrap-content.js';
-import { config } from './config.js';
-import { sequelize } from './database.js';
-import { createMediaAssetFromUpload } from './media-pages.js';
-import { buildResources } from './models.js';
-import { registerPublicApi } from './public-api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..', '..');
 const frontendDistDirectory = path.join(projectRoot, 'dist');
 const frontendIndexFile = path.join(frontendDistDirectory, 'index.html');
+const frontendCmsDirectory = path.join(projectRoot, 'public', 'cms');
 const MySQLStore = MySQLStoreFactory(session);
 
 function getApiErrorMessage(error) {
@@ -38,8 +32,31 @@ function getApiErrorMessage(error) {
 }
 
 const start = async () => {
+  const [
+    { createAdmin },
+    { authenticateAdmin, ensureAdminAccount },
+    { getRecentContactSubmissions, getContactSubmissionById, deleteContactSubmissionById },
+    { ensureContentDatabase },
+    { config },
+    { sequelize },
+    { createMediaAssetFromUpload },
+    { buildResources },
+    { registerPublicApi },
+  ] = await Promise.all([
+    import('./admin.js'),
+    import('./admin-account.js'),
+    import('./contact-submissions.js'),
+    import('./bootstrap-content.js'),
+    import('./config.js'),
+    import('./database.js'),
+    import('./media-pages.js'),
+    import('./models.js'),
+    import('./public-api.js'),
+  ]);
+
   await sequelize.authenticate();
   await ensureContentDatabase();
+  await ensureAdminAccount();
   const { resources, resourceDefinitions } = await buildResources();
   const admin = createAdmin(resources);
   const app = express();
@@ -65,15 +82,19 @@ const start = async () => {
     await admin.watch();
   }
 
-  const allowedOrigins = new Set([
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
-  ]);
+  const allowedOrigins = new Set(config.cors.allowedOrigins);
 
   app.use((request, response, next) => {
     const origin = request.headers.origin;
+    const isPublicApiRequest = request.path.startsWith('/api/') || request.path === '/api';
 
     if (origin && allowedOrigins.has(origin)) {
+      response.setHeader('Access-Control-Allow-Origin', origin);
+      response.setHeader('Vary', 'Origin');
+      response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      response.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else if (origin && isPublicApiRequest) {
       response.setHeader('Access-Control-Allow-Origin', origin);
       response.setHeader('Vary', 'Origin');
       response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
@@ -89,11 +110,27 @@ const start = async () => {
     next();
   });
 
+  app.use((request, response, next) => {
+    const isAdminRequest = request.path === config.rootPath
+      || request.path.startsWith(`${config.rootPath}/`)
+      || request.path.startsWith('/admin-assets/');
+
+    if (isAdminRequest) {
+      response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      response.setHeader('Pragma', 'no-cache');
+      response.setHeader('Expires', '0');
+      response.setHeader('Surrogate-Control', 'no-store');
+    }
+
+    next();
+  });
+
   await mkdir(config.uploads.directory, { recursive: true });
 
   app.use('/api', express.json({ limit: '2mb' }));
   app.use('/admin-assets', express.static(path.join(__dirname, '..', 'public')));
   app.use(config.uploads.publicPath, express.static(config.uploads.directory));
+  app.use('/cms', express.static(frontendCmsDirectory));
   registerPublicApi(app);
 
   app.get('/health', (_request, response) => {
@@ -108,13 +145,7 @@ const start = async () => {
   const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
     admin,
     {
-      authenticate: async (email, password) => {
-        if (email === config.auth.email && password === config.auth.password) {
-          return { email };
-        }
-
-        return null;
-      },
+      authenticate: async (email, password) => authenticateAdmin(email, password),
       cookieName: config.session.cookieName,
       cookiePassword: config.sessionSecret,
     },
@@ -133,6 +164,48 @@ const start = async () => {
       store: sessionStore,
     },
   );
+
+  adminRouter.get('/api/contact-submissions', async (request, response) => {
+    try {
+      const limit = Number.parseInt(String(request.query.limit ?? '25'), 10);
+      const parsedLimit = Number.isFinite(limit) && limit > 0 ? Math.min(100, limit) : 25;
+      const recentSubmissions = await getRecentContactSubmissions(parsedLimit);
+
+      response.json({ data: recentSubmissions });
+    } catch (error) {
+      response.status(500).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  adminRouter.get('/api/contact-submissions/:id', async (request, response) => {
+    try {
+      const submission = await getContactSubmissionById(request.params.id);
+
+      if (!submission) {
+        response.status(404).json({ error: 'Submission not found.' });
+        return;
+      }
+
+      response.json({ data: submission });
+    } catch (error) {
+      response.status(500).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  adminRouter.delete('/api/contact-submissions/:id', async (request, response) => {
+    try {
+      const deleted = await deleteContactSubmissionById(request.params.id);
+
+      if (!deleted) {
+        response.status(404).json({ error: 'Submission not found.' });
+        return;
+      }
+
+      response.json({ ok: true, deleted: true, id: Number(request.params.id) });
+    } catch (error) {
+      response.status(500).json({ error: String(error?.message ?? error) });
+    }
+  });
 
   const upload = multer({
     storage: multer.diskStorage({

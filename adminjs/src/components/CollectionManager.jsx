@@ -1029,6 +1029,58 @@ async function uploadAdminImage(file) {
   return uploadedUrl;
 }
 
+const MEDIA_PICKER_EVENT = 'adminjs-media-select';
+
+function chooseAdminLibraryImage() {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      resolve('');
+      return;
+    }
+
+    const pickerWindow = window.open(
+      '/admin/pages/media-library?picker=1',
+      'admin-media-library-picker',
+      'popup=yes,width=1440,height=900,resizable=yes,scrollbars=yes',
+    );
+
+    if (!pickerWindow) {
+      reject(new Error('Media library popup was blocked.'));
+      return;
+    }
+
+    let finished = false;
+
+    const cleanup = () => {
+      window.removeEventListener('message', handleMessage);
+      window.clearInterval(closeWatcher);
+    };
+
+    const handleMessage = (event) => {
+      if (event.origin !== window.location.origin || event.source !== pickerWindow) {
+        return;
+      }
+
+      if (event.data?.type !== MEDIA_PICKER_EVENT) {
+        return;
+      }
+
+      finished = true;
+      cleanup();
+      resolve(typeof event.data.url === 'string' ? event.data.url : '');
+    };
+
+    const closeWatcher = window.setInterval(() => {
+      if (pickerWindow.closed && !finished) {
+        cleanup();
+        resolve('');
+      }
+    }, 500);
+
+    window.addEventListener('message', handleMessage);
+  });
+}
+
 function MediaField({ label, value, path, onChange, disabled }) {
   const urls = Array.isArray(value) ? value : [value].filter(Boolean);
   const fileInputRef = useRef(null);
@@ -1062,6 +1114,32 @@ function MediaField({ label, value, path, onChange, disabled }) {
               onClick={() => fileInputRef.current?.click()}
             >
               {uploading ? 'Uploading...' : 'Upload from computer'}
+            </button>
+            <button
+              className="admin-media__upload-button"
+              type="button"
+              disabled={disabled || uploading}
+              onClick={async () => {
+                setUploadError('');
+
+                try {
+                  const selectedUrl = await chooseAdminLibraryImage();
+
+                  if (!selectedUrl) {
+                    return;
+                  }
+
+                  if (Array.isArray(value)) {
+                    onChange(path, [...value, selectedUrl]);
+                  } else {
+                    onChange(path, selectedUrl);
+                  }
+                } catch (error) {
+                  setUploadError(error?.message || 'Failed to choose image from media library.');
+                }
+              }}
+            >
+              Choose from media library
             </button>
             <input
               ref={fileInputRef}
@@ -1314,6 +1392,29 @@ function ArrayField({ field, value, path, onChange, onAddItem, onRemoveItem, onM
                         onClick={() => fileInputRefs.current[index]?.click()}
                       >
                         {uploadingIndex === index ? 'Uploading...' : 'Upload from computer'}
+                      </button>
+                      <button
+                        className="admin-media__upload-button"
+                        type="button"
+                        disabled={disabled || uploadingIndex === index}
+                        onClick={async () => {
+                          setUploadError('');
+                          setUploadingIndex(index);
+
+                          try {
+                            const selectedUrl = await chooseAdminLibraryImage();
+
+                            if (selectedUrl) {
+                              onChange([...path, index], withRepeatableItemValue(item, selectedUrl));
+                            }
+                          } catch (error) {
+                            setUploadError(error?.message || 'Failed to choose image from media library.');
+                          } finally {
+                            setUploadingIndex(null);
+                          }
+                        }}
+                      >
+                        {uploadingIndex === index ? 'Choosing...' : 'Choose from media library'}
                       </button>
                       <input
                         ref={(element) => {

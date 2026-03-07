@@ -1,0 +1,136 @@
+{
+  "data": {
+    "siteName": "CoworkingHub1",
+    "tagline": "1Your space to work, connect and focus in the heart of the City.",
+    "contactEmail": "hello@coworking.com",
+    "contactPhone": "+1 (555) 013-02491",
+    "address": "142 Market Street, Suite 200, City Center",
+    "defaultSeoTitle": "CoworkingHub1",
+    "defaultSeoDescription": "Your space to work, connect and focus in the heart of the City.1",
+    "navigation": {
+      "id": 2,
+      "ctaLabel": "Book a Tour1",
+      "ctaPath": "/contact",
+      "links": [
+        {
+          "id": 225,
+          "name": "Home",
+          "path": "/"
+        },
+        {
+          "id": 226,
+          "name": "Memberships",
+          "path": "/pricing"
+        },
+        {
+          "id": 227,
+          "name": "Meeting Room",
+          "path": "/meeting-rooms"
+        },
+        {
+          "id": 228,
+          "name": "Private Office",
+          "path": "/virtual-office"
+        },
+        {
+          "id": 229,
+          "name": "Contact",
+          "path": "/contact"
+        }
+      ]
+    },
+    "footer": {
+      "id": 2,
+      "description": "Flexible coworking spaces in the heart of the city built for focus, meetings, and meaningful connections.1",
+      "contactTitle": "Contact1",
+      "copyright": "© 2026 Coworking Hub. All rights reserved.1",
+      "serviceLinks": [
+        {
+          "id": 230,
+          "name": "Memberships1",
+          "path": "/pricing"
+        },
+        {
+          "id": 231,
+          "name": "Meeting Room1",
+          "path": "/meeting-rooms"
+        },
+        {
+          "id": 232,
+          "name": "Virtual Office1",
+          "path": "/virtual-office"
+        },
+        {
+          "id": 233,
+          "name": "Private Office1",
+          "path": "/virtual-office"
+        }
+      ],
+      "aboutLinks": [
+        {
+          "id": 234,
+          "name": "1About Us",
+          "path": "/about"
+        },
+        {
+          "id": 235,
+          "name": "1Our Space",
+          "path": "/"
+        },
+        {
+          "id": 236,
+          "name": "Blog",
+          "path": "/blog"
+        },
+        {
+          "id": 237,
+          "name": "FAQ",
+          "path": "/faq"
+        },
+        {
+          "id": 238,
+          "name": "Contact",
+          "path": "/contact"
+        }
+      ],
+      "legalLinks": [
+        {
+          "id": 239,
+          "name": "Privacy Policy1",
+          "path": "/privacy"
+        },
+        {
+          "id": 240,
+          "name": "Terms1",
+          "path": "/terms"
+        }
+      ]
+    },
+    "socialLinks": [
+      {
+        "id": 57,
+        "label": "Facebook1",
+        "href": "#",
+        "icon": "Facebook"
+      },
+      {
+        "id": 58,
+        "label": "Twitter",
+        "href": "#",
+        "icon": "Twitter"
+      },
+      {
+        "id": 59,
+        "label": "Instagram",
+        "href": "#",
+        "icon": "Instagram"
+      },
+      {
+        "id": 60,
+        "label": "LinkedIn",
+        "href": "#",
+        "icon": "Linkedin"
+      }
+    ]
+  }
+}

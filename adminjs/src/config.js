@@ -18,6 +18,17 @@ function requireEnv(name, fallback) {
   throw new Error(`Missing required environment variable: ${name}`);
 }
 
+function parseList(value, fallback = []) {
+  if (!value) {
+    return fallback;
+  }
+
+  return String(value)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export const config = {
   port: Number(process.env.PORT || 3001),
   publicOrigin: process.env.PUBLIC_ORIGIN || `http://localhost:${process.env.PORT || 3001}`,
@@ -39,6 +50,14 @@ export const config = {
     user: requireEnv('DATABASE_USER', 'root'),
     password: process.env.DATABASE_PASSWORD || '',
   },
+  cors: {
+    allowedOrigins: parseList(process.env.FRONTEND_ORIGINS, [
+      'http://localhost:8080',
+      'http://127.0.0.1:8080',
+      'http://localhost:4173',
+      'http://127.0.0.1:4173',
+    ]),
+  },
   mail: {
     enabled: Boolean(process.env.SMTP_HOST),
     host: process.env.SMTP_HOST || '',
@@ -52,5 +71,8 @@ export const config = {
   uploads: {
     directory: process.env.UPLOADS_DIR || path.join(projectRoot, 'storage', 'uploads'),
     publicPath: process.env.UPLOADS_PUBLIC_PATH || '/uploads',
+  },
+  staticSnapshots: {
+    directory: process.env.STATIC_SNAPSHOT_DIR || path.join(projectRoot, 'public', 'cms'),
   },
 };

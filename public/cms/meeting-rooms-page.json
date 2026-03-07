@@ -1,0 +1,49 @@
+{
+  "data": {
+    "amenities": [
+      {
+        "icon": "Wifi",
+        "title": "Fast Wi-Fi",
+        "description": "Gigabit internet for seamless work"
+      },
+      {
+        "icon": "Coffee",
+        "title": "Coffee Bar",
+        "description": "Complimentary premium coffee & tea"
+      },
+      {
+        "icon": "Phone",
+        "title": "Call Pods",
+        "description": "Private booths for calls"
+      },
+      {
+        "icon": "Shield",
+        "title": "Secure Access",
+        "description": "24/7 keycard entry system"
+      },
+      {
+        "icon": "Users",
+        "title": "Community",
+        "description": "Networking events & workshops"
+      },
+      {
+        "icon": "Zap",
+        "title": "Reliable",
+        "description": "Backup power & redundant systems"
+      }
+    ],
+    "heroTitle": "Meeting Rooms",
+    "plansTitle": "Flexible plans, monochrome clarity.",
+    "roomsTitle": "Designed for real work.",
+    "bookNowLabel": "Book now",
+    "heroSubtitle": "Professional spaces designed for productive meetings",
+    "popularLabel": "Most popular",
+    "plansSubtitle": "Choose the access that works for you",
+    "readMoreLabel": "Read more",
+    "roomsSubtitle": "From quiet focus rooms to collaborative spaces",
+    "amenitiesTitle": "Everything you need to stay in flow.",
+    "getStartedLabel": "Get Started",
+    "amenitiesSubtitle": "Premium amenities included with every booking",
+    "heroBackgroundImage": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1920"
+  }
+}

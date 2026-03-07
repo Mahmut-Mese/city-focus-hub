@@ -1450,6 +1450,9 @@ export async function handleCollectionPage(pageName, request) {
       result = await publishCollectionRecord(definition, saved.draftRecord?.id);
     }
 
+    const { exportPublishedSnapshots } = await import('./export-static-cms.js');
+    await exportPublishedSnapshots();
+
     return {
       definition: {
         name: definition.name,
@@ -1469,6 +1472,9 @@ export async function handleCollectionPage(pageName, request) {
 
   if (method === 'post' && intent === 'unpublish') {
     const result = await unpublishCollectionRecord(definition, recordId);
+
+    const { exportPublishedSnapshots } = await import('./export-static-cms.js');
+    await exportPublishedSnapshots();
 
     return {
       definition: {

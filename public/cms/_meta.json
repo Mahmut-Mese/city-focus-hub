@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-03-07T01:32:18.833Z",
+  "pages": [
+    "site-setting",
+    "homepage",
+    "about-page",
+    "blog-page",
+    "pricing-page",
+    "faq-page",
+    "meeting-rooms-page",
+    "virtual-office-page",
+    "contact-page",
+    "privacy-policy-page",
+    "terms-page"
+  ],
+  "collections": [
+    "blog-posts",
+    "faq-items",
+    "pricing-plans",
+    "meeting-rooms"
+  ]
+}

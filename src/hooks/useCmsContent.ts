@@ -264,6 +264,7 @@ function mapHomepageContent(raw: Record<string, unknown>): SiteSettingsContent['
       primaryCtaLabel: getString(hero.primaryCtaLabel, fallback.hero.primaryCtaLabel),
       primaryCtaPath: getString(hero.primaryCtaPath, fallback.hero.primaryCtaPath),
       secondaryCtaLabel: getString(hero.secondaryCtaLabel, fallback.hero.secondaryCtaLabel),
+      videoUrl: getString(hero.videoUrl, fallback.hero.videoUrl),
     },
     featureChips: toIconTextItems(raw.featureChips, fallback.featureChips),
     servicesEyebrow: getString(raw.servicesEyebrow, fallback.servicesEyebrow),
@@ -619,12 +620,42 @@ function toSocialLinks(
 
   return value.map((item, index) => {
     const source = isRecord(item) ? item : {};
+    const label = getString(source.label, fallback[index]?.label ?? '');
+    const href = normalizeExternalUrl(getString(source.href, fallback[index]?.href ?? '#'));
+    const rawIcon = getString(source.icon, fallback[index]?.icon ?? '');
+
     return {
-      label: getString(source.label, fallback[index]?.label ?? ''),
-      href: normalizeExternalUrl(getString(source.href, fallback[index]?.href ?? '#')),
-      icon: getString(source.icon, fallback[index]?.icon ?? 'Facebook'),
+      label,
+      href,
+      icon: inferSocialIcon(rawIcon, label, href, fallback[index]?.icon ?? 'Facebook'),
     };
   });
+}
+
+function inferSocialIcon(rawIcon: string, label: string, href: string, fallbackIcon: string): string {
+  if (rawIcon && ['Facebook', 'Instagram', 'Linkedin', 'Twitter'].includes(rawIcon)) {
+    return rawIcon;
+  }
+
+  const haystack = `${label} ${href}`.toLowerCase();
+
+  if (haystack.includes('instagram')) {
+    return 'Instagram';
+  }
+
+  if (haystack.includes('linkedin')) {
+    return 'Linkedin';
+  }
+
+  if (haystack.includes('twitter') || haystack.includes('x.com')) {
+    return 'Twitter';
+  }
+
+  if (haystack.includes('facebook')) {
+    return 'Facebook';
+  }
+
+  return fallbackIcon || 'Facebook';
 }
 
 function mapNavigationContent(

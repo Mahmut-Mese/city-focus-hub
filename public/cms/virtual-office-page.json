@@ -1,0 +1,47 @@
+{
+  "data": {
+    "ctaTitle": "Get Any Coworking Services From us Now",
+    "heroTitle": "Office Space",
+    "resultText": "Our flexible office solutions eliminate these pain points. You get a premium workspace without the traditional overhead, with month-to-month flexibility and all-inclusive pricing. Our spaces have helped hundreds of businesses establish a professional presence while maintaining the agility they need to grow.",
+    "contactForm": {
+      "title": "Contact Us",
+      "submitLabel": "Send Message",
+      "namePlaceholder": "Your Name",
+      "emailPlaceholder": "Email",
+      "messagePlaceholder": "Message"
+    },
+    "resultTitle": "Final Result",
+    "heroSubtitle": "Premium private offices and virtual office solutions",
+    "overviewText": "Our private office spaces are designed for teams who need a dedicated, professional environment. Each office comes fully furnished with ergonomic furniture, high-speed internet, and access to all common amenities. Whether you're a growing startup or an established company looking for a satellite office, we have solutions that scale with your needs.",
+    "featuredImage": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200",
+    "galleryImages": [
+      {
+        "alt": "Office interior",
+        "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600"
+      },
+      {
+        "alt": "Workspace",
+        "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600"
+      }
+    ],
+    "overviewTitle": "Project Overview",
+    "challengeIntro": "Many businesses face challenges when it comes to workspace decisions:",
+    "challengeItems": [
+      "High upfront costs for traditional office leases",
+      "Long-term commitments that don't fit scaling needs",
+      "Managing office maintenance and utilities",
+      "Finding the right location for clients and team"
+    ],
+    "challengeTitle": "Challenge of This Project",
+    "ctaButtonLabel": "Contact Us",
+    "ctaDescription": "Contact us today to find your perfect workspace solution.",
+    "projectDateLabel": "Date",
+    "projectDateValue": "January 2026",
+    "projectInfoTitle": "Project Info",
+    "heroBackgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
+    "projectWebsiteLabel": "Website",
+    "projectWebsiteValue": "coworkinghub.com",
+    "projectCategoryLabel": "Categories",
+    "projectCategoryValue": "Private Office, Virtual Office"
+  }
+}

@@ -144,7 +144,15 @@ export function registerPublicApi(app) {
         },
       );
 
-      await sendContactSubmissionEmail(submission);
+      void sendContactSubmissionEmail(submission)
+        .then((delivery) => {
+          if (!delivery.ok) {
+            console.warn('Contact submission email not sent:', delivery.reason);
+          }
+        })
+        .catch((error) => {
+          console.error('Contact submission email send error:', String(error?.message ?? error));
+        });
 
       response.status(201).json({
         ok: true,

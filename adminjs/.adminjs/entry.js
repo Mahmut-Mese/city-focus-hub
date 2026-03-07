@@ -7,6 +7,8 @@ import ContentPageEditor from '../src/components/ContentPageEditor'
 AdminJS.UserComponents.ContentPageEditor = ContentPageEditor
 import MediaLibrary from '../src/components/MediaLibrary'
 AdminJS.UserComponents.MediaLibrary = MediaLibrary
+import AccountSettings from '../src/components/AccountSettings'
+AdminJS.UserComponents.AccountSettings = AccountSettings
 import Sidebar from '../src/components/Sidebar'
 AdminJS.UserComponents.Sidebar = Sidebar
 import Login from '../src/components/Login'

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { MapPin, Mail, Phone } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useContactPageContent, useSiteSettings } from '@/hooks/useCmsContent';
 import { socialIconMap } from '@/lib/site-icons';
 import { postApi } from '@/lib/content-api';
@@ -24,14 +25,57 @@ const EMPTY_FORM: ContactFormState = {
   message: '',
 };
 
+function buildPrefilledForm(searchParams: URLSearchParams): ContactFormState {
+  return {
+    ...EMPTY_FORM,
+    message: searchParams.get('message')?.trim() || '',
+  };
+}
+
+function getEnquiryBanner(searchParams: URLSearchParams) {
+  const room = searchParams.get('room')?.trim() || '';
+  const plan = searchParams.get('plan')?.trim() || '';
+  const intent = searchParams.get('intent')?.trim() || '';
+  const target = room || plan;
+
+  if (!target) {
+    return '';
+  }
+
+  if (intent === 'purchase') {
+    return `Purchase enquiry for ${target}`;
+  }
+
+  if (intent === 'booking') {
+    return `Booking enquiry for ${target}`;
+  }
+
+  if (intent === 'details') {
+    return `Details enquiry for ${target}`;
+  }
+
+  return `Enquiry for ${target}`;
+}
+
 export default function Contact() {
+  const [searchParams] = useSearchParams();
   const siteSettingsQuery = useSiteSettings();
   const contactPageQuery = useContactPageContent();
-  const [formState, setFormState] = useState<ContactFormState>(EMPTY_FORM);
+  const [formState, setFormState] = useState<ContactFormState>(() => buildPrefilledForm(searchParams));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
   const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim());
+  const enquiryBanner = useMemo(() => getEnquiryBanner(searchParams), [searchParams]);
+
+  useEffect(() => {
+    setFormState((current) => ({
+      ...current,
+      message: buildPrefilledForm(searchParams).message,
+    }));
+    setSubmitError('');
+    setSubmitSuccess('');
+  }, [searchParams]);
 
   if (siteSettingsQuery.isLoading || contactPageQuery.isLoading) {
     return null;
@@ -184,6 +228,11 @@ export default function Contact() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="rounded-3xl border border-black/10 bg-white p-8 md:p-10">
               <h3 className="font-sans text-5xl leading-none mb-6">{content.form.title}</h3>
+              {enquiryBanner ? (
+                <div className="mb-5 rounded-2xl border border-black/10 bg-[#f7f3ee] px-4 py-3 text-sm font-medium text-black/75">
+                  {enquiryBanner}
+                </div>
+              ) : null}
               <form className="space-y-3.5" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Input

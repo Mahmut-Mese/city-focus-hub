@@ -105,6 +105,19 @@ function parseJsonValue(value) {
   return value;
 }
 
+function ensureHomepageShape(content) {
+  const base = isObject(content) ? content : {};
+  const hero = isObject(base.hero) ? base.hero : {};
+
+  return {
+    ...base,
+    hero: {
+      ...hero,
+      videoUrl: typeof hero.videoUrl === 'string' ? hero.videoUrl : '',
+    },
+  };
+}
+
 function normalizeForSave(value) {
   if (Array.isArray(value)) {
     return value.map((item) => normalizeForSave(item));
@@ -1150,7 +1163,13 @@ async function loadJsonPageFromRecord(record, column) {
     return {};
   }
 
-  return parseJsonValue(record[column]);
+  const parsed = parseJsonValue(record[column]);
+
+  if (column === 'home_page') {
+    return ensureHomepageShape(parsed);
+  }
+
+  return parsed;
 }
 
 async function loadPublishedJsonPageFromRecord(record, column) {
@@ -1158,7 +1177,13 @@ async function loadPublishedJsonPageFromRecord(record, column) {
     return null;
   }
 
-  return parseJsonValue(record[column]);
+  const parsed = parseJsonValue(record[column]);
+
+  if (column === 'home_page') {
+    return ensureHomepageShape(parsed);
+  }
+
+  return parsed;
 }
 
 async function saveJsonPage(column, content) {
@@ -1593,6 +1618,11 @@ export async function handleContentPage(pageName, request) {
       } else {
         await saveLegalPage(definition.table, content);
       }
+    }
+
+    if (intent === 'publish' || intent === 'unpublish') {
+      const { exportPublishedSnapshots } = await import('./export-static-cms.js');
+      await exportPublishedSnapshots();
     }
 
     const nextState = state ?? await loadContentPageState(definition);

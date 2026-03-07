@@ -1,0 +1,142 @@
+{
+  "data": {
+    "hero": {
+      "title": "1Your space to work, connect and focus in the heart of the City.666",
+      "subtitle": "1CoworkingHub provides flexible workspace solutions tailored for freelancers, remote teams, and entrepreneurs. Enjoy a professional address, high-speed WiFi, and a community that helps you grow.p",
+      "videoUrl": "<iframe width=\"1062\" height=\"597\" src=\"https://www.youtube.com/embed/beWF_rYAesA\" title=\"What is a Coworking Space and How Does it Work?\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>",
+      "primaryCtaPath": "/pricing",
+      "backgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
+      "primaryCtaLabel": "Get Started1",
+      "secondaryCtaLabel": "Watch Video1"
+    },
+    "services": [
+      {
+        "link": "/pricing",
+        "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
+        "title": "Coworking1",
+        "description": "Shared spaces designed for focus, creativity, and collaboration.1"
+      },
+      {
+        "link": "/meeting-rooms",
+        "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800",
+        "title": "1Meeting Room",
+        "description": "1Fully-equipped rooms for presentations, interviews, and team sessions."
+      },
+      {
+        "link": "/virtual-office",
+        "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800",
+        "title": "Virtual Office",
+        "description": "Build your company presence with a premium city business address."
+      }
+    ],
+    "emailLabel": "Email1",
+    "phoneLabel": "Phone1",
+    "contactForm": {
+      "title": "Contact Us / Book a Tour1",
+      "description": "We'll get back to you within one business day.1",
+      "submitLabel": "Send Message1",
+      "namePlaceholder": "Your name1",
+      "emailPlaceholder": "you@example.com",
+      "messagePlaceholder": "Tell us all your needs1",
+      "subjectPlaceholder": "Tour request1"
+    },
+    "addressLabel": "1Address",
+    "featureChips": [
+      {
+        "icon": "Users",
+        "text": "Meeting room access1"
+      },
+      {
+        "icon": "wifi",
+        "text": "abc"
+      },
+      {
+        "icon": "Wifi",
+        "text": "High-speed internet"
+      }
+    ],
+    "galleryTitle": "Our Space1",
+    "testimonials": [
+      {
+        "name": "John Smith1",
+        "role": "Product Lead1",
+        "stars": 2,
+        "content": "A calm, professional space that makes it easy to focus and meet clients."
+      },
+      {
+        "name": "Michael Brown",
+        "role": "Startup Founder",
+        "stars": 5,
+        "content": "The meeting rooms are excellent, and the staff is always helpful and responsive."
+      },
+      {
+        "name": "Daniel Wilson",
+        "role": "Business Consultant",
+        "stars": 5,
+        "content": "Flexible terms, central location, and a community that feels welcoming."
+      }
+    ],
+    "visitUsTitle": "Visit Us1",
+    "weekdayHours": "Mon-Fri: 8:00 AM - 8:00 PM1",
+    "weekendHours": "Sat-Sun: 10:00 AM - 4:00 PM1",
+    "galleryImages": [
+      {
+        "alt": "Skylight architecture1",
+        "image": "https://images.unsplash.com/photo-1473091534298-04dcbce3278c?w=1200"
+      },
+      {
+        "alt": "Creative workspace details1",
+        "image": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1200"
+      },
+      {
+        "alt": "Keyboard closeup",
+        "image": "https://images.unsplash.com/photo-1497366858526-0766cadbe8fa?w=1200"
+      }
+    ],
+    "galleryKicker": "Our Space1",
+    "aboutHighlight": {
+      "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200",
+      "title": "1A City business address without the office cost",
+      "eyebrow": "1About",
+      "benefits": [
+        "1Premium mailing address",
+        "Business coordinates",
+        "Reception and support",
+        "Member events and perks"
+      ],
+      "description": "1Get all the benefits of a prestigious business address without the overhead of a physical office.",
+      "primaryCtaPath": "/virtual-office",
+      "primaryCtaLabel": "More Details1",
+      "secondaryCtaPath": "/pricing",
+      "secondaryCtaLabel": "See Plans1"
+    },
+    "galleryEyebrow": "Gallery1",
+    "mapButtonLabel": "View on Google Maps1",
+    "openHoursLabel": "1Open Hours",
+    "servicesKicker": "Explore our spaces1",
+    "whyChooseItems": [
+      {
+        "icon": "LayoutGrid",
+        "title": "Flexible Workstations1",
+        "description": "Choose hot desks, dedicated desks, or private spaces as you grow."
+      },
+      {
+        "icon": "CalendarDays",
+        "title": "Private Cabinet Store1",
+        "description": "1Secure personal lockers to keep your day-to-day items protected."
+      },
+      {
+        "icon": "HeadphonesIcon",
+        "title": "Professional Support",
+        "description": "Front desk support, mail handling, and day-to-day assistance."
+      }
+    ],
+    "whyChooseTitle": "Why Choose CoworkingHub?1",
+    "servicesEyebrow": "Services1",
+    "whyChooseKicker": "Built for teams",
+    "whyChooseEyebrow": "Features",
+    "testimonialsTitle": "What Our Members Say1",
+    "testimonialsKicker": "Member reviews1",
+    "testimonialsEyebrow": "Testimonials1"
+  }
+}

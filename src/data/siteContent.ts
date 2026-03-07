@@ -127,6 +127,7 @@ export interface SiteSettingsContent {
       primaryCtaLabel: string;
       primaryCtaPath: string;
       secondaryCtaLabel: string;
+      videoUrl: string;
     };
     featureChips: IconTextItem[];
     servicesEyebrow: string;
@@ -338,6 +339,7 @@ export const defaultSiteSettingsContent: SiteSettingsContent = {
       primaryCtaLabel: 'Get Started',
       primaryCtaPath: '/pricing',
       secondaryCtaLabel: 'Watch Video',
+      videoUrl: '',
     },
     featureChips: [
       { icon: 'Wifi', text: 'High-speed internet' },

@@ -1,0 +1,68 @@
+{
+  "data": [
+    {
+      "id": 14,
+      "documentId": "cb6fdaf1-d5cd-411b-a0a2-893eddf355b4",
+      "question": "What amenities are included?",
+      "answer": "All memberships include high-speed Wi-Fi, access to our coffee bar, printing facilities, and community events. Higher tier plans include additional perks like dedicated desks and extended hours.",
+      "isFeatured": false,
+      "sortOrder": 1
+    },
+    {
+      "id": 16,
+      "documentId": "29d89048-8ab2-4c44-8699-a6dcd24f785a",
+      "question": "Can I upgrade or downgrade my membership?1",
+      "answer": "Yes, you can change your membership plan at any time. Changes take effect at the start of your next billing cycle.1",
+      "isFeatured": true,
+      "sortOrder": 1
+    },
+    {
+      "id": 12,
+      "documentId": "5766c4c4-3e7e-463a-85c2-046ed46ed993",
+      "question": "Do you offer virtual office services?",
+      "answer": "Yes, our virtual office service includes a prestigious business address, mail handling, and access to meeting rooms when needed.",
+      "isFeatured": true,
+      "sortOrder": 6
+    },
+    {
+      "id": 10,
+      "documentId": "908f6a69-9b3c-480a-b436-8704bcf9f3d8",
+      "question": "Can I book meeting rooms as a non-member?",
+      "answer": "Yes, meeting rooms can be booked by non-members on an hourly basis. Contact us for rates and availability.",
+      "isFeatured": true,
+      "sortOrder": 5
+    },
+    {
+      "id": 8,
+      "documentId": "33adbc7a-2348-4b4f-b5ae-c97d9f9a21fd",
+      "question": "Is there parking available?",
+      "answer": "Yes, we have both street parking and a dedicated parking garage nearby. Members receive discounted parking rates.",
+      "isFeatured": true,
+      "sortOrder": 4
+    },
+    {
+      "id": 6,
+      "documentId": "2314e9d9-e7e0-4c88-af90-f7bdcb2efc52",
+      "question": "What are your operating hours?",
+      "answer": "Our standard hours are Monday to Friday, 8:00 AM to 8:00 PM. Full Space members enjoy 24/7 access with their keycard.",
+      "isFeatured": false,
+      "sortOrder": 3
+    },
+    {
+      "id": 4,
+      "documentId": "3f92b2e9-9e02-4bb8-bfbc-3b778a198d52",
+      "question": "Can I try the space before committing?",
+      "answer": "Absolutely! We offer free day passes for first-time visitors. You can book a tour and experience our space firsthand before making any commitment.",
+      "isFeatured": false,
+      "sortOrder": 2
+    },
+    {
+      "id": 2,
+      "documentId": "c2e0f66b-8c45-4c06-a87f-be4740a9128a",
+      "question": "What membership plans do you offer?",
+      "answer": "We offer three main membership plans: Lounge (£29/month) for occasional workspace access, Smart Office (£39/month) for dedicated desk access, and Full Space (£59/month) for complete access including private offices. Each plan comes with different perks and meeting room hours.",
+      "isFeatured": false,
+      "sortOrder": 1
+    }
+  ]
+}

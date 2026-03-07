@@ -3,6 +3,16 @@ import { Mail, MapPin, Phone } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useCmsContent';
 import { socialIconMap } from '@/lib/site-icons';
 
+function resolveFooterLink(path: string, name: string) {
+  const normalizedName = name.trim().toLowerCase();
+
+  if (normalizedName.includes('our space')) {
+    return '/#our-space';
+  }
+
+  return path;
+}
+
 export function Footer() {
   const { data: siteSettings } = useSiteSettings();
 
@@ -64,9 +74,15 @@ export function Footer() {
             <ul className="space-y-2.5">
               {footer.aboutLinks.map((link) => (
                 <li key={link.name}>
-                  <Link to={link.path} className="text-[13px] text-white/65 hover:text-white transition-colors">
-                    {link.name}
-                  </Link>
+                  {resolveFooterLink(link.path, link.name).includes('#') ? (
+                    <a href={resolveFooterLink(link.path, link.name)} className="text-[13px] text-white/65 hover:text-white transition-colors">
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Link to={link.path} className="text-[13px] text-white/65 hover:text-white transition-colors">
+                      {link.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

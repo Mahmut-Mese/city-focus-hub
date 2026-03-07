@@ -1,15 +1,38 @@
+import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { Button } from '@/components/ui/button';
 import { CmsNoData } from '@/components/shared/CmsNoData';
-import { Check, Wifi } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Wifi } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useMeetingRooms, useMeetingRoomsPageContent, usePricingPlans } from '@/hooks/useCmsContent';
 import { contentIconMap } from '@/lib/site-icons';
+
+function buildMeetingRoomContactPath(roomName: string, intent: 'booking') {
+  const params = new URLSearchParams({
+    room: roomName,
+    intent,
+    message: `I would like to book the ${roomName}. Please share availability, pricing, and the next steps.`,
+  });
+
+  return `/contact?${params.toString()}`;
+}
+
+function truncateDescription(value: string, maxLength = 180) {
+  const normalized = value.trim();
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
+}
 
 export default function MeetingRooms() {
   const meetingRoomsQuery = useMeetingRooms();
   const meetingPlansQuery = usePricingPlans('meeting-room');
   const meetingRoomsPageQuery = useMeetingRoomsPageContent();
+  const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null);
 
   if (meetingRoomsQuery.isLoading || meetingPlansQuery.isLoading || meetingRoomsPageQuery.isLoading) {
     return null;
@@ -75,7 +98,11 @@ export default function MeetingRooms() {
             <p className="text-lg text-black/55">{content.roomsSubtitle}</p>
           </div>
           <div className="space-y-12">
-            {rooms.map((room) => (
+            {rooms.map((room) => {
+              const isExpanded = expandedRoomId === room.id;
+              const visibleFeatures = isExpanded ? room.features : room.features.slice(0, 3);
+
+              return (
               <div key={room.id} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div className="relative lg:order-1">
                   <div className="aspect-[16/10] rounded-2xl overflow-hidden">
@@ -89,11 +116,13 @@ export default function MeetingRooms() {
                     ))}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-black/10 bg-white p-7 md:p-9 lg:order-2">
+                <div className="rounded-2xl border border-black/10 bg-white p-7 md:p-9 lg:order-2 transition-all duration-300">
                   <h3 className="font-sans text-5xl leading-none mb-4">{room.name}</h3>
-                  <p className="text-black/60 mb-6 leading-relaxed">{room.description}</p>
+                  <p className="text-black/60 mb-6 leading-relaxed">
+                    {isExpanded ? room.description : truncateDescription(room.description)}
+                  </p>
                   <ul className="space-y-2 mb-7">
-                    {room.features.map((feature) => (
+                    {visibleFeatures.map((feature) => (
                       <li key={feature} className="flex items-center gap-2.5 text-sm text-black/85">
                         <span className="w-1.5 h-1.5 rounded-full bg-black" />
                         <span>{feature}</span>
@@ -101,12 +130,21 @@ export default function MeetingRooms() {
                     ))}
                   </ul>
                   <div className="flex gap-3">
-                    <Button className="h-9 rounded-lg px-4 text-sm bg-black text-white hover:bg-black/90">{content.readMoreLabel}</Button>
-                    <Button className="h-9 rounded-lg px-4 text-sm bg-black text-white hover:bg-black/90">{content.bookNowLabel}</Button>
+                    <Button
+                      type="button"
+                      onClick={() => setExpandedRoomId(isExpanded ? null : room.id)}
+                      className="h-9 rounded-lg px-4 text-sm bg-black text-white hover:bg-black/90"
+                    >
+                      {isExpanded ? content.readMoreLabel.replace(/more/i, 'less') : content.readMoreLabel}
+                      {isExpanded ? <ChevronUp /> : <ChevronDown />}
+                    </Button>
+                    <Button asChild className="h-9 rounded-lg px-4 text-sm bg-black text-white hover:bg-black/90">
+                      <Link to={buildMeetingRoomContactPath(room.name, 'booking')}>{content.bookNowLabel}</Link>
+                    </Button>
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </section>
