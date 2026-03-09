@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Layout } from '@/components/layout/Layout';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Clock, Calendar, User, ArrowLeft, Search, ArrowUpRight } from 'lucide-react';
-import { useBlogPageContent, useBlogPostBySlug, useBlogPosts } from '@/hooks/useCmsContent';
+import { useBlogPageContent, useBlogPosts } from '@/hooks/useCmsContent';
 import { getPopularTags } from '@/lib/blog';
 
 function formatDate(value: string) {
@@ -23,30 +23,26 @@ function formatDate(value: string) {
 export default function BlogDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [detailSearchQuery, setDetailSearchQuery] = useState('');
-  const previewStatus = searchParams.get('preview') === '1'
-    && (searchParams.get('status') === 'draft' || searchParams.get('status') === 'published')
-    ? (searchParams.get('status') as 'draft' | 'published')
-    : undefined;
-  const blogPostQuery = useBlogPostBySlug(id, previewStatus);
   const blogPostsQuery = useBlogPosts();
   const blogPageQuery = useBlogPageContent();
 
-  if (blogPostQuery.isLoading || blogPostsQuery.isLoading || blogPageQuery.isLoading) {
+  if (blogPostsQuery.isLoading || blogPageQuery.isLoading) {
     return null;
   }
 
+  const cmsPosts = blogPostsQuery.data?.filter((post) => !post.featured) ?? [];
+  const cmsPost = id
+    ? cmsPosts.find((post) => (post.slug || post.id) === id || post.id === id)
+    : null;
+
   if (
     !id
-    || blogPostQuery.isError
     || blogPostsQuery.isError
     || blogPageQuery.isError
-    || !blogPostQuery.data
-    || blogPostQuery.data.featured
-    || !blogPostsQuery.data
+    || !cmsPost
     || !blogPageQuery.data
-    || blogPostsQuery.data.length === 0
+    || cmsPosts.length === 0
   ) {
     return (
       <Layout>
@@ -55,8 +51,6 @@ export default function BlogDetail() {
     );
   }
 
-  const cmsPost = blogPostQuery.data;
-  const cmsPosts = blogPostsQuery.data.filter((post) => !post.featured);
   const content = blogPageQuery.data;
 
   const allPosts = cmsPosts.map((post) => ({
