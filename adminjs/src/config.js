@@ -75,4 +75,10 @@ export const config = {
   staticSnapshots: {
     directory: process.env.STATIC_SNAPSHOT_DIR || path.join(projectRoot, 'public', 'cms'),
   },
+  stripe: {
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || 'whsec_city_focus_hub_local',
+    mockPaymentMethodId: process.env.STRIPE_MOCK_PAYMENT_METHOD_ID || 'pm_card_visa',
+  },
 };

@@ -37,25 +37,30 @@ const start = async () => {
     { authenticateAdmin, ensureAdminAccount },
     { getRecentContactSubmissions, getContactSubmissionById, deleteContactSubmissionById },
     { ensureContentDatabase },
+    { ensureCommerceSchema },
     { config },
     { sequelize },
     { createMediaAssetFromUpload },
     { buildResources },
     { registerPublicApi },
+    { registerMemberPortalApi, registerStripeWebhook },
   ] = await Promise.all([
     import('./admin.js'),
     import('./admin-account.js'),
     import('./contact-submissions.js'),
     import('./bootstrap-content.js'),
+    import('./bootstrap-commerce.js'),
     import('./config.js'),
     import('./database.js'),
     import('./media-pages.js'),
     import('./models.js'),
     import('./public-api.js'),
+    import('./member-portal-api.js'),
   ]);
 
   await sequelize.authenticate();
   await ensureContentDatabase();
+  await ensureCommerceSchema();
   await ensureAdminAccount();
   const { resources, resourceDefinitions } = await buildResources();
   const admin = createAdmin(resources);
@@ -127,11 +132,13 @@ const start = async () => {
 
   await mkdir(config.uploads.directory, { recursive: true });
 
+  registerStripeWebhook(app);
   app.use('/api', express.json({ limit: '2mb' }));
   app.use('/admin-assets', express.static(path.join(__dirname, '..', 'public')));
   app.use(config.uploads.publicPath, express.static(config.uploads.directory));
   app.use('/cms', express.static(frontendCmsDirectory));
   registerPublicApi(app);
+  registerMemberPortalApi(app);
 
   app.get('/health', (_request, response) => {
     response.json({

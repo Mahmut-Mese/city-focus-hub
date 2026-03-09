@@ -11,15 +11,16 @@
   "dependencies": {
     "@adminjs/express": "^6.1.1",
     "@adminjs/sequelize": "^4.1.1",
+    "@babel/plugin-syntax-import-assertions": "^7.28.6",
     "adminjs": "^7.8.17",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.2",
-    "@babel/plugin-syntax-import-assertions": "^7.28.6",
     "multer": "^2.1.1",
     "mysql2": "^3.15.1",
     "nodemailer": "^8.0.1",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "stripe": "^20.4.1"
   }
 }
