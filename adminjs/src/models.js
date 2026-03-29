@@ -1,40 +1,8 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from './database.js';
+import { ADMIN_RESOURCE_DEFINITIONS } from './resource-definitions.js';
 
-const RESOURCE_DEFINITIONS = [
-  {
-    table: 'blog_posts',
-    label: 'Blog Posts',
-    navigation: 'Collections',
-  },
-  {
-    table: 'faq_items',
-    label: 'FAQ Items',
-    navigation: 'Collections',
-  },
-  {
-    table: 'meeting_rooms',
-    label: 'Meeting Rooms',
-    navigation: 'Collections',
-  },
-  {
-    table: 'pricing_plans',
-    label: 'Pricing Plans',
-    navigation: 'Collections',
-  },
-  {
-    table: 'files',
-    label: 'Media Library',
-    navigation: 'Media',
-  },
-  {
-    table: 'contact_submissions',
-    label: 'Contact Submissions',
-    navigation: 'Inbox',
-  },
-];
-
-const HIDDEN_PROPERTIES = [
+const BASE_HIDDEN_PROPERTIES = [
   'created_by_id',
   'updated_by_id',
   'slug',
@@ -188,6 +156,19 @@ function buildPropertyOptions(columns, titleColumn, hiddenColumns) {
   );
 }
 
+function buildActionOptions(definition) {
+  if (!definition.readOnly) {
+    return undefined;
+  }
+
+  return {
+    new: { isAccessible: false, isVisible: false },
+    edit: { isAccessible: false, isVisible: false },
+    delete: { isAccessible: false, isVisible: false },
+    bulkDelete: { isAccessible: false, isVisible: false },
+  };
+}
+
 function buildTranslations(definition, columns) {
   return {
     en: {
@@ -224,9 +205,17 @@ async function defineModelForTable(definition) {
 
   const columns = Object.keys(attributes);
   const titleColumn = pickTitleColumn(columns);
-  const listProperties = ['id', titleColumn, 'updated_at'].filter((column) => columns.includes(column));
-  const editProperties = columns.filter((column) => !['id', 'created_at', 'updated_at'].includes(column));
-  const hiddenColumns = HIDDEN_PROPERTIES;
+  const listProperties = (definition.listProperties || ['id', titleColumn, 'updated_at'])
+    .filter((column) => columns.includes(column));
+  const filterProperties = (definition.filterProperties || ['id', 'name', 'title', 'question', 'published_at'])
+    .filter((column) => columns.includes(column));
+  const editProperties = definition.readOnly
+    ? []
+    : columns.filter((column) => !['id', 'created_at', 'updated_at'].includes(column));
+  const hiddenColumns = [
+    ...BASE_HIDDEN_PROPERTIES,
+    ...(definition.hiddenColumns || []),
+  ];
 
   return {
     resource: model,
@@ -239,13 +228,14 @@ async function defineModelForTable(definition) {
       label: definition.label,
       titleProperty: titleColumn,
       listProperties,
-      filterProperties: ['id', 'name', 'title', 'question', 'published_at'].filter((column) => columns.includes(column)),
+      filterProperties,
       editProperties,
       showProperties: columns,
       sort: {
         sortBy: columns.includes('updated_at') ? 'updated_at' : 'id',
         direction: 'desc',
       },
+      actions: buildActionOptions(definition),
       properties: buildPropertyOptions(columns, titleColumn, hiddenColumns),
       translations: buildTranslations(definition, columns),
     },
@@ -254,11 +244,11 @@ async function defineModelForTable(definition) {
 
 export async function buildResources() {
   const resources = await Promise.all(
-    RESOURCE_DEFINITIONS.map((definition) => defineModelForTable(definition)),
+    ADMIN_RESOURCE_DEFINITIONS.map((definition) => defineModelForTable(definition)),
   );
 
   return {
-    resourceDefinitions: RESOURCE_DEFINITIONS,
+    resourceDefinitions: ADMIN_RESOURCE_DEFINITIONS,
     resources,
   };
 }

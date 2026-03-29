@@ -5,7 +5,7 @@ import MySQLStoreFactory from 'express-mysql-session';
 import express from 'express';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,6 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..', '..');
 const frontendDistDirectory = path.join(projectRoot, 'dist');
 const frontendIndexFile = path.join(frontendDistDirectory, 'index.html');
-const frontendCmsDirectory = path.join(projectRoot, 'public', 'cms');
 const MySQLStore = MySQLStoreFactory(session);
 
 function getApiErrorMessage(error) {
@@ -29,6 +28,75 @@ function getApiErrorMessage(error) {
   }
 
   return String(error?.message || 'Request failed.');
+}
+
+function detectImageFormat(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) {
+    return null;
+  }
+
+  const isPng = buffer[0] === 0x89
+    && buffer[1] === 0x50
+    && buffer[2] === 0x4e
+    && buffer[3] === 0x47
+    && buffer[4] === 0x0d
+    && buffer[5] === 0x0a
+    && buffer[6] === 0x1a
+    && buffer[7] === 0x0a;
+
+  if (isPng) {
+    return { mime: 'image/png', ext: '.png' };
+  }
+
+  const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+
+  if (isJpeg) {
+    return { mime: 'image/jpeg', ext: '.jpg' };
+  }
+
+  const header6 = buffer.subarray(0, 6).toString('ascii');
+  const header4 = buffer.subarray(0, 4).toString('ascii');
+  const header12 = buffer.subarray(8, 12).toString('ascii');
+  const isGif = header6 === 'GIF87a' || header6 === 'GIF89a';
+
+  if (isGif) {
+    return { mime: 'image/gif', ext: '.gif' };
+  }
+
+  const isWebp = header4 === 'RIFF' && header12 === 'WEBP';
+
+  if (isWebp) {
+    return { mime: 'image/webp', ext: '.webp' };
+  }
+
+  return null;
+}
+
+async function normalizeUploadedImage(file) {
+  if (!file?.path || !file.destination) {
+    throw new Error('Uploaded file is invalid.');
+  }
+
+  const buffer = await readFile(file.path);
+  const detectedFormat = detectImageFormat(buffer);
+
+  if (!detectedFormat) {
+    await unlink(file.path).catch(() => {});
+    throw new Error('Uploaded file must be a valid PNG, JPEG, GIF, or WebP image.');
+  }
+
+  const nextFilename = `${path.basename(file.filename, path.extname(file.filename))}${detectedFormat.ext}`;
+  const nextPath = path.join(file.destination, nextFilename);
+
+  if (nextPath !== file.path) {
+    await rename(file.path, nextPath);
+    file.path = nextPath;
+    file.filename = nextFilename;
+  }
+
+  file.mimetype = detectedFormat.mime;
+  file.detectedExtension = detectedFormat.ext;
+  return file;
 }
 
 const start = async () => {
@@ -65,6 +133,7 @@ const start = async () => {
   const { resources, resourceDefinitions } = await buildResources();
   const admin = createAdmin(resources);
   const app = express();
+  app.disable('x-powered-by');
   const hasFrontendBuild = existsSync(frontendIndexFile);
   const sessionStore = new MySQLStore({
     host: config.database.host,
@@ -80,6 +149,33 @@ const start = async () => {
       tableName: config.session.tableName,
     },
   });
+  const memberSessionStore = new MySQLStore({
+    host: config.database.host,
+    port: config.database.port,
+    user: config.database.user,
+    password: config.database.password,
+    database: config.database.name,
+    clearExpired: true,
+    checkExpirationInterval: 15 * 60 * 1000,
+    expiration: config.memberSession.cookieMaxAgeMs,
+    createDatabaseTable: true,
+    schema: {
+      tableName: config.memberSession.tableName,
+    },
+  });
+  const memberSessionMiddleware = session({
+    name: config.memberSession.cookieName,
+    secret: config.memberSession.secret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: config.memberSession.sameSite,
+      maxAge: config.memberSession.cookieMaxAgeMs,
+      secure: config.publicOrigin.startsWith('https://') || config.memberSession.sameSite === 'none',
+    },
+    store: memberSessionStore,
+  });
 
   app.set('trust proxy', 1);
 
@@ -90,16 +186,15 @@ const start = async () => {
   const allowedOrigins = new Set(config.cors.allowedOrigins);
 
   app.use((request, response, next) => {
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
+  app.use((request, response, next) => {
     const origin = request.headers.origin;
-    const isPublicApiRequest = request.path.startsWith('/api/') || request.path === '/api';
 
     if (origin && allowedOrigins.has(origin)) {
-      response.setHeader('Access-Control-Allow-Origin', origin);
-      response.setHeader('Vary', 'Origin');
-      response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-      response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      response.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else if (origin && isPublicApiRequest) {
       response.setHeader('Access-Control-Allow-Origin', origin);
       response.setHeader('Vary', 'Origin');
       response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
@@ -131,12 +226,15 @@ const start = async () => {
   });
 
   await mkdir(config.uploads.directory, { recursive: true });
+  await mkdir(config.staticSnapshots.directory, { recursive: true });
 
   registerStripeWebhook(app);
   app.use('/api', express.json({ limit: '2mb' }));
+  app.use('/api/member-auth', memberSessionMiddleware);
+  app.use('/api/member-portal', memberSessionMiddleware);
   app.use('/admin-assets', express.static(path.join(__dirname, '..', 'public')));
   app.use(config.uploads.publicPath, express.static(config.uploads.directory));
-  app.use('/cms', express.static(frontendCmsDirectory));
+  app.use('/cms', express.static(config.staticSnapshots.directory));
   registerPublicApi(app);
   registerMemberPortalApi(app);
 
@@ -225,8 +323,7 @@ const start = async () => {
         }
       },
       filename: (_request, file, callback) => {
-        const ext = path.extname(file.originalname || '').toLowerCase();
-        callback(null, `${Date.now()}-${randomUUID()}${ext}`);
+        callback(null, `${Date.now()}-${randomUUID()}`);
       },
     }),
     limits: {
@@ -255,6 +352,7 @@ const start = async () => {
           return;
         }
 
+        await normalizeUploadedImage(request.file);
         const item = await createMediaAssetFromUpload(request.file);
         response.status(201).json({
           ok: true,
@@ -267,9 +365,7 @@ const start = async () => {
     });
   };
 
-  app.post('/api/media/upload', handleMediaUpload);
-  app.post('/admin/api/media/upload', handleMediaUpload);
-
+  adminRouter.post('/api/media/upload', handleMediaUpload);
   app.use(admin.options.rootPath, adminRouter);
 
   if (hasFrontendBuild) {
@@ -298,8 +394,11 @@ const start = async () => {
     });
   });
 
-  app.listen(config.port, () => {
-    console.log(`AdminJS started on http://localhost:${config.port}${admin.options.rootPath}`);
+  app.listen(config.port, config.host, () => {
+    console.log(
+      `AdminJS started on http://${config.host}:${config.port}${admin.options.rootPath} `
+      + `(public: ${config.publicOrigin}${admin.options.rootPath})`,
+    );
   });
 };
 

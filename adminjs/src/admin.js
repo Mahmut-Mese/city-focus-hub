@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { getContentPageDefinitions, handleContentPage } from './content-pages.js';
 import { getCollectionPageDefinitions, handleCollectionPage } from './collection-pages.js';
 import { getMediaPageDefinitions, handleMediaPage } from './media-pages.js';
+import { getOperationsPageDefinitions, handleOperationsPage } from './operations-pages.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,7 +65,7 @@ const contentPages = Object.fromEntries(
 );
 
 const pageTranslations = Object.fromEntries(
-  [...getContentPageDefinitions(), ...getCollectionPageDefinitions(), ...getMediaPageDefinitions()]
+  [...getContentPageDefinitions(), ...getCollectionPageDefinitions(), ...getMediaPageDefinitions(), ...getOperationsPageDefinitions()]
     .map((definition) => [definition.name, definition.pluralLabel ?? definition.label]),
 );
 
@@ -88,6 +89,18 @@ const mediaPages = Object.fromEntries(
       icon: 'Media',
       component: mediaLibraryComponent,
       handler: async (request) => handleMediaPage(definition.name, request),
+    },
+  ]),
+);
+
+const operationsPages = Object.fromEntries(
+  getOperationsPageDefinitions().map((definition) => [
+    definition.name,
+    {
+      label: definition.pluralLabel,
+      icon: definition.icon,
+      component: collectionManagerComponent,
+      handler: async (request) => handleOperationsPage(definition.name, request),
     },
   ]),
 );
@@ -119,6 +132,7 @@ export function createAdmin(resources) {
     pages: {
       ...contentPages,
       ...collectionPages,
+      ...operationsPages,
       ...mediaPages,
       ...accountPages,
     },

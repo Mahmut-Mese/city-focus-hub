@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiClient } from 'adminjs';
+import { ADMIN_RESOURCE_DEFINITIONS, buildAdminResourceHref } from '../resource-definitions.js';
 
 const PRIMARY_PAGES = [
   { label: 'Homepage', href: '/admin/pages/homepage' },
@@ -16,10 +17,36 @@ const COLLECTIONS = [
   { label: 'Pricing Plans', href: '/admin/pages/pricing-plans' },
 ];
 
+const CUSTOMER_QUICK_ORDER = [
+  'member_users',
+  'contact_submissions',
+];
+
+const ORDER_QUICK_ORDER = [
+  'bookings',
+  'invoices',
+];
+
+const CUSTOMERS = CUSTOMER_QUICK_ORDER
+  .map((resourceId) => ADMIN_RESOURCE_DEFINITIONS.find((definition) => definition.table === resourceId))
+  .filter(Boolean)
+  .map((definition) => ({
+    label: definition.sidebarLabel || definition.label,
+    href: definition.sidebarHref || buildAdminResourceHref(definition.table),
+  }));
+
+const ORDERS = ORDER_QUICK_ORDER
+  .map((resourceId) => ADMIN_RESOURCE_DEFINITIONS.find((definition) => definition.table === resourceId))
+  .filter(Boolean)
+  .map((definition) => ({
+    label: definition.sidebarLabel || definition.label,
+    href: definition.sidebarHref || buildAdminResourceHref(definition.table),
+  }));
+
 const STYLES = `
 .admin-dashboard {
   min-height: 100%;
-  padding: 32px 40px 64px 344px;
+  padding: 32px 40px 64px 40px;
   background: #f6f6f9;
   color: #32324d;
 }
@@ -770,7 +797,7 @@ export default function Dashboard(props) {
           <p className="admin-dashboard__eyebrow">Home</p>
           <h1 className="admin-dashboard__title">Content Manager</h1>
           <p className="admin-dashboard__subtitle">
-            Use the shortcuts below to jump into single pages and collection content for the live site.
+            Use the shortcuts below to jump into site content, customers, orders, billing, and incoming messages.
           </p>
 
           <div className="admin-dashboard__grid">
@@ -781,17 +808,19 @@ export default function Dashboard(props) {
               meta="Edit structured page content"
             />
 
-            <section className="admin-dashboard__card">
-              <div className="admin-dashboard__card-head">
-                <h2 className="admin-dashboard__card-title">Workspace</h2>
-              </div>
-              <div className="admin-dashboard__notice">
-                <h3 className="admin-dashboard__notice-title">Production content workspace</h3>
-                <p className="admin-dashboard__notice-copy">
-                  client@leadenhallworks.com
-                </p>
-              </div>
-            </section>
+            <ShortcutList
+              title="Customers"
+              items={CUSTOMERS}
+              navigate={navigate}
+              meta="Review customers and incoming messages"
+            />
+
+            <ShortcutList
+              title="Orders"
+              items={ORDERS}
+              navigate={navigate}
+              meta="Review orders and invoices"
+            />
 
             <ShortcutList
               title="Collections"

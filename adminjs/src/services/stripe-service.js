@@ -17,12 +17,30 @@ function getStripeClient() {
   return stripeClient;
 }
 
+function resolveStripeMode() {
+  const key = config.stripe.secretKey || config.stripe.publishableKey || '';
+
+  if (!key) {
+    return 'disabled';
+  }
+
+  return key.startsWith('sk_live_') || key.startsWith('pk_live_') ? 'live' : 'test';
+}
+
 export function getStripePublishableKey() {
   return config.stripe.publishableKey || '';
 }
 
+export function getStripeMode() {
+  return resolveStripeMode();
+}
+
 export function isStripeEnabled() {
   return Boolean(getStripeClient());
+}
+
+export function isMockStripePaymentsEnabled() {
+  return Boolean(config.stripe.allowMockPayments);
 }
 
 export async function ensureStripeCustomer(user) {
@@ -39,10 +57,6 @@ export async function ensureStripeCustomer(user) {
   const customer = await stripe.customers.create({
     email: user.email,
     name: user.name,
-    address: {
-      country: 'GB',
-      postal_code: 'EC3V 1PJ',
-    },
     metadata: {
       app_user_id: String(user.id),
     },
@@ -114,6 +128,10 @@ export async function attachMockPaymentMethod(customerId) {
     throw new Error('Stripe is not configured.');
   }
 
+  if (!isMockStripePaymentsEnabled()) {
+    throw new Error('Mock Stripe payment methods are disabled for this environment.');
+  }
+
   const configuredPaymentMethod = config.stripe.mockPaymentMethodId || 'tok_visa';
   const paymentMethod = configuredPaymentMethod.startsWith('tok_')
     ? await stripe.paymentMethods.create({
@@ -144,6 +162,10 @@ export async function createStripeSubscription({ customerId, priceId, userId, me
 
   if (!stripe) {
     throw new Error('Stripe is not configured.');
+  }
+
+  if (!isMockStripePaymentsEnabled()) {
+    throw new Error('Direct subscription creation is disabled when mock Stripe payments are off. Use Stripe Checkout instead.');
   }
 
   await attachMockPaymentMethod(customerId);
@@ -180,6 +202,11 @@ export async function createStripeCheckoutSession({
   return stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
+    billing_address_collection: 'required',
+    customer_update: {
+      address: 'auto',
+      name: 'auto',
+    },
     line_items: [
       {
         price: priceId,
@@ -211,7 +238,7 @@ export async function createBookingCheckoutSession({
   resourceName,
   startAt,
   endAt,
-  totalMinor,
+  subtotalMinor,
   currency,
   successUrl,
   cancelUrl,
@@ -225,14 +252,32 @@ export async function createBookingCheckoutSession({
   return stripe.checkout.sessions.create({
     mode: 'payment',
     customer: customerId,
+    billing_address_collection: 'required',
+    customer_update: {
+      address: 'auto',
+      name: 'auto',
+    },
     success_url: successUrl,
     cancel_url: cancelUrl,
+    automatic_tax: {
+      enabled: true,
+    },
+    invoice_creation: {
+      enabled: true,
+      invoice_data: {
+        metadata: {
+          app_user_id: String(userId),
+          booking_id: String(bookingId),
+        },
+      },
+    },
     line_items: [
       {
         quantity: 1,
         price_data: {
           currency,
-          unit_amount: totalMinor,
+          unit_amount: subtotalMinor,
+          tax_behavior: 'exclusive',
           product_data: {
             name: `${resourceName} booking`,
             description: `${startAt} to ${endAt}`,
@@ -244,10 +289,204 @@ export async function createBookingCheckoutSession({
       app_user_id: String(userId),
       booking_id: String(bookingId),
     },
+    payment_intent_data: {
+      metadata: {
+        app_user_id: String(userId),
+        booking_id: String(bookingId),
+      },
+      description: `${resourceName} booking`,
+    },
   });
 }
 
-export async function updateStripeSubscriptionPlan({ subscriptionId, priceId, userId, membershipId }) {
+export async function createBookingAdjustmentCheckoutSession({
+  customerId,
+  bookingId,
+  bookingAdjustmentId,
+  userId,
+  resourceName,
+  startAt,
+  endAt,
+  subtotalMinor,
+  currency,
+  successUrl,
+  cancelUrl,
+}) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.checkout.sessions.create({
+    mode: 'payment',
+    customer: customerId,
+    billing_address_collection: 'required',
+    customer_update: {
+      address: 'auto',
+      name: 'auto',
+    },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    automatic_tax: {
+      enabled: true,
+    },
+    invoice_creation: {
+      enabled: true,
+      invoice_data: {
+        metadata: {
+          app_user_id: String(userId),
+          booking_id: String(bookingId),
+          booking_adjustment_id: String(bookingAdjustmentId),
+        },
+      },
+    },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency,
+          unit_amount: subtotalMinor,
+          tax_behavior: 'exclusive',
+          product_data: {
+            name: `${resourceName} booking adjustment`,
+            description: `${startAt} to ${endAt}`,
+          },
+        },
+      },
+    ],
+    metadata: {
+      app_user_id: String(userId),
+      booking_id: String(bookingId),
+      booking_adjustment_id: String(bookingAdjustmentId),
+    },
+    payment_intent_data: {
+      metadata: {
+        app_user_id: String(userId),
+        booking_id: String(bookingId),
+        booking_adjustment_id: String(bookingAdjustmentId),
+      },
+      description: `${resourceName} booking adjustment`,
+    },
+  });
+}
+
+export async function createMembershipAdjustmentCheckoutSession({
+  customerId,
+  membershipId,
+  membershipAdjustmentId,
+  userId,
+  currentPlanName,
+  targetPlanName,
+  subtotalMinor,
+  currency,
+  successUrl,
+  cancelUrl,
+}) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.checkout.sessions.create({
+    mode: 'payment',
+    customer: customerId,
+    billing_address_collection: 'required',
+    customer_update: {
+      address: 'auto',
+      name: 'auto',
+    },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    automatic_tax: {
+      enabled: true,
+    },
+    invoice_creation: {
+      enabled: true,
+    },
+    line_items: [
+      {
+        price_data: {
+          currency,
+          product_data: {
+            name: `${targetPlanName} membership upgrade`,
+            description: `Plan change from ${currentPlanName} to ${targetPlanName}`,
+          },
+          unit_amount: subtotalMinor,
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      app_user_id: String(userId),
+      membership_id: String(membershipId),
+      membership_adjustment_id: String(membershipAdjustmentId),
+    },
+    payment_intent_data: {
+      metadata: {
+        app_user_id: String(userId),
+        membership_id: String(membershipId),
+        membership_adjustment_id: String(membershipAdjustmentId),
+      },
+      description: `${targetPlanName} membership upgrade`,
+    },
+  });
+}
+
+export async function listStripePaymentIntents({ customerId, limit = 20 }) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  const paymentIntents = await stripe.paymentIntents.list({
+    customer: customerId,
+    limit,
+  });
+
+  return paymentIntents.data;
+}
+
+export async function createImmediateMockPayment({
+  customerId,
+  amountMinor,
+  currency,
+  description = '',
+  metadata = {},
+}) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  if (!isMockStripePaymentsEnabled()) {
+    throw new Error('Direct mock Stripe payments are disabled for this environment.');
+  }
+
+  const paymentMethodId = await attachMockPaymentMethod(customerId);
+
+  return stripe.paymentIntents.create({
+    amount: amountMinor,
+    currency,
+    customer: customerId,
+    payment_method: paymentMethodId,
+    confirm: true,
+    off_session: true,
+    description: description || undefined,
+    metadata,
+  });
+}
+
+export async function updateStripeSubscriptionPlan({
+  subscriptionId,
+  priceId,
+  userId,
+  membershipId,
+  prorationBehavior = 'create_prorations',
+}) {
   const stripe = getStripeClient();
 
   if (!stripe) {
@@ -268,7 +507,7 @@ export async function updateStripeSubscriptionPlan({ subscriptionId, priceId, us
         price: priceId,
       },
     ],
-    proration_behavior: 'create_prorations',
+    proration_behavior: prorationBehavior,
     automatic_tax: {
       enabled: true,
     },
@@ -298,11 +537,14 @@ export async function previewStripeSubscriptionPlanChange({
     throw new Error('Stripe subscription item was not found.');
   }
 
+  const prorationDate = Math.floor(Date.now() / 1000);
+
   return stripe.invoices.createPreview({
     customer: customerId,
     subscription: subscriptionId,
     subscription_details: {
       proration_behavior: 'create_prorations',
+      proration_date: prorationDate,
       items: [
         {
           id: subscriptionItemId,
@@ -339,6 +581,10 @@ export async function createBookingPaymentIntent({
 
   if (!stripe) {
     throw new Error('Stripe is not configured.');
+  }
+
+  if (!isMockStripePaymentsEnabled()) {
+    throw new Error('Direct booking charges are disabled when mock Stripe payments are off. Use the payment intent draft or Stripe Checkout flow.');
   }
 
   const paymentMethodId = await attachMockPaymentMethod(customerId);
@@ -393,7 +639,7 @@ export async function retrieveStripeCheckoutSession(sessionId) {
   }
 
   return stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ['subscription', 'payment_intent', 'line_items.data.price'],
+    expand: ['subscription', 'payment_intent', 'line_items.data.price', 'invoice'],
   });
 }
 
@@ -417,6 +663,51 @@ export async function retrieveStripePaymentIntent(paymentIntentId) {
   }
 
   return stripe.paymentIntents.retrieve(paymentIntentId);
+}
+
+export async function cancelStripePaymentIntent(paymentIntentId) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.paymentIntents.cancel(paymentIntentId);
+}
+
+export async function expireStripeCheckoutSession(sessionId) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.checkout.sessions.expire(sessionId);
+}
+
+export async function createStripeRefund({
+  paymentIntentId,
+  amountMinor = null,
+  reason = undefined,
+  metadata = undefined,
+}) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  const payload = {
+    payment_intent: paymentIntentId,
+    reason,
+    metadata,
+  };
+
+  if (typeof amountMinor === 'number' && Number.isFinite(amountMinor) && amountMinor > 0) {
+    payload.amount = amountMinor;
+  }
+
+  return stripe.refunds.create(payload);
 }
 
 export function constructStripeWebhookEvent(payload, signature) {

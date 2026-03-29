@@ -10,6 +10,7 @@ export const sequelize = new Sequelize(
     port: config.database.port,
     dialect: 'mysql',
     logging: false,
+    timezone: '+00:00',
     define: {
       freezeTableName: true,
       timestamps: false,

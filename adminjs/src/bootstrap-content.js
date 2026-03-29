@@ -298,6 +298,17 @@ const TABLE_DEFINITIONS = [
     created_at DATETIME(6) NULL,
     updated_at DATETIME(6) NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS contact_submission_replies (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    contact_submission_id INT UNSIGNED NOT NULL,
+    admin_email VARCHAR(255) NOT NULL,
+    recipient_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    body LONGTEXT NOT NULL,
+    created_at DATETIME(6) NULL,
+    updated_at DATETIME(6) NULL,
+    INDEX idx_contact_submission_replies_submission_id (contact_submission_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 ];
 
 function slugify(value) {

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Home from "./pages/Home";
 import Pricing from "./pages/Pricing";
 import MeetingRooms from "./pages/MeetingRooms";
+import MeetingRoomBooking from "./pages/MeetingRoomBooking";
 import VirtualOffice from "./pages/VirtualOffice";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/meeting-rooms" element={<MeetingRooms />} />
+            <Route path="/meeting-rooms/:roomSlug/book" element={<MeetingRoomBooking />} />
             <Route path="/virtual-office" element={<VirtualOffice />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />

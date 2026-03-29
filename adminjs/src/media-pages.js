@@ -139,7 +139,7 @@ export async function createMediaAssetFromUpload(file) {
   const now = new Date();
   const extFromOriginalName = file.originalname?.includes('.') ? `.${file.originalname.split('.').pop()}` : '';
   const extFromMime = file.mimetype?.includes('/') ? `.${file.mimetype.split('/').pop()}` : '';
-  const ext = extFromOriginalName || extFromMime;
+  const ext = file.detectedExtension || extFromOriginalName || extFromMime;
   const relativeUrl = `${config.uploads.publicPath}/${file.filename}`;
   const baseHash = file.filename.replace(/\.[^/.]+$/, '').slice(0, 255);
   const sizeInKb = Number((Number(file.size ?? 0) / 1024).toFixed(2));

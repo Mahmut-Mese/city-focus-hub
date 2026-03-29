@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { Loader, MessageBox } from '@adminjs/design-system';
 import { useNotice } from 'adminjs';
 
-const MULTILINE_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|hours|address|text|paragraph|overview|challenge|result|answer)/i;
+const MULTILINE_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|hours|address|text|paragraph|overview|challenge|result|answer|notes)/i;
 const IMAGE_FIELD_PATTERN = /(image|coverImage|contentImages)/i;
 const BOOLEAN_FIELD_PATTERN = /^(featured|isFeatured|isPopular)$/i;
 const FULL_WIDTH_FIELD_PATTERN = /(description|content|answer|excerpt|contentImages|coverImage|image|features|badges|tags)$/i;
@@ -11,7 +11,7 @@ const FULL_WIDTH_FIELD_PATTERN = /(description|content|answer|excerpt|contentIma
 const STYLES = `
 .admin-editor {
   min-height: 100%;
-  padding: 32px 40px 64px 344px;
+  padding: 32px 40px 64px 40px;
   background: #f6f6f9;
   color: #32324d;
 }
@@ -116,6 +116,11 @@ const STYLES = `
   text-transform: uppercase;
 }
 .admin-side-card__body { padding: 0 12px 12px; }
+.admin-side-note {
+  color: #666687;
+  font-size: .875rem;
+  line-height: 1.5rem;
+}
 .admin-side-button-row {
   display: flex;
   gap: 8px;
@@ -201,6 +206,189 @@ const STYLES = `
   gap: 20px 24px;
 }
 .admin-field--full { grid-column: 1 / -1; }
+.admin-profile-card {
+  max-width: 100%;
+  border-radius: 20px;
+  background: transparent;
+  padding: 6px 6px 0;
+}
+.admin-profile-card__head {
+  padding: 0 0 12px;
+}
+.admin-profile-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.admin-profile-card__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #4945ff 0%, #7b79ff 100%);
+  color: #ffffff;
+  font-size: .95rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.admin-profile-card__head-copy {
+  min-width: 0;
+}
+.admin-profile-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.admin-profile-card__eyebrow {
+  margin-bottom: 6px;
+  color: #7c7c98;
+  font-size: .72rem;
+  line-height: 1rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.admin-profile-card__title {
+  margin: 0;
+  color: #32324d;
+  font-size: clamp(1.45rem, 2.2vw, 2rem);
+  line-height: 1.02;
+  letter-spacing: -.04em;
+  font-weight: 700;
+}
+.admin-profile-card__body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 0 6px;
+}
+.admin-profile-card__body--customer {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.admin-profile-card__row {
+  width: 100%;
+  padding: 10px 12px 6px;
+}
+.admin-profile-card__item {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+.admin-profile-card__item--full {
+  grid-column: 1 / -1;
+}
+.admin-profile-card__label {
+  color: #7c7c98;
+  font-size: .72rem;
+  line-height: 1rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.admin-profile-card__value {
+  margin-top: 10px;
+  color: #32324d;
+  font-size: 1.1rem;
+  line-height: 1.45;
+  font-weight: 600;
+  word-break: break-word;
+}
+.admin-profile-card__value--muted {
+  color: #8e8ea9;
+}
+.admin-profile-card__value--mono {
+  display: inline-flex;
+  align-items: center;
+  padding: .24rem .62rem;
+  border-radius: 999px;
+  background: rgba(73, 69, 255, 0.08);
+  color: #4b47be;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .82rem;
+  line-height: 1.1rem;
+}
+.admin-profile-card__value--multiline {
+  white-space: pre-line;
+}
+.admin-profile-card__textbox {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+  padding: .875rem 1rem;
+  border: 1px solid #dcdce4;
+  border-radius: 12px;
+  background: #f6f6f9;
+  color: #666687;
+  font: inherit;
+  line-height: 1.55;
+  resize: none;
+}
+.admin-reply-panel {
+  max-width: 660px;
+  margin-top: 12px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #eaeaef;
+  padding: 18px 20px;
+}
+.admin-reply-panel__title {
+  margin: 0 0 6px;
+  color: #32324d;
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.admin-reply-panel__note {
+  margin: 0 0 14px;
+  color: #666687;
+  font-size: .875rem;
+  line-height: 1.5;
+}
+.admin-reply-panel__history {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-reply-panel__item {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f6f6f9;
+}
+.admin-reply-panel__meta {
+  color: #666687;
+  font-size: .78rem;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.admin-reply-panel__subject {
+  color: #32324d;
+  font-size: .95rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.admin-reply-panel__body {
+  margin-top: 8px;
+  color: #666687;
+  font-size: .9rem;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.admin-reply-panel__form {
+  display: grid;
+  gap: 12px;
+}
+.admin-reply-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .admin-label {
   display: inline-flex;
   align-items: center;
@@ -627,6 +815,10 @@ const STYLES = `
   font-size: .75rem;
   font-weight: 600;
 }
+.admin-list-status--manual {
+  background: rgba(73, 69, 255, 0.12);
+  color: #4945ff;
+}
 .admin-primary {
   min-height: 2.25rem;
   padding: 0 .875rem;
@@ -673,6 +865,21 @@ const STYLES = `
 @media (max-width: 960px) {
   .admin-editor { padding: 20px 16px 48px; }
   .admin-field-grid { grid-template-columns: 1fr; }
+  .admin-profile-card {
+    padding: 4px 4px 0;
+    border-radius: 16px;
+  }
+  .admin-profile-card__head { padding-bottom: 10px; }
+  .admin-profile-card__identity { align-items: flex-start; }
+  .admin-profile-card__avatar {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 14px;
+    font-size: .9rem;
+  }
+  .admin-profile-card__body,
+  .admin-profile-card__body--customer { grid-template-columns: 1fr; gap: 10px; }
   .admin-list-toolbar { flex-direction: column; align-items: stretch; }
   .admin-search-wrap { width: 100%; }
 }
@@ -919,6 +1126,43 @@ function getDisplayTitle(definition, record) {
     return definition.label;
   }
   return record[definition.titleField] || definition.label;
+}
+
+function formatMoneyValue(value, currency) {
+  const amount = Number(value ?? 0);
+  const safeCurrency = String(currency || 'GBP').toUpperCase();
+
+  try {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: safeCurrency,
+    }).format(amount / 100);
+  } catch {
+    return `${safeCurrency} ${(amount / 100).toFixed(2)}`;
+  }
+}
+
+function formatProfileDisplayValue(definition, field, rawValue, record) {
+  const normalizedValue = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+
+  if (normalizedValue === '' || normalizedValue == null) {
+    return 'Not set';
+  }
+
+  if (Array.isArray(definition?.moneyFields) && definition.moneyFields.includes(field)) {
+    return formatMoneyValue(rawValue, record?.currency);
+  }
+
+  if (
+    typeof rawValue === 'string'
+    && /^(status|.*Status|bookingType|resourceType|accessStatus)$/i.test(field)
+  ) {
+    return rawValue
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  return String(rawValue);
 }
 
 function isBlogDisabledField(definition, field) {
@@ -1187,6 +1431,8 @@ function MediaField({ label, value, path, onChange, disabled }) {
 
 function PrimitiveField({ definition, field, value, path, onChange, disabled }) {
   const label = getFieldDisplayLabel(definition, field);
+  const selectOptions = Array.isArray(definition?.selectFields?.[field]) ? definition.selectFields[field] : null;
+  const inputType = definition?.inputTypes?.[field] || (typeof value === 'number' ? 'number' : 'text');
 
   if (IMAGE_FIELD_PATTERN.test(field)) {
     return <MediaField label={label} value={value} path={path} onChange={onChange} disabled={disabled} />;
@@ -1214,7 +1460,18 @@ function PrimitiveField({ definition, field, value, path, onChange, disabled }) 
         {label}
         {field !== 'sortOrder' && !BOOLEAN_FIELD_PATTERN.test(field) ? <span className="admin-label__required">*</span> : null}
       </label>
-      {MULTILINE_FIELD_PATTERN.test(field) ? (
+      {selectOptions ? (
+        <select
+          className="admin-input"
+          value={value ?? ''}
+          disabled={disabled}
+          onChange={(event) => onChange(path, parseInputValue(event.target.value, value))}
+        >
+          {selectOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      ) : MULTILINE_FIELD_PATTERN.test(field) ? (
         <textarea
           className="admin-textarea"
           value={value ?? ''}
@@ -1224,13 +1481,162 @@ function PrimitiveField({ definition, field, value, path, onChange, disabled }) 
       ) : (
         <input
           className="admin-input"
-          type={typeof value === 'number' ? 'number' : 'text'}
+          type={inputType}
           value={value ?? ''}
           disabled={disabled}
           onChange={(event) => onChange(path, parseInputValue(event.target.value, value))}
         />
       )}
     </div>
+  );
+}
+
+function ProfileInfoCard({ definition, record }) {
+  const infoCardFields = Array.isArray(definition.infoCardFields) ? definition.infoCardFields : [];
+  const infoCardBlockFields = Array.isArray(definition.infoCardBlockFields) ? definition.infoCardBlockFields : [];
+  const optionalInfoCardFields = new Set(Array.isArray(definition.optionalInfoCardFields) ? definition.optionalInfoCardFields : []);
+  const optionalInfoCardBlockFields = new Set(Array.isArray(definition.optionalInfoCardBlockFields) ? definition.optionalInfoCardBlockFields : []);
+  const titleField = definition.infoCardTitleField || definition.titleField;
+  const rawTitle = record?.[titleField];
+  const cardTitle = rawTitle == null || String(rawTitle).trim() === ''
+    ? definition.label
+    : String(rawTitle);
+  const cardMetaLabel = definition.metaLabel || definition.label || 'Record';
+  const cardEyebrow = cardMetaLabel.endsWith('s') ? cardMetaLabel.slice(0, -1) : cardMetaLabel;
+  const titleTokens = cardTitle
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const avatarLabel = titleTokens.slice(0, 2).map((token) => token[0]).join('').toUpperCase() || 'ID';
+  const manualTag = typeof record?.manualTag === 'string' ? record.manualTag.trim() : '';
+  const isProfileSummaryLayout = definition?.name === 'customers'
+    || definition?.name === 'messages'
+    || definition?.name === 'orders'
+    || definition?.name === 'invoices'
+    || definition?.name === 'refunds';
+  const summaryFields = infoCardFields.filter((field) => field !== 'manualTag' && !infoCardBlockFields.includes(field));
+
+  if (!infoCardFields.length) {
+    return null;
+  }
+
+  return (
+    <section className="admin-section">
+      <div className="admin-profile-card">
+        <div className="admin-profile-card__head">
+          <div className="admin-profile-card__identity">
+            <div className="admin-profile-card__avatar" aria-hidden="true">{avatarLabel}</div>
+            <div className="admin-profile-card__head-copy">
+              <div className="admin-profile-card__eyebrow">{cardEyebrow}</div>
+              <div className="admin-profile-card__title-row">
+                <h2 className="admin-profile-card__title">{cardTitle}</h2>
+                {manualTag ? <span className="admin-list-status admin-list-status--manual">{manualTag}</span> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className={`admin-profile-card__body${isProfileSummaryLayout ? ' admin-profile-card__body--customer' : ''}`}>
+          {summaryFields.map((field) => {
+            const label = getFieldDisplayLabel(definition, field);
+            const displayValue = formatProfileDisplayValue(definition, field, record?.[field], record);
+            const valueClassNames = ['admin-profile-card__value'];
+
+            if (optionalInfoCardFields.has(field) && displayValue === 'Not set') {
+              return null;
+            }
+
+            if (displayValue === 'Not set') {
+              valueClassNames.push('admin-profile-card__value--muted');
+            }
+
+            if (field === 'id' || field.endsWith('Id')) {
+              valueClassNames.push('admin-profile-card__value--mono');
+            }
+
+            if (typeof displayValue === 'string' && displayValue.includes('\n')) {
+              valueClassNames.push('admin-profile-card__value--multiline');
+            }
+
+            return (
+              <div
+                key={field}
+                className={`admin-profile-card__item${FULL_WIDTH_FIELD_PATTERN.test(field) ? ' admin-profile-card__item--full' : ''}`}
+              >
+                <div className="admin-profile-card__label">{label}</div>
+                <div className={valueClassNames.join(' ')}>{displayValue}</div>
+              </div>
+            );
+          })}
+        </div>
+        {infoCardBlockFields.map((field) => {
+          const displayValue = formatProfileDisplayValue(definition, field, record?.[field], record);
+          if (optionalInfoCardBlockFields.has(field) && displayValue === 'Not set') {
+            return null;
+          }
+          return (
+            <div key={field} className="admin-profile-card__row">
+              <div className="admin-profile-card__label">{getFieldDisplayLabel(definition, field)}</div>
+              <textarea
+                className="admin-profile-card__textbox"
+                value={displayValue}
+                rows={Math.max(4, Math.min(10, String(displayValue).split('\n').length + 1))}
+                disabled
+                readOnly
+              />
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MessageReplyPanel({ replies, replyDraft, onReplyChange, onSendReply, sendingReply }) {
+  return (
+    <section className="admin-section">
+      <div className="admin-reply-panel">
+        <h3 className="admin-reply-panel__title">Reply to Customer</h3>
+        <p className="admin-reply-panel__note">Send an email response directly from this message detail page.</p>
+
+        {replies.length ? (
+          <div className="admin-reply-panel__history">
+            {replies.map((reply) => (
+              <div key={reply.id} className="admin-reply-panel__item">
+                <div className="admin-reply-panel__meta">{reply.createdAt} • {reply.adminEmail}</div>
+                <div className="admin-reply-panel__subject">{reply.subject}</div>
+                <div className="admin-reply-panel__body">{reply.body}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="admin-reply-panel__form">
+          <div className="admin-field">
+            <label className="admin-label">Reply Subject</label>
+            <input
+              className="admin-input"
+              type="text"
+              value={replyDraft.subject}
+              onChange={(event) => onReplyChange('subject', event.target.value)}
+            />
+          </div>
+          <div className="admin-field admin-field--full">
+            <label className="admin-label">Reply Message</label>
+            <textarea
+              className="admin-textarea"
+              value={replyDraft.body}
+              rows={8}
+              onChange={(event) => onReplyChange('body', event.target.value)}
+            />
+          </div>
+          <div className="admin-reply-panel__actions">
+            <button className="admin-primary" type="button" onClick={onSendReply} disabled={sendingReply}>
+              {sendingReply ? 'Sending...' : 'Send Reply'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1472,6 +1878,12 @@ function FieldRenderer({ definition, field, value, path, onChange, onAddItem, on
 }
 
 function renderListCell(field, value) {
+  if (field === 'manualTag') {
+    return value
+      ? <span className="admin-list-status admin-list-status--manual">{value}</span>
+      : null;
+  }
+
   if (field === 'status') {
     return <span className="admin-list-status">{value}</span>;
   }
@@ -1505,7 +1917,7 @@ function ListView({
   onDeleteRecord,
 }) {
   const [showSearch, setShowSearch] = useState(Boolean(search));
-  const [showFilters, setShowFilters] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [showDisplayed, setShowDisplayed] = useState(false);
   const [searchValue, setSearchValue] = useState(search);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -1540,6 +1952,10 @@ function ListView({
     () => controls.availableFields.filter((field) => controls.displayedFields.includes(field.field)),
     [controls.availableFields, controls.displayedFields],
   );
+  const showCreate = definition.allowCreate !== false;
+  const hasFilters = Boolean(controls.filters?.length);
+  const allowDuplicate = definition.allowDuplicate !== false;
+  const allowDelete = definition.allowDelete !== false;
 
   return (
     <div className="admin-editor">
@@ -1547,11 +1963,11 @@ function ListView({
       <div className="admin-editor__inner">
         <div className="admin-header">
           <div>
-            <div className="admin-meta">Collection Type</div>
+            <div className="admin-meta">{definition.metaLabel || 'Collection Type'}</div>
             <h1 className="admin-title">{definition.label}</h1>
           </div>
           <div className="admin-list-actions">
-            <button className="admin-primary" type="button" onClick={onCreate}>+ Create new entry</button>
+            {showCreate ? <button className="admin-primary" type="button" onClick={onCreate}>+ Create new entry</button> : null}
           </div>
         </div>
 
@@ -1575,17 +1991,19 @@ function ListView({
                 autoFocus
               />
             ) : null}
-            <button
-              className={`admin-toolbar-button${showFilters ? ' admin-toolbar-button--active' : ''}`}
-              type="button"
-              onClick={() => {
-                setShowFilters((current) => !current);
-                setShowDisplayed(false);
-              }}
-            >
-              Filters
-            </button>
-            {showFilters ? (
+            {hasFilters ? (
+              <button
+                className={`admin-toolbar-button${filtersOpen ? ' admin-toolbar-button--active' : ''}`}
+                type="button"
+                onClick={() => {
+                  setFiltersOpen((current) => !current);
+                  setShowDisplayed(false);
+                }}
+              >
+                Filters
+              </button>
+            ) : null}
+            {hasFilters && filtersOpen ? (
               <div className="admin-list-popover" style={{ left: showSearch ? 332 : 52, right: 'auto' }}>
                 <div className="admin-list-popover__head">
                   <div className="admin-list-popover__title">Filters</div>
@@ -1616,7 +2034,7 @@ function ListView({
                 type="button"
                 onClick={() => {
                   setShowDisplayed((current) => !current);
-                  setShowFilters(false);
+                  setFiltersOpen(false);
                 }}
               >
                 ⚙
@@ -1678,12 +2096,12 @@ function ListView({
                     <button
                       className="admin-list-row-menu-trigger"
                       type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setOpenMenuId((current) => (current === record.id ? null : record.id));
-                      }}
-                    >
-                      …
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenMenuId((current) => (current === record.id ? null : record.id));
+                        }}
+                      >
+                        …
                     </button>
                     {openMenuId === record.id ? (
                       <div
@@ -1696,22 +2114,26 @@ function ListView({
                           onOpenRecord(record.id);
                         }}>
                           <span className="admin-list-row-menu__icon">✎</span>
-                          <span>Edit</span>
+                          <span>{definition.readOnly ? 'View' : 'Edit'}</span>
                         </button>
-                        <button className="admin-list-row-menu__item" type="button" onClick={() => {
-                          setOpenMenuId(null);
-                          onDuplicateRecord(record.id);
-                        }}>
-                          <span className="admin-list-row-menu__icon">⧉</span>
-                          <span>Duplicate</span>
-                        </button>
-                        <button className="admin-list-row-menu__item admin-list-row-menu__item--danger" type="button" onClick={() => {
-                          setOpenMenuId(null);
-                          onDeleteRecord(record.id);
-                        }}>
-                          <span className="admin-list-row-menu__icon">🗑</span>
-                          <span>Delete entry</span>
-                        </button>
+                        {allowDuplicate ? (
+                          <button className="admin-list-row-menu__item" type="button" onClick={() => {
+                            setOpenMenuId(null);
+                            onDuplicateRecord(record.id);
+                          }}>
+                            <span className="admin-list-row-menu__icon">⧉</span>
+                            <span>Duplicate</span>
+                          </button>
+                        ) : null}
+                        {allowDelete ? (
+                          <button className="admin-list-row-menu__item admin-list-row-menu__item--danger" type="button" onClick={() => {
+                            setOpenMenuId(null);
+                            onDeleteRecord(record.id);
+                          }}>
+                            <span className="admin-list-row-menu__icon">🗑</span>
+                            <span>Delete entry</span>
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
                   </td>
@@ -1725,9 +2147,31 @@ function ListView({
   );
 }
 
-function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab, saving, error, onBack, onChange, onAddItem, onRemoveItem, onMoveItem, onSave, onPublish, onDelete, onDiscardChanges, onUnpublish, canSave, canPublish, canDiscard, canUnpublish }) {
+function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab, saving, error, onBack, onChange, onAddItem, onRemoveItem, onMoveItem, onSave, onPublish, onDelete, onDiscardChanges, onUnpublish, canSave, canPublish, canDiscard, canUnpublish, replyDraft, onReplyChange, onSendReply, sendingReply, isCreateMode }) {
   const displayedRecord = activeTab === 'published' && publishedRecord ? publishedRecord : record;
   const isPublishedView = activeTab === 'published' && publishedRecord;
+  const isManualEntry = displayedRecord?.entrySource === 'manual' || displayedRecord?.manualTag === 'Manual';
+  const supportsEditing = isCreateMode || isManualEntry || !definition.readOnly;
+  const showVersionTabs = supportsEditing && definition.showVersionTabs !== false;
+  const allowPublish = supportsEditing && definition.allowPublish !== false;
+  const allowSave = supportsEditing && definition.allowSave !== false;
+  const allowDelete = definition.allowDelete !== false;
+  const editableFields = isCreateMode
+    ? (Array.isArray(definition.createFields) ? definition.createFields : [])
+    : isManualEntry
+      ? (Array.isArray(definition.manualEditableFields) ? definition.manualEditableFields : (Array.isArray(definition.editableFields) ? definition.editableFields : []))
+      : (Array.isArray(definition.editableFields) ? definition.editableFields : []);
+  const infoCardFields = !isCreateMode && Array.isArray(definition.infoCardFields) ? definition.infoCardFields : [];
+  const infoCardBlockFields = !isCreateMode && Array.isArray(definition.infoCardBlockFields) ? definition.infoCardBlockFields : [];
+  const hiddenCardFields = new Set(
+    [...infoCardFields, ...infoCardBlockFields].filter((field) => !editableFields.includes(field)),
+  );
+  const showStandaloneHeader = infoCardFields.length === 0 && infoCardBlockFields.length === 0;
+  const activeLayout = isCreateMode
+    ? (Array.isArray(definition.createLayout) ? definition.createLayout : definition.editLayout)
+    : isManualEntry && Array.isArray(definition.manualEditLayout)
+      ? definition.manualEditLayout
+      : definition.editLayout;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -1754,93 +2198,146 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
       <div className="admin-editor__inner">
         <button className="admin-back" type="button" onClick={onBack}>← Back</button>
 
-        <div className="admin-header">
-          <div>
-            <div className="admin-meta">Collection Type</div>
-            <h1 className="admin-title">{getDisplayTitle(definition, displayedRecord)}</h1>
-            <div className="admin-status">{publishedRecord ? 'Published' : (displayedRecord.status || 'Draft')}</div>
+        {showStandaloneHeader ? (
+          <div className="admin-header">
+            <div>
+              <div className="admin-meta">{definition.metaLabel || 'Collection Type'}</div>
+              <h1 className="admin-title">{getDisplayTitle(definition, displayedRecord)}</h1>
+              {displayedRecord.status ? <div className="admin-status">{displayedRecord.status}</div> : null}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="admin-tabs">
-          <button className={`admin-tab${activeTab === 'draft' ? ' admin-tab--active' : ''}`} type="button" onClick={() => onSwitchTab('draft')}>DRAFT</button>
-          <button className={`admin-tab${activeTab === 'published' ? ' admin-tab--active' : ''}`} type="button" onClick={() => publishedRecord && onSwitchTab('published')}>PUBLISHED</button>
-        </div>
+        {showVersionTabs ? (
+          <div className="admin-tabs">
+            <button className={`admin-tab${activeTab === 'draft' ? ' admin-tab--active' : ''}`} type="button" onClick={() => onSwitchTab('draft')}>DRAFT</button>
+            <button className={`admin-tab${activeTab === 'published' ? ' admin-tab--active' : ''}`} type="button" onClick={() => publishedRecord && onSwitchTab('published')}>PUBLISHED</button>
+          </div>
+        ) : null}
 
         {error ? <MessageBox variant="danger">{error}</MessageBox> : null}
 
         <div className="admin-layout">
           <div className="admin-main-card">
-            {definition.editLayout.map((row, index) => (
-              <div key={`row-${index}`} className="admin-section">
-                <div className="admin-field-grid">
-                  {row.map((field) => (
-                    <FieldRenderer
-                      definition={definition}
-                      key={field}
-                      field={field}
-                      value={displayedRecord[field]}
-                      path={[field]}
-                      onChange={onChange}
-                      onAddItem={onAddItem}
-                      onRemoveItem={onRemoveItem}
-                      onMoveItem={onMoveItem}
-                      disabled={isPublishedView}
-                    />
-                  ))}
+            <ProfileInfoCard definition={definition} record={displayedRecord} />
+            {definition.name === 'messages' ? (
+              <MessageReplyPanel
+                replies={Array.isArray(displayedRecord?.replies) ? displayedRecord.replies : []}
+                replyDraft={replyDraft}
+                onReplyChange={onReplyChange}
+                onSendReply={onSendReply}
+                sendingReply={sendingReply}
+              />
+            ) : null}
+            {activeLayout.map((row, index) => {
+              const visibleFields = row.filter((field) => !hiddenCardFields.has(field));
+
+              if (!visibleFields.length) {
+                return null;
+              }
+
+              return (
+                <div key={`row-${index}`} className="admin-section">
+                  <div className="admin-field-grid">
+                    {visibleFields.map((field) => {
+                      const fieldDisabled = isPublishedView
+                        || !supportsEditing
+                        || (editableFields.length > 0 && !editableFields.includes(field));
+
+                      return (
+                        <FieldRenderer
+                          definition={definition}
+                          key={field}
+                          field={field}
+                          value={displayedRecord[field]}
+                          path={[field]}
+                          onChange={onChange}
+                          onAddItem={onAddItem}
+                          onRemoveItem={onRemoveItem}
+                          onMoveItem={onMoveItem}
+                          disabled={fieldDisabled}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <aside>
-            <div className="admin-side-card">
-              <div className="admin-side-card__head">Entry</div>
-              <div className="admin-side-card__body">
-                <div className="admin-side-button-row">
-                  <button className="admin-side-button--secondary" type="button" onClick={onPublish} disabled={!canPublish}>Publish</button>
-                  <button className="admin-side-button--secondary admin-side-button--menu" type="button" onClick={() => setMenuOpen((current) => !current)}>…</button>
-                  {menuOpen ? (
-                    <div ref={menuRef} className="admin-side-action-menu">
-                      <button
-                        className="admin-side-action-menu__item admin-side-action-menu__item--danger"
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          onUnpublish();
-                        }}
-                        disabled={!canUnpublish}
-                      >
-                        <span className="admin-side-action-menu__icon">×</span>
-                        Unpublish
-                      </button>
-                      <button
-                        className="admin-side-action-menu__item admin-side-action-menu__item--danger"
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          onDiscardChanges();
-                        }}
-                        disabled={!canDiscard}
-                      >
-                        <span className="admin-side-action-menu__icon">×</span>
-                        Discard changes
-                      </button>
-                    </div>
-                  ) : null}
+            {!supportsEditing ? (
+              <div className="admin-side-card">
+                <div className="admin-side-card__head">Entry</div>
+                <div className="admin-side-card__body">
+                  <div className="admin-side-note">Read-only record.</div>
                 </div>
-                <button className="admin-side-button" type="button" onClick={onSave} disabled={!canSave}>
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="admin-side-card">
+                  <div className="admin-side-card__head">Entry</div>
+                  <div className="admin-side-card__body">
+                    {allowPublish ? (
+                      <>
+                        <div className="admin-side-button-row">
+                          <button className="admin-side-button--secondary" type="button" onClick={onPublish} disabled={!canPublish}>Publish</button>
+                          <button className="admin-side-button--secondary admin-side-button--menu" type="button" onClick={() => setMenuOpen((current) => !current)}>…</button>
+                          {menuOpen ? (
+                            <div ref={menuRef} className="admin-side-action-menu">
+                              <button
+                                className="admin-side-action-menu__item admin-side-action-menu__item--danger"
+                                type="button"
+                                onClick={() => {
+                                  setMenuOpen(false);
+                                  onUnpublish();
+                                }}
+                                disabled={!canUnpublish}
+                              >
+                                <span className="admin-side-action-menu__icon">×</span>
+                                Unpublish
+                              </button>
+                              <button
+                                className="admin-side-action-menu__item admin-side-action-menu__item--danger"
+                                type="button"
+                                onClick={() => {
+                                  setMenuOpen(false);
+                                  onDiscardChanges();
+                                }}
+                                disabled={!canDiscard}
+                              >
+                                <span className="admin-side-action-menu__icon">×</span>
+                                Discard changes
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                        {allowSave ? (
+                          <button className="admin-side-button" type="button" onClick={onSave} disabled={!canSave}>
+                            {saving ? 'Saving...' : 'Save'}
+                          </button>
+                        ) : null}
+                      </>
+                    ) : allowSave ? (
+                      <button className="admin-side-button" type="button" onClick={onSave} disabled={!canSave}>
+                        {saving ? 'Saving...' : 'Save'}
+                      </button>
+                    ) : (
+                      <div className="admin-side-note">No editable actions for this record.</div>
+                    )}
+                  </div>
+                </div>
 
-            <div className="admin-side-card">
-              <div className="admin-side-card__head">Actions</div>
-              <div className="admin-side-card__body">
-                <button className="admin-side-button--secondary" type="button" onClick={onDelete} disabled={isPublishedView}>Delete</button>
-              </div>
-            </div>
+                {allowDelete ? (
+                  <div className="admin-side-card">
+                    <div className="admin-side-card__head">Actions</div>
+                    <div className="admin-side-card__body">
+                      <button className="admin-side-button--secondary" type="button" onClick={onDelete} disabled={isPublishedView}>Delete</button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </aside>
         </div>
       </div>
@@ -1864,6 +2361,8 @@ export default function CollectionManager() {
   const [publishedRecord, setPublishedRecord] = useState(null);
   const [activeTab, setActiveTab] = useState('draft');
   const [error, setError] = useState('');
+  const [replyDraft, setReplyDraft] = useState({ subject: '', body: '' });
+  const [sendingReply, setSendingReply] = useState(false);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const recordId = query.get('recordId');
@@ -1878,6 +2377,8 @@ export default function CollectionManager() {
   const sortBy = query.get('sortBy') || '';
   const sortOrder = query.get('sortOrder') || '';
   const displayedFields = parseDisplayedFields(query.get('displayedFields'));
+  const isManualEditableRecord = record?.entrySource === 'manual' || publishedRecord?.entrySource === 'manual';
+  const canEditCurrentRecord = Boolean(definition) && (!definition.readOnly || isNew || isManualEditableRecord);
 
   const mode = useMemo(() => (recordId || isNew ? 'edit' : 'list'), [recordId, isNew]);
   const isDirty = useMemo(
@@ -1889,10 +2390,11 @@ export default function CollectionManager() {
     () => JSON.stringify(toComparableValue(record)) !== JSON.stringify(toComparableValue(publishedRecord)),
     [record, publishedRecord],
   );
-  const canSave = mode === 'edit' && !saving && activeTab !== 'published' && isDirty;
-  const canPublish = mode === 'edit' && !saving && activeTab !== 'published' && (publishedRecord ? hasUnpublishedChanges : hasDraftContent);
-  const canDiscard = mode === 'edit' && !saving && activeTab !== 'published' && hasDraftContent;
-  const canUnpublish = mode === 'edit' && !saving && Boolean(publishedRecord);
+  const showVersionTabs = definition?.showVersionTabs !== false;
+  const canSave = canEditCurrentRecord && mode === 'edit' && !saving && (!showVersionTabs || activeTab !== 'published') && isDirty;
+  const canPublish = canEditCurrentRecord && mode === 'edit' && !saving && showVersionTabs && activeTab !== 'published' && (publishedRecord ? hasUnpublishedChanges : hasDraftContent);
+  const canDiscard = canEditCurrentRecord && mode === 'edit' && !saving && activeTab !== 'published' && hasDraftContent;
+  const canUnpublish = canEditCurrentRecord && mode === 'edit' && !saving && Boolean(publishedRecord);
 
   useEffect(() => {
     let active = true;
@@ -1935,6 +2437,14 @@ export default function CollectionManager() {
         setOriginalRecord(nextDraftRecord ? cloneValue(nextDraftRecord) : null);
         setPublishedRecord(payload.publishedRecord ? cloneValue(payload.publishedRecord) : null);
         setActiveTab('draft');
+        setReplyDraft((current) => (
+          pageName === 'messages' && nextDraftRecord
+            ? {
+                subject: current.subject || `Re: Your message to The Leadenhall Works`,
+                body: current.body,
+              }
+            : current
+        ));
       } catch (loadError) {
         if (!active) {
           return;
@@ -1953,6 +2463,17 @@ export default function CollectionManager() {
       active = false;
     };
   }, [mode, pageName, recordId, isNew, search, status, category, planType, featured, isFeatured, isPopular, sortBy, sortOrder, displayedFields.join(',')]);
+
+  useEffect(() => {
+    if (pageName !== 'messages' || !record) {
+      return;
+    }
+
+    setReplyDraft((current) => ({
+      subject: current.subject || 'Re: Your message to The Leadenhall Works',
+      body: current.body,
+    }));
+  }, [pageName, record]);
 
   const updateListQuery = (patch) => {
     const nextParams = {
@@ -1989,7 +2510,7 @@ export default function CollectionManager() {
   };
 
   const handleSaveIntent = async (intent) => {
-    if (!record) {
+    if (!record || !canEditCurrentRecord) {
       return;
     }
 
@@ -2041,6 +2562,9 @@ export default function CollectionManager() {
   };
 
   const handleCreate = async () => {
+    if (definition?.allowCreate === false) {
+      return;
+    }
     navigate(buildAdminPath(location.pathname, { new: 1 }));
   };
 
@@ -2067,6 +2591,52 @@ export default function CollectionManager() {
     } catch (requestError) {
       setError(requestError.message);
       addNotice({ message: requestError.message, type: 'error' });
+    }
+  };
+
+  const handleReplyChange = (field, value) => {
+    setReplyDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleSendReply = async () => {
+    if (pageName !== 'messages' || !recordId) {
+      return;
+    }
+
+    setSendingReply(true);
+    setError('');
+    try {
+      const payload = await requestPage(pageName, {
+        method: 'POST',
+        body: {
+          intent: 'sendReply',
+          recordId,
+          reply: replyDraft,
+        },
+      });
+
+      if (payload.draftRecord) {
+        const nextDraftRecord = cloneValue(payload.draftRecord);
+        setRecord(nextDraftRecord);
+        setOriginalRecord(cloneValue(nextDraftRecord));
+      }
+
+      if (payload.notice) {
+        addNotice({ message: payload.notice.message, type: payload.notice.type });
+      }
+
+      setReplyDraft({
+        subject: replyDraft.subject || 'Re: Your message to The Leadenhall Works',
+        body: '',
+      });
+    } catch (requestError) {
+      setError(requestError.message);
+      addNotice({ message: requestError.message, type: 'error' });
+    } finally {
+      setSendingReply(false);
     }
   };
 
@@ -2140,9 +2710,9 @@ export default function CollectionManager() {
   }
 
   return (
-    <EditView
-      definition={definition}
-      record={record}
+      <EditView
+        definition={definition}
+        record={record}
       publishedRecord={publishedRecord}
       activeTab={activeTab}
       onSwitchTab={setActiveTab}
@@ -2156,12 +2726,17 @@ export default function CollectionManager() {
       onSave={() => handleSaveIntent('save')}
       onPublish={() => handleSaveIntent('publish')}
       onDelete={() => handleSaveIntent('delete')}
-      onDiscardChanges={handleDiscardChanges}
-      onUnpublish={() => handleSaveIntent('unpublish')}
-      canSave={canSave}
-      canPublish={canPublish}
-      canDiscard={canDiscard}
-      canUnpublish={canUnpublish}
-    />
+        onDiscardChanges={handleDiscardChanges}
+        onUnpublish={() => handleSaveIntent('unpublish')}
+        canSave={canSave}
+        canPublish={canPublish}
+        canDiscard={canDiscard}
+        canUnpublish={canUnpublish}
+        replyDraft={replyDraft}
+        onReplyChange={handleReplyChange}
+        onSendReply={handleSendReply}
+        sendingReply={sendingReply}
+        isCreateMode={isNew}
+      />
   );
 }

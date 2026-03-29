@@ -7,6 +7,9 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..', '..');
+const DEFAULT_SESSION_SECRET = 'city-focus-hub-adminjs-session-secret';
+const DEFAULT_ADMIN_EMAIL = 'admin@example.com';
+const DEFAULT_ADMIN_PASSWORD = 'admin123';
 
 function requireEnv(name, fallback) {
   const value = process.env[name] ?? fallback;
@@ -29,19 +32,55 @@ function parseList(value, fallback = []) {
     .filter(Boolean);
 }
 
+function parseSameSite(value, fallback = 'lax') {
+  const normalized = String(value || fallback).trim().toLowerCase();
+
+  if (['lax', 'strict', 'none'].includes(normalized)) {
+    return normalized;
+  }
+
+  return fallback;
+}
+
+const runtimeEnv = process.env.NODE_ENV || 'development';
+const isLocalLikeEnv = runtimeEnv !== 'production';
+const defaultPort = Number(process.env.PORT || 3001);
+const defaultPublicOrigin = process.env.PUBLIC_ORIGIN || `http://localhost:${defaultPort}`;
+const sessionSecret = requireEnv('SESSION_SECRET', DEFAULT_SESSION_SECRET);
+const adminEmail = requireEnv('ADMINJS_EMAIL', DEFAULT_ADMIN_EMAIL);
+const adminPassword = requireEnv('ADMINJS_PASSWORD', DEFAULT_ADMIN_PASSWORD);
+const defaultFrontendOrigins = isLocalLikeEnv
+  ? [
+      'http://localhost:4000',
+      'http://127.0.0.1:4000',
+      'http://localhost:8080',
+      'http://127.0.0.1:8080',
+      'http://localhost:4173',
+      'http://127.0.0.1:4173',
+    ]
+  : parseList(process.env.PUBLIC_ORIGIN, []);
+
 export const config = {
-  port: Number(process.env.PORT || 3001),
-  publicOrigin: process.env.PUBLIC_ORIGIN || `http://localhost:${process.env.PORT || 3001}`,
+  host: process.env.HOST || '0.0.0.0',
+  port: defaultPort,
+  publicOrigin: defaultPublicOrigin,
   rootPath: process.env.ADMINJS_ROOT_PATH || '/admin',
-  sessionSecret: requireEnv('SESSION_SECRET', 'city-focus-hub-adminjs-session-secret'),
+  sessionSecret,
   session: {
     cookieName: process.env.SESSION_COOKIE_NAME || 'adminjs',
     cookieMaxAgeMs: Number(process.env.SESSION_COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000),
     tableName: process.env.SESSION_TABLE_NAME || 'admin_sessions',
   },
+  memberSession: {
+    cookieName: process.env.MEMBER_SESSION_COOKIE_NAME || 'member_session',
+    cookieMaxAgeMs: Number(process.env.MEMBER_SESSION_COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000),
+    tableName: process.env.MEMBER_SESSION_TABLE_NAME || 'member_sessions',
+    secret: process.env.MEMBER_SESSION_SECRET || sessionSecret,
+    sameSite: parseSameSite(process.env.MEMBER_SESSION_SAME_SITE, 'lax'),
+  },
   auth: {
-    email: requireEnv('ADMINJS_EMAIL', 'admin@example.com'),
-    password: requireEnv('ADMINJS_PASSWORD', 'admin123'),
+    email: adminEmail,
+    password: adminPassword,
   },
   database: {
     host: requireEnv('DATABASE_HOST', '127.0.0.1'),
@@ -51,12 +90,7 @@ export const config = {
     password: process.env.DATABASE_PASSWORD || '',
   },
   cors: {
-    allowedOrigins: parseList(process.env.FRONTEND_ORIGINS, [
-      'http://localhost:8080',
-      'http://127.0.0.1:8080',
-      'http://localhost:4173',
-      'http://127.0.0.1:4173',
-    ]),
+    allowedOrigins: parseList(process.env.FRONTEND_ORIGINS, defaultFrontendOrigins),
   },
   mail: {
     enabled: Boolean(process.env.SMTP_HOST),
@@ -72,6 +106,9 @@ export const config = {
     directory: process.env.UPLOADS_DIR || path.join(projectRoot, 'storage', 'uploads'),
     publicPath: process.env.UPLOADS_PUBLIC_PATH || '/uploads',
   },
+  bookings: {
+    paymentHoldMinutes: Number(process.env.BOOKING_PAYMENT_HOLD_MINUTES || 20),
+  },
   staticSnapshots: {
     directory: process.env.STATIC_SNAPSHOT_DIR || path.join(projectRoot, 'public', 'cms'),
   },
@@ -80,5 +117,28 @@ export const config = {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || 'whsec_city_focus_hub_local',
     mockPaymentMethodId: process.env.STRIPE_MOCK_PAYMENT_METHOD_ID || 'pm_card_visa',
+    allowMockPayments: process.env.STRIPE_ALLOW_MOCK_PAYMENTS
+      ? process.env.STRIPE_ALLOW_MOCK_PAYMENTS === 'true'
+      : isLocalLikeEnv,
   },
 };
+
+if (runtimeEnv === 'production') {
+  const productionErrors = [];
+
+  if (config.sessionSecret === DEFAULT_SESSION_SECRET) {
+    productionErrors.push('SESSION_SECRET must be set in production.');
+  }
+
+  if (config.auth.email === DEFAULT_ADMIN_EMAIL || config.auth.password === DEFAULT_ADMIN_PASSWORD) {
+    productionErrors.push('ADMINJS_EMAIL and ADMINJS_PASSWORD must be set to non-default values in production.');
+  }
+
+  if (!config.cors.allowedOrigins.length) {
+    productionErrors.push('FRONTEND_ORIGINS or PUBLIC_ORIGIN must be configured in production.');
+  }
+
+  if (productionErrors.length > 0) {
+    throw new Error(productionErrors.join(' '));
+  }
+}

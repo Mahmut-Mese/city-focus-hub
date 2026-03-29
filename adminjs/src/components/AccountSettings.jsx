@@ -4,7 +4,7 @@ import { Loader, MessageBox } from '@adminjs/design-system';
 const STYLES = `
 .admin-account-page {
   min-height: 100%;
-  padding: 32px 40px 64px 344px;
+  padding: 32px 40px 64px 40px;
   background: #f6f6f9;
   color: #32324d;
 }

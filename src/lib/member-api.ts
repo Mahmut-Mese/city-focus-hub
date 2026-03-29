@@ -3,6 +3,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/
 const API_URL = API_BASE_URL
   ? (API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`)
   : '/api';
+export const MEMBER_AUTH_EXPIRED_EVENT = 'city-focus-hub.member-auth-expired';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT';
@@ -10,17 +11,25 @@ type RequestOptions = {
 };
 
 async function requestApi<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const hasBody = options.body !== undefined;
   const response = await fetch(`${API_URL}${path.startsWith('/') ? path : `/${path}`}`, {
     method: options.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    credentials: 'include',
+    headers: hasBody
+      ? {
+          'Content-Type': 'application/json',
+        }
+      : undefined,
+    body: hasBody ? JSON.stringify(options.body) : undefined,
   });
 
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(MEMBER_AUTH_EXPIRED_EVENT));
+    }
+
     const errorMessage = payload && typeof payload === 'object' && 'error' in payload
       ? String(payload.error)
       : `API request failed: ${response.status}`;
@@ -166,6 +175,15 @@ export type MembershipPlanChangePreview = {
     periodEnd: string | null;
     prorationDate: string | null;
   };
+  settlement: {
+    action: string;
+    currency: string;
+    subtotalMinor: number;
+    taxMinor: number;
+    totalMinor: number;
+    paymentDueMinor: number;
+    refundMinor: number;
+  };
 };
 
 export type BookingPaymentDraft = {
@@ -178,6 +196,26 @@ export type BookingCheckoutSession = {
   booking: MemberBooking | null;
   sessionId: string | null;
   url: string | null;
+};
+
+export type MemberBookingUpdateResult = {
+  booking: MemberBooking | null;
+  sessionId: string | null;
+  url: string | null;
+  adjustmentId: number | null;
+  action: string;
+  paymentDueMinor: number;
+  refundMinor: number;
+};
+
+export type MemberMembershipChangeResult = {
+  membership: MemberMembership | null;
+  sessionId: string | null;
+  url: string | null;
+  adjustmentId: number | null;
+  action: string;
+  paymentDueMinor: number;
+  refundMinor: number;
 };
 
 export async function registerMember(payload: { name: string; email: string; password: string }) {
@@ -196,8 +234,19 @@ export async function loginMember(payload: { email: string; password: string }) 
   return response.data;
 }
 
+export async function getCurrentMemberSession() {
+  const response = await requestApi<{ data: MemberUser }>('/member-auth/session');
+  return response.data;
+}
+
+export async function logoutMember() {
+  const response = await requestApi<{ ok: boolean }>('/member-auth/logout', {
+    method: 'POST',
+  });
+  return response.ok;
+}
+
 export async function changeMemberPassword(payload: {
-  userId: number;
   currentPassword: string;
   newPassword: string;
 }) {
@@ -208,62 +257,82 @@ export async function changeMemberPassword(payload: {
   return response.ok;
 }
 
-export async function getMemberDashboard(userId: number) {
-  const response = await requestApi<{ data: MemberDashboardPayload }>(`/member-portal/dashboard?userId=${userId}`);
+export async function getMemberDashboard() {
+  const response = await requestApi<{ data: MemberDashboardPayload }>('/member-portal/dashboard');
   return response.data;
 }
 
-export async function createMemberMembership(userId: number, planSlug: string) {
+export async function createMemberMembership(planSlug: string) {
   const response = await requestApi<{ data: MemberMembership }>('/member-portal/memberships', {
     method: 'POST',
-    body: { userId, planSlug },
+    body: { planSlug },
   });
   return response.data;
 }
 
 export async function createMemberMembershipCheckoutSession(
-  userId: number,
   planSlug: string,
   successUrl: string,
   cancelUrl: string,
 ) {
   const response = await requestApi<{ data: MembershipCheckoutSession }>('/member-portal/memberships/checkout-session', {
     method: 'POST',
-    body: { userId, planSlug, successUrl, cancelUrl },
+    body: { planSlug, successUrl, cancelUrl },
   });
   return response.data;
 }
 
-export async function syncMemberMembershipCheckoutSession(userId: number, sessionId: string) {
+export async function syncMemberMembershipCheckoutSession(sessionId: string) {
   const response = await requestApi<{ data: MemberMembership | null }>('/member-portal/memberships/sync-checkout-session', {
     method: 'POST',
-    body: { userId, sessionId },
+    body: { sessionId },
   });
   return response.data;
 }
 
-export async function changeMemberPlan(userId: number, planSlug: string) {
-  const response = await requestApi<{ data: MemberMembership }>('/member-portal/memberships/change-plan', {
+export async function changeMemberPlan(
+  planSlug: string,
+  options: { successUrl?: string; cancelUrl?: string } = {},
+) {
+  const response = await requestApi<{ data: MemberMembershipChangeResult }>('/member-portal/memberships/change-plan', {
     method: 'POST',
-    body: { userId, planSlug },
+    body: {
+      planSlug,
+      successUrl: options.successUrl || '',
+      cancelUrl: options.cancelUrl || '',
+    },
   });
   return response.data;
 }
 
-export async function previewMemberPlanChange(userId: number, planSlug: string) {
+export async function previewMemberPlanChange(planSlug: string) {
   const response = await requestApi<{ data: MembershipPlanChangePreview }>('/member-portal/memberships/change-plan/preview', {
     method: 'POST',
-    body: { userId, planSlug },
+    body: { planSlug },
   });
   return response.data;
 }
 
-export async function cancelMemberMembership(userId: number) {
+export async function cancelMemberMembership() {
   const response = await requestApi<{ data: MemberMembership }>('/member-portal/memberships/cancel', {
     method: 'POST',
-    body: { userId },
   });
   return response.data;
+}
+
+export async function syncMemberMembershipAdjustmentCheckoutSession({ sessionId }: { sessionId: string }) {
+  const response = await requestApi<{ data: MemberMembership | null }>('/member-portal/memberships/adjustments/sync-checkout-session', {
+    method: 'POST',
+    body: { sessionId },
+  });
+  return response.data;
+}
+
+export async function cancelMemberMembershipAdjustment({ adjustmentId }: { adjustmentId: number }) {
+  const response = await requestApi<{ ok: boolean }>(`/member-portal/memberships/adjustments/${adjustmentId}/cancel`, {
+    method: 'POST',
+  });
+  return response.ok;
 }
 
 export async function listMemberResources(options: { type?: string; startAt?: string; endAt?: string } = {}) {
@@ -301,7 +370,6 @@ export async function listPublicMeetingRoomResources(options: { startAt?: string
 }
 
 export async function createMemberBooking(payload: {
-  userId: number;
   resourceId: number;
   bookingType: string;
   startAt: string;
@@ -317,7 +385,6 @@ export async function createMemberBooking(payload: {
 }
 
 export async function createMemberBookingPaymentIntent(payload: {
-  userId: number;
   resourceId: number;
   bookingType: string;
   startAt: string;
@@ -333,7 +400,6 @@ export async function createMemberBookingPaymentIntent(payload: {
 }
 
 export async function createMemberBookingCheckoutSession(payload: {
-  userId: number;
   resourceId: number;
   bookingType: string;
   startAt: string;
@@ -350,10 +416,7 @@ export async function createMemberBookingCheckoutSession(payload: {
   return response.data;
 }
 
-export async function syncMemberBookingCheckoutSession(payload: {
-  userId: number;
-  sessionId: string;
-}) {
+export async function syncMemberBookingCheckoutSession(payload: { sessionId: string }) {
   const response = await requestApi<{ data: MemberBooking }>('/member-portal/bookings/sync-checkout-session', {
     method: 'POST',
     body: payload,
@@ -361,8 +424,15 @@ export async function syncMemberBookingCheckoutSession(payload: {
   return response.data;
 }
 
+export async function syncMemberBookingAdjustmentCheckoutSession(payload: { sessionId: string }) {
+  const response = await requestApi<{ data: MemberBooking }>('/member-portal/bookings/adjustments/sync-checkout-session', {
+    method: 'POST',
+    body: payload,
+  });
+  return response.data;
+}
+
 export async function confirmMemberBookingPayment(payload: {
-  userId: number;
   bookingId: number;
   paymentIntentId: string;
 }) {
@@ -374,7 +444,6 @@ export async function confirmMemberBookingPayment(payload: {
 }
 
 export async function cancelMemberBookingPayment(payload: {
-  userId: number;
   bookingId: number;
 }) {
   const response = await requestApi<{ data: MemberBooking | null }>(`/member-portal/bookings/${payload.bookingId}/cancel`, {
@@ -382,6 +451,16 @@ export async function cancelMemberBookingPayment(payload: {
     body: payload,
   });
   return response.data;
+}
+
+export async function cancelMemberBookingAdjustment(payload: {
+  adjustmentId: number;
+}) {
+  const response = await requestApi<{ ok: boolean }>(`/member-portal/bookings/adjustments/${payload.adjustmentId}/cancel`, {
+    method: 'POST',
+    body: payload,
+  });
+  return response.ok;
 }
 
 export async function createGuestMeetingRoomBookingPaymentIntent(payload: {
@@ -394,6 +473,35 @@ export async function createGuestMeetingRoomBookingPaymentIntent(payload: {
   notes: string;
 }) {
   const response = await requestApi<{ data: BookingPaymentDraft }>('/public/meeting-rooms/bookings/payment-intent', {
+    method: 'POST',
+    body: payload,
+  });
+  return response.data;
+}
+
+export async function createGuestMeetingRoomBookingCheckoutSession(payload: {
+  guestName: string;
+  guestEmail: string;
+  resourceId: number;
+  startAt: string;
+  endAt: string;
+  purpose: string;
+  notes: string;
+  successUrl: string;
+  cancelUrl: string;
+}) {
+  const response = await requestApi<{ data: BookingCheckoutSession }>('/public/meeting-rooms/bookings/checkout-session', {
+    method: 'POST',
+    body: payload,
+  });
+  return response.data;
+}
+
+export async function syncGuestMeetingRoomBookingCheckoutSession(payload: {
+  guestEmail: string;
+  sessionId: string;
+}) {
+  const response = await requestApi<{ data: MemberBooking }>('/public/meeting-rooms/bookings/sync-checkout-session', {
     method: 'POST',
     body: payload,
   });
@@ -415,6 +523,7 @@ export async function confirmGuestMeetingRoomBookingPayment(payload: {
 export async function cancelGuestMeetingRoomBookingPayment(payload: {
   bookingId: number;
   guestEmail: string;
+  paymentIntentId: string;
 }) {
   const response = await requestApi<{ data: MemberBooking | null }>(`/public/meeting-rooms/bookings/${payload.bookingId}/cancel`, {
     method: 'POST',
@@ -424,15 +533,16 @@ export async function cancelGuestMeetingRoomBookingPayment(payload: {
 }
 
 export async function updateMemberBooking(payload: {
-  userId: number;
   bookingId: number;
   resourceId: number;
   startAt: string;
   endAt: string;
   purpose: string;
   notes: string;
+  successUrl?: string;
+  cancelUrl?: string;
 }) {
-  const response = await requestApi<{ data: MemberBooking }>(`/member-portal/bookings/${payload.bookingId}`, {
+  const response = await requestApi<{ data: MemberBookingUpdateResult }>(`/member-portal/bookings/${payload.bookingId}`, {
     method: 'PUT',
     body: payload,
   });

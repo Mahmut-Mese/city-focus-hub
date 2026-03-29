@@ -7,7 +7,7 @@ const MEDIA_PICKER_EVENT = 'adminjs-media-select';
 const STYLES = `
 .admin-media-page {
   min-height: 100%;
-  padding: 28px 40px 48px 88px;
+  padding: 28px 40px 48px 40px;
   background: #f6f6f9;
   color: #32324d;
 }

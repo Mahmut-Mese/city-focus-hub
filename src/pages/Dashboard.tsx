@@ -46,15 +46,20 @@ import { useAuth } from '@/context/AuthContext';
 import { defaultSiteSettingsContent } from '@/data/siteContent';
 import {
   cancelMemberMembership,
+  cancelMemberMembershipAdjustment,
+  cancelMemberBookingAdjustment,
   cancelMemberBookingPayment,
   changeMemberPassword,
   changeMemberPlan,
   confirmMemberBookingPayment,
-  createMemberBookingPaymentIntent,
+  createMemberBookingCheckoutSession,
   createMemberMembershipCheckoutSession,
   getMemberDashboard,
   listMemberResources,
   previewMemberPlanChange,
+  syncMemberBookingAdjustmentCheckoutSession,
+  syncMemberBookingCheckoutSession,
+  syncMemberMembershipAdjustmentCheckoutSession,
   syncMemberMembershipCheckoutSession,
   updateMemberBooking,
   type BookingPaymentDraft,
@@ -583,8 +588,9 @@ function PlanChangeDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
-  const immediateAmountMinor = preview?.preview.amountDueMinor ?? 0;
-  const currency = preview?.preview.currency || preview?.nextPlan.currency || 'gbp';
+  const immediateAmountMinor = Math.max(0, preview?.settlement.paymentDueMinor ?? 0);
+  const immediateRefundMinor = Math.max(0, preview?.settlement.refundMinor ?? 0);
+  const currency = preview?.settlement.currency || preview?.preview.currency || preview?.nextPlan.currency || 'gbp';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -594,7 +600,7 @@ function PlanChangeDialog({
             <DialogHeader className="space-y-3 text-left">
               <DialogTitle className="text-[2rem] font-semibold tracking-tight text-black">Confirm plan change</DialogTitle>
               <DialogDescription className="text-base text-black/50">
-                Stripe will apply the plan change immediately and keep recurring monthly billing active on the new plan.
+                The plan change takes effect immediately. Any extra amount is collected now, and any downgrade difference is sent back as a refund request.
               </DialogDescription>
             </DialogHeader>
 
@@ -614,14 +620,22 @@ function PlanChangeDialog({
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="rounded-[24px] border border-black/10 bg-white p-5">
-                <p className="text-sm text-black/45">Charge today</p>
+                <p className="text-sm text-black/45">
+                  {immediateRefundMinor > 0 && immediateAmountMinor <= 0 ? 'Refund today' : 'Charge today'}
+                </p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-black">
-                  {immediateAmountMinor > 0 ? formatCurrency(immediateAmountMinor, currency) : '£0.00'}
+                  {immediateAmountMinor > 0
+                    ? formatCurrency(immediateAmountMinor, currency)
+                    : immediateRefundMinor > 0
+                      ? formatCurrency(immediateRefundMinor, currency)
+                      : '£0.00'}
                 </p>
                 <p className="mt-2 text-sm text-black/50">
                   {immediateAmountMinor > 0
-                    ? 'Prorated amount Stripe will invoice now.'
-                    : 'No extra charge right now. The change still updates recurring billing.'}
+                    ? 'Prorated amount required before the upgrade is applied.'
+                    : immediateRefundMinor > 0
+                      ? 'A prorated refund request will be issued after the downgrade is applied.'
+                      : 'No extra charge right now. The change still updates recurring billing.'}
                 </p>
               </div>
 
@@ -989,7 +1003,7 @@ export default function Dashboard() {
   });
 
   const refreshDashboard = async () => {
-    if (!user?.id) {
+    if (!user) {
       return;
     }
 
@@ -997,7 +1011,7 @@ export default function Dashboard() {
     setActionError('');
 
     try {
-      const payload = await getMemberDashboard(user.id);
+      const payload = await getMemberDashboard();
       setDashboardData(payload);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to load dashboard.');
@@ -1020,10 +1034,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     void refreshDashboard();
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user) {
       return;
     }
 
@@ -1045,7 +1059,7 @@ export default function Dashboard() {
     setIsCheckoutSyncing(true);
     setActionError('');
 
-    void syncMemberMembershipCheckoutSession(user.id, sessionId)
+    void syncMemberMembershipCheckoutSession(sessionId)
       .then(async () => {
         if (!active) {
           return;
@@ -1073,7 +1087,184 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, [location.pathname, location.search, navigate, user?.id]);
+  }, [location.pathname, location.search, navigate, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    const checkoutStatus = searchParams.get('membership_adjustment');
+    const sessionId = searchParams.get('session_id');
+    const adjustmentId = Number(searchParams.get('adjustment_id') || 0);
+
+    if (checkoutStatus === 'cancel') {
+      setActionError('Stripe checkout was canceled before the membership change was completed.');
+
+      if (adjustmentId) {
+        void cancelMemberMembershipAdjustment({ adjustmentId }).catch(() => {});
+      }
+
+      navigate(location.pathname, { replace: true });
+      return;
+    }
+
+    if (checkoutStatus !== 'success' || !sessionId) {
+      return;
+    }
+
+    let active = true;
+    setIsCheckoutSyncing(true);
+    setActionError('');
+
+    void syncMemberMembershipAdjustmentCheckoutSession({ sessionId })
+      .then(async () => {
+        if (!active) {
+          return;
+        }
+
+        await refreshDashboard();
+        setSuccessMessage('Membership upgraded and additional payment captured successfully.');
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setActionError(error instanceof Error ? error.message : 'Failed to sync membership adjustment checkout session.');
+      })
+      .finally(() => {
+        if (!active) {
+          return;
+        }
+
+        setIsCheckoutSyncing(false);
+        navigate(location.pathname, { replace: true });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [location.pathname, location.search, navigate, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    const checkoutStatus = searchParams.get('booking_adjustment');
+    const sessionId = searchParams.get('session_id');
+    const adjustmentId = Number(searchParams.get('adjustment_id') || 0);
+
+    if (checkoutStatus === 'cancel') {
+      setActionError('Stripe checkout was canceled before the booking update was completed.');
+
+      if (adjustmentId) {
+        void cancelMemberBookingAdjustment({ adjustmentId }).catch(() => {});
+      }
+
+      navigate(location.pathname, { replace: true });
+      return;
+    }
+
+    if (checkoutStatus !== 'success' || !sessionId) {
+      return;
+    }
+
+    let active = true;
+    setIsCheckoutSyncing(true);
+    setActionError('');
+
+    void syncMemberBookingAdjustmentCheckoutSession({ sessionId })
+      .then(async () => {
+        if (!active) {
+          return;
+        }
+
+        await refreshDashboard();
+        setSuccessMessage('Booking updated and additional payment captured successfully.');
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setActionError(error instanceof Error ? error.message : 'Failed to sync booking adjustment checkout session.');
+      })
+      .finally(() => {
+        if (!active) {
+          return;
+        }
+
+        setIsCheckoutSyncing(false);
+        navigate(location.pathname, { replace: true });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [location.pathname, location.search, navigate, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    const checkoutStatus = searchParams.get('booking_checkout');
+    const sessionId = searchParams.get('session_id');
+    const bookingId = Number(searchParams.get('booking_id') || 0);
+
+    if (checkoutStatus === 'cancel') {
+      setActionError('Stripe checkout was canceled before the booking was completed.');
+
+      if (bookingId) {
+        void cancelMemberBookingPayment({ bookingId }).catch(() => {});
+      }
+
+      navigate(location.pathname, { replace: true });
+      return;
+    }
+
+    if (checkoutStatus !== 'success' || !sessionId) {
+      return;
+    }
+
+    let active = true;
+    setIsCheckoutSyncing(true);
+    setActionError('');
+
+    void syncMemberBookingCheckoutSession({ sessionId })
+      .then(async () => {
+        if (!active) {
+          return;
+        }
+
+        await refreshDashboard();
+        setSuccessMessage('Booking created and paid successfully.');
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setActionError(error instanceof Error ? error.message : 'Failed to sync booking checkout session.');
+      })
+      .finally(() => {
+        if (!active) {
+          return;
+        }
+
+        setIsCheckoutSyncing(false);
+        navigate(location.pathname, { replace: true });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [location.pathname, location.search, navigate, user]);
 
   useEffect(() => {
     if (isCreateBookingOpen || isEditBookingOpen) {
@@ -1178,7 +1369,7 @@ export default function Dashboard() {
   };
 
   const handleCreateBooking = async () => {
-    if (!user?.id) {
+    if (!user) {
       return;
     }
 
@@ -1189,38 +1380,26 @@ export default function Dashboard() {
     try {
       validateBookingFormWindow(bookingForm.startAt, bookingForm.endAt);
 
-      const draft = await createMemberBookingPaymentIntent({
-        userId: user.id,
+      const session = await createMemberBookingCheckoutSession({
         resourceId: Number(bookingForm.resourceId),
         bookingType: bookingDraftResource?.type || 'meeting_room',
         startAt: new Date(bookingForm.startAt).toISOString(),
         endAt: new Date(bookingForm.endAt).toISOString(),
         purpose: bookingForm.purpose,
         notes: bookingForm.notes,
+        successUrl: `${window.location.origin}/dashboard/bookings?booking_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/dashboard/bookings?booking_checkout=cancel`,
       });
 
-      if (!draft.booking) {
-        throw new Error('Booking draft could not be created.');
-      }
-
-      if (!draft.clientSecret) {
+      if (!session.url) {
         await refreshDashboard();
         setIsCreateBookingOpen(false);
         setSuccessMessage('Booking created and paid successfully.');
         return;
       }
 
-      if (!dashboardData?.stripe.publishableKey) {
-        await cancelMemberBookingPayment({
-          userId: user.id,
-          bookingId: draft.booking.id,
-        });
-        throw new Error('Stripe publishable key is missing.');
-      }
-
-      setBookingPaymentDraft(draft);
-      setIsCreateBookingOpen(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.assign(session.url);
+      return;
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to create booking.');
     } finally {
@@ -1229,7 +1408,7 @@ export default function Dashboard() {
   };
 
   const handleConfirmBookingPayment = async (paymentIntentId: string) => {
-    if (!user?.id || !bookingPaymentDraft?.booking?.id) {
+    if (!user || !bookingPaymentDraft?.booking?.id) {
       return;
     }
 
@@ -1239,7 +1418,6 @@ export default function Dashboard() {
 
     try {
       await confirmMemberBookingPayment({
-        userId: user.id,
         bookingId: bookingPaymentDraft.booking.id,
         paymentIntentId,
       });
@@ -1254,14 +1432,13 @@ export default function Dashboard() {
   };
 
   const handleCancelBookingPayment = async () => {
-    if (!user?.id || !bookingPaymentDraft?.booking?.id) {
+    if (!user || !bookingPaymentDraft?.booking?.id) {
       setBookingPaymentDraft(null);
       return;
     }
 
     try {
       await cancelMemberBookingPayment({
-        userId: user.id,
         bookingId: bookingPaymentDraft.booking.id,
       });
     } catch {
@@ -1273,7 +1450,7 @@ export default function Dashboard() {
   };
 
   const handleEditBooking = async () => {
-    if (!user?.id || !bookingForm.bookingId) {
+    if (!user || !bookingForm.bookingId) {
       return;
     }
 
@@ -1284,18 +1461,32 @@ export default function Dashboard() {
     try {
       validateBookingFormWindow(bookingForm.startAt, bookingForm.endAt);
 
-      await updateMemberBooking({
-        userId: user.id,
+      const result = await updateMemberBooking({
         bookingId: bookingForm.bookingId,
         resourceId: Number(bookingForm.resourceId),
         startAt: new Date(bookingForm.startAt).toISOString(),
         endAt: new Date(bookingForm.endAt).toISOString(),
         purpose: bookingForm.purpose,
         notes: bookingForm.notes,
+        successUrl: `${window.location.origin}/dashboard/bookings?booking_adjustment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/dashboard/bookings?booking_adjustment=cancel`,
       });
+
+      if (result.url) {
+        window.location.assign(result.url);
+        return;
+      }
+
       await refreshDashboard();
       setIsEditBookingOpen(false);
-      setSuccessMessage('Booking updated successfully.');
+
+      if (result.refundMinor > 0) {
+        setSuccessMessage(`Booking updated. A refund of ${formatCurrency(result.refundMinor, result.booking?.currency || 'gbp')} has been requested.`);
+      } else if (result.paymentDueMinor > 0) {
+        setSuccessMessage(`Booking updated after collecting ${formatCurrency(result.paymentDueMinor, result.booking?.currency || 'gbp')}.`);
+      } else {
+        setSuccessMessage('Booking updated successfully.');
+      }
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to update booking.');
     } finally {
@@ -1304,7 +1495,7 @@ export default function Dashboard() {
   };
 
   const handleMembershipAction = async (plan: MembershipPlan) => {
-    if (!user?.id) {
+    if (!user) {
       return;
     }
 
@@ -1316,7 +1507,7 @@ export default function Dashboard() {
       if (!membership) {
         const successUrl = `${window.location.origin}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = `${window.location.origin}/dashboard/billing?checkout=cancel`;
-        const session = await createMemberMembershipCheckoutSession(user.id, plan.slug, successUrl, cancelUrl);
+        const session = await createMemberMembershipCheckoutSession(plan.slug, successUrl, cancelUrl);
 
         if (!session.url) {
           throw new Error('Stripe checkout URL was not returned.');
@@ -1325,7 +1516,7 @@ export default function Dashboard() {
         window.location.assign(session.url);
         return;
       } else {
-        const preview = await previewMemberPlanChange(user.id, plan.slug);
+        const preview = await previewMemberPlanChange(plan.slug);
         setPendingPlanSlug(plan.slug);
         setPlanChangePreview(preview);
         setIsPlanChangeOpen(true);
@@ -1339,7 +1530,7 @@ export default function Dashboard() {
   };
 
   const handleConfirmMembershipPlanChange = async () => {
-    if (!user?.id || !pendingPlanSlug || !planChangePreview) {
+    if (!user || !pendingPlanSlug || !planChangePreview) {
       return;
     }
 
@@ -1348,17 +1539,29 @@ export default function Dashboard() {
     setSuccessMessage('');
 
     try {
-      await changeMemberPlan(user.id, pendingPlanSlug);
+      const successUrl = `${window.location.origin}/dashboard/billing?membership_adjustment=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/dashboard/billing?membership_adjustment=cancel`;
+      const result = await changeMemberPlan(pendingPlanSlug, { successUrl, cancelUrl });
+
+      if (result.url) {
+        window.location.assign(result.url);
+        return;
+      }
+
       await refreshDashboard();
       setIsPlanChangeOpen(false);
       setPlanChangePreview(null);
       setPendingPlanSlug('');
 
-      const todayAmount = planChangePreview.preview.amountDueMinor;
+      const todayAmount = result.paymentDueMinor;
+      const refundAmount = result.refundMinor;
+      const settlementCurrency = planChangePreview.settlement.currency || planChangePreview.preview.currency;
       setSuccessMessage(
         todayAmount > 0
-          ? `Plan changed. Stripe charged ${formatCurrency(todayAmount, planChangePreview.preview.currency)} today and recurring billing stays active.`
-          : `Plan changed. Recurring billing is now set to ${formatCurrency(planChangePreview.nextPlan.monthlyPriceMinor, planChangePreview.nextPlan.currency)} per month.`,
+          ? `Plan changed. Stripe charged ${formatCurrency(todayAmount, settlementCurrency)} today and recurring billing stays active.`
+          : refundAmount > 0
+            ? `Plan changed. A refund of ${formatCurrency(refundAmount, settlementCurrency)} has been requested.`
+            : `Plan changed. Recurring billing is now set to ${formatCurrency(planChangePreview.nextPlan.monthlyPriceMinor, planChangePreview.nextPlan.currency)} per month.`,
       );
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to change membership plan.');
@@ -1368,7 +1571,7 @@ export default function Dashboard() {
   };
 
   const handleCancelMembership = async () => {
-    if (!user?.id) {
+    if (!user) {
       return;
     }
 
@@ -1377,7 +1580,7 @@ export default function Dashboard() {
     setSuccessMessage('');
 
     try {
-      await cancelMemberMembership(user.id);
+      await cancelMemberMembership();
       await refreshDashboard();
       setSuccessMessage('Membership will cancel at the end of the current billing period.');
     } catch (error) {
@@ -1388,7 +1591,7 @@ export default function Dashboard() {
   };
 
   const handleChangePassword = async () => {
-    if (!user?.id) {
+    if (!user) {
       return;
     }
 
@@ -1410,7 +1613,6 @@ export default function Dashboard() {
       }
 
       await changeMemberPassword({
-        userId: user.id,
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
@@ -1642,13 +1844,15 @@ export default function Dashboard() {
                   <p className="mt-1 text-sm text-black/45">{booking.location}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => openEditBookingDialog(booking)}
-                    variant="secondary"
-                    className="h-10 rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
-                  >
-                    Edit
-                  </Button>
+                  {booking.status !== 'canceled' ? (
+                    <Button
+                      onClick={() => openEditBookingDialog(booking)}
+                      variant="secondary"
+                      className="h-10 rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
                   <Button
                     onClick={() => {
                       setSelectedBooking(booking);
@@ -1678,7 +1882,7 @@ export default function Dashboard() {
         <p className="text-sm text-black/45">Billing</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Membership lifecycle</h1>
         <p className="mt-3 max-w-2xl text-lg text-black/50">
-          New memberships launch Stripe Checkout for card entry, then recurring billing, invoice sync, prorations, and lifecycle updates continue through Stripe Subscriptions and webhooks.
+          New memberships launch Stripe Checkout for card entry. Later plan changes can collect extra payment or issue refunds, while recurring billing and invoice sync continue through Stripe subscriptions and webhooks.
         </p>
       </DashboardCard>
 
@@ -2069,7 +2273,7 @@ export default function Dashboard() {
       <DashboardBookingDialog
         open={isEditBookingOpen}
         title="Edit booking"
-        description="Update the reservation details and re-run availability validation."
+        description="Update the reservation details, re-run availability validation, and settle any price difference through Stripe if the booking cost changes."
         formState={bookingForm}
         resources={availableResources}
         onOpenChange={setIsEditBookingOpen}

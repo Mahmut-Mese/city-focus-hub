@@ -1,7 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { loginMember, registerMember, type MemberUser } from '@/lib/member-api';
-
-const AUTH_SESSION_KEY = 'city-focus-hub.auth.session';
+import {
+  getCurrentMemberSession,
+  loginMember,
+  logoutMember,
+  MEMBER_AUTH_EXPIRED_EVENT,
+  registerMember,
+  type MemberUser,
+} from '@/lib/member-api';
 
 export type AuthenticatedUser = {
   id: number;
@@ -46,40 +51,52 @@ function toAuthenticatedUser(account: MemberUser): AuthenticatedUser {
   };
 }
 
-function readStoredSession() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem(AUTH_SESSION_KEY);
-    return rawValue ? JSON.parse(rawValue) as AuthenticatedUser : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredSession(user: AuthenticatedUser | null) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (user) {
-    window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(user));
-    return;
-  }
-
-  window.localStorage.removeItem(AUTH_SESSION_KEY);
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const sessionUser = readStoredSession();
-    setUser(sessionUser);
-    setIsReady(true);
+    let active = true;
+
+    void getCurrentMemberSession()
+      .then((sessionUser) => {
+        if (!active) {
+          return;
+        }
+
+        setUser(toAuthenticatedUser(sessionUser));
+      })
+      .catch(() => {
+        if (active) {
+          setUser(null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsReady(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      setIsReady(true);
+    };
+
+    window.addEventListener(MEMBER_AUTH_EXPIRED_EVENT, handleAuthExpired);
+
+    return () => {
+      window.removeEventListener(MEMBER_AUTH_EXPIRED_EVENT, handleAuthExpired);
+    };
   }, []);
 
   const login = async ({ email, password }: { email: string; password: string }): Promise<AuthActionResult> => {
@@ -87,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const memberUser = await loginMember({ email, password });
       const authenticatedUser = toAuthenticatedUser(memberUser);
       setUser(authenticatedUser);
-      writeStoredSession(authenticatedUser);
       return { ok: true };
     } catch (error) {
       return {
@@ -102,7 +118,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const memberUser = await registerMember({ name, email, password });
       const authenticatedUser = toAuthenticatedUser(memberUser);
       setUser(authenticatedUser);
-      writeStoredSession(authenticatedUser);
       return { ok: true };
     } catch (error) {
       return {
@@ -113,8 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    void logoutMember().catch(() => undefined);
     setUser(null);
-    writeStoredSession(null);
   };
 
   return (

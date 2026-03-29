@@ -105,7 +105,7 @@ const PAGE_LAYOUTS = {
 const STYLES = `
 .admin-editor {
   min-height: 100%;
-  padding: 32px 40px 64px 344px;
+  padding: 32px 40px 64px 40px;
   background: #f6f6f9;
   color: #32324d;
 }

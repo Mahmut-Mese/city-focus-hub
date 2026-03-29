@@ -3,7 +3,7 @@
     "heroTitle": "About Coworking Hub1",
     "heroSubtitle": "We're on a mission to create inspiring workspaces where innovation thrives and communities grow.1",
     "heroBackgroundImage": {
-      "url": "http://localhost:8080/uploads/1772652811637-4f6d98ad-9e44-40da-ae31-60414152f92f.svg"
+      "url": "http://localhost:3001/uploads/1772652811637-4f6d98ad-9e44-40da-ae31-60414152f92f.svg"
     },
     "storyTitle": "Our Story1",
     "storyParagraphs": [

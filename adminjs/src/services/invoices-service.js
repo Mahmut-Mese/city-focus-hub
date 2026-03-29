@@ -37,6 +37,7 @@ export async function createLocalInvoice({
   userId,
   membershipId = null,
   bookingId = null,
+  entrySource = 'system',
   stripeInvoiceId = null,
   stripePaymentIntentId = null,
   invoiceNumber = null,
@@ -51,16 +52,19 @@ export async function createLocalInvoice({
   paidAt = null,
 }) {
   const now = new Date();
+  const documentId = randomUUID();
+
   await execute(
     `INSERT INTO invoices
-      (document_id, user_id, membership_id, booking_id, stripe_invoice_id, stripe_payment_intent_id, invoice_number, status, description, currency, subtotal_minor, tax_minor, total_minor, hosted_invoice_url, invoice_pdf, paid_at, created_at, updated_at)
+      (document_id, user_id, membership_id, booking_id, entry_source, stripe_invoice_id, stripe_payment_intent_id, invoice_number, status, description, currency, subtotal_minor, tax_minor, total_minor, hosted_invoice_url, invoice_pdf, paid_at, created_at, updated_at)
      VALUES
-      (:documentId, :userId, :membershipId, :bookingId, :stripeInvoiceId, :stripePaymentIntentId, :invoiceNumber, :status, :description, :currency, :subtotalMinor, :taxMinor, :totalMinor, :hostedInvoiceUrl, :invoicePdf, :paidAt, :createdAt, :updatedAt)`,
+      (:documentId, :userId, :membershipId, :bookingId, :entrySource, :stripeInvoiceId, :stripePaymentIntentId, :invoiceNumber, :status, :description, :currency, :subtotalMinor, :taxMinor, :totalMinor, :hostedInvoiceUrl, :invoicePdf, :paidAt, :createdAt, :updatedAt)`,
     {
-      documentId: randomUUID(),
+      documentId,
       userId,
       membershipId,
       bookingId,
+      entrySource,
       stripeInvoiceId,
       stripePaymentIntentId,
       invoiceNumber,
@@ -77,6 +81,13 @@ export async function createLocalInvoice({
       updatedAt: now,
     },
   );
+
+  const createdInvoice = await queryOne(
+    'SELECT id FROM invoices WHERE document_id = :documentId LIMIT 1',
+    { documentId },
+  );
+
+  return createdInvoice?.id ? Number(createdInvoice.id) : null;
 }
 
 export async function upsertStripeInvoice({
@@ -96,9 +107,23 @@ export async function upsertStripeInvoice({
   invoicePdf = null,
   paidAt = null,
 }) {
-  const existingInvoice = stripeInvoiceId
+  let existingInvoice = stripeInvoiceId
     ? await queryOne('SELECT id FROM invoices WHERE stripe_invoice_id = :stripeInvoiceId LIMIT 1', { stripeInvoiceId })
     : null;
+
+  if (!existingInvoice && stripePaymentIntentId) {
+    existingInvoice = await queryOne(
+      'SELECT id FROM invoices WHERE stripe_payment_intent_id = :stripePaymentIntentId ORDER BY id DESC LIMIT 1',
+      { stripePaymentIntentId },
+    );
+  }
+
+  if (!existingInvoice && bookingId) {
+    existingInvoice = await queryOne(
+      'SELECT id FROM invoices WHERE booking_id = :bookingId ORDER BY id DESC LIMIT 1',
+      { bookingId },
+    );
+  }
 
   const now = new Date();
 
@@ -108,6 +133,7 @@ export async function upsertStripeInvoice({
           SET user_id = :userId,
               membership_id = :membershipId,
               booking_id = :bookingId,
+              stripe_invoice_id = :stripeInvoiceId,
               stripe_payment_intent_id = :stripePaymentIntentId,
               invoice_number = :invoiceNumber,
               status = :status,
@@ -126,6 +152,7 @@ export async function upsertStripeInvoice({
         userId,
         membershipId,
         bookingId,
+        stripeInvoiceId,
         stripePaymentIntentId,
         invoiceNumber,
         status,

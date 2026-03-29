@@ -13,6 +13,11 @@ dist-ssr
 .next
 out
 *.local
+.env
+.env.*
+adminjs/.env
+!/.env.example
+!/adminjs/.env.example
 
 # Editor directories and files
 .vscode/*

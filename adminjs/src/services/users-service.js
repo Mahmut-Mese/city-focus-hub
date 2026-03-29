@@ -1,6 +1,9 @@
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { execute, queryOne } from './sql.js';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
+
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
@@ -44,10 +47,21 @@ function toUserRecord(row) {
       .map((part) => part.charAt(0).toUpperCase())
       .join('') || 'CF',
     stripeCustomerId: row.stripe_customer_id || null,
+    entrySource: row.entry_source || 'system',
     accessStatus: row.access_status || 'active',
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };
+}
+
+async function revokeMemberSessions(userId) {
+  await execute(
+    `DELETE FROM member_sessions
+      WHERE JSON_UNQUOTE(JSON_EXTRACT(data, '$.memberUserId')) = :userId`,
+    {
+      userId: String(userId),
+    },
+  );
 }
 
 export async function findUserById(userId) {
@@ -61,10 +75,11 @@ export async function findUserByEmail(email) {
   return row ? { raw: row, user: toUserRecord(row) } : null;
 }
 
-export async function registerUser({ name, email, password }) {
+export async function registerUser({ name, email, password, entrySource = 'system' }) {
   const normalizedName = String(name || '').trim();
   const normalizedEmail = normalizeEmail(email);
   const normalizedPassword = String(password || '').trim();
+  const normalizedEntrySource = String(entrySource || 'system').trim().toLowerCase() || 'system';
 
   if (!normalizedName) {
     throw new Error('Name is required.');
@@ -74,8 +89,16 @@ export async function registerUser({ name, email, password }) {
     throw new Error('Email is required.');
   }
 
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Email is invalid.');
+  }
+
   if (!normalizedPassword) {
     throw new Error('Password is required.');
+  }
+
+  if (normalizedPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
   }
 
   const existingUser = await findUserByEmail(normalizedEmail);
@@ -86,14 +109,15 @@ export async function registerUser({ name, email, password }) {
   const now = new Date();
   await execute(
     `INSERT INTO member_users
-      (document_id, name, email, password_hash, access_status, created_at, updated_at)
+      (document_id, name, email, password_hash, entry_source, access_status, created_at, updated_at)
      VALUES
-      (:documentId, :name, :email, :passwordHash, 'active', :createdAt, :updatedAt)`,
+      (:documentId, :name, :email, :passwordHash, :entrySource, 'active', :createdAt, :updatedAt)`,
     {
       documentId: randomUUID(),
       name: normalizedName,
       email: normalizedEmail,
       passwordHash: hashPassword(normalizedPassword),
+      entrySource: normalizedEntrySource,
       createdAt: now,
       updatedAt: now,
     },
@@ -108,6 +132,10 @@ export async function authenticateUser({ email, password }) {
 
   if (!existingUser || !verifyPassword(String(password || ''), existingUser.raw.password_hash)) {
     throw new Error('Email or password is incorrect.');
+  }
+
+  if (existingUser.user.accessStatus === 'suspended') {
+    throw new Error('Your account is suspended. Please contact support.');
   }
 
   return existingUser.user;
@@ -125,9 +153,17 @@ export async function createOrGetGuestUser({ name, email }) {
     throw new Error('Guest email is required.');
   }
 
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Guest email is invalid.');
+  }
+
   const existingUser = await findUserByEmail(normalizedEmail);
 
   if (existingUser?.user) {
+    if (existingUser.user.accessStatus !== 'guest') {
+      throw new Error('An account already exists with this email. Please sign in to continue.');
+    }
+
     return existingUser.user;
   }
 
@@ -166,7 +202,7 @@ export async function changeUserPassword({ userId, currentPassword, newPassword 
   }
 
   if (normalizedNewPassword.length < 8) {
-    throw new Error('New password must be at least 8 characters long.');
+    throw new Error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
   }
 
   const row = await queryOne('SELECT * FROM member_users WHERE id = :userId LIMIT 1', { userId });
@@ -220,4 +256,8 @@ export async function updateUserAccessStatus(userId, accessStatus) {
       updatedAt: new Date(),
     },
   );
+
+  if (accessStatus === 'suspended') {
+    await revokeMemberSessions(userId);
+  }
 }

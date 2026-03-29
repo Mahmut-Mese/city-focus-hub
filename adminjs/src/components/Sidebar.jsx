@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useSelector } from 'react-redux';
+import { ADMIN_RESOURCE_DEFINITIONS, buildAdminResourceHref } from '../resource-definitions.js';
 
 const CONTENT_PAGE_ORDER = [
   'site-settings',
@@ -30,17 +31,20 @@ const CONTENT_PAGE_LABELS = {
   'terms-page': 'Terms Page',
 };
 
-const RESOURCE_LABELS = {
-  'blog-posts': 'Blog Post',
-  'faq-items': 'FAQ Item',
-  'meeting-rooms': 'Meeting Room',
-  'pricing-plans': 'Pricing Plan',
-};
-
 const SIDEBAR_WIDTH = 304;
 const RAIL_WIDTH = 48;
 
 const STYLES = `
+.admin-sidebar-shell ~ [data-css="app-content"] {
+  box-sizing: border-box;
+  padding-left: ${SIDEBAR_WIDTH}px;
+  transition: padding-left 0.2s ease;
+}
+
+.admin-sidebar-shell.admin-sidebar-shell--rail-only ~ [data-css="app-content"] {
+  padding-left: ${RAIL_WIDTH}px;
+}
+
 .admin-sidebar-shell {
   position: fixed;
   inset: 0 auto 0 0;
@@ -278,6 +282,10 @@ const STYLES = `
 }
 
 @media (max-width: 960px) {
+  .admin-sidebar-shell ~ [data-css="app-content"] {
+    padding-left: 0;
+  }
+
   .admin-sidebar-shell {
     box-shadow: 0 18px 48px rgba(33, 33, 52, 0.12);
   }
@@ -301,6 +309,24 @@ function itemMatchesSearch(label, search) {
   }
 
   return label.toLowerCase().includes(search.toLowerCase());
+}
+
+function buildSidebarResourceItems(section, pathname, search) {
+  return ADMIN_RESOURCE_DEFINITIONS
+    .filter((definition) => definition.sidebarSection === section)
+    .map((definition) => {
+      const resourcePathPrefix = `/admin/resources/${definition.table}`;
+      const href = definition.sidebarHref || buildAdminResourceHref(definition.table);
+      const selectedPrefixes = [href, resourcePathPrefix];
+
+      return {
+        id: definition.table,
+        label: definition.sidebarLabel || definition.label,
+        href,
+        selected: selectedPrefixes.some((prefix) => pathname.startsWith(prefix)),
+      };
+    })
+    .filter((resource) => itemMatchesSearch(resource.label, search));
 }
 
 function RailIcon({ children }) {
@@ -365,19 +391,17 @@ export default function Sidebar({ isVisible }) {
   );
 
   const collectionItems = useMemo(
-    () => ([
-      { id: 'blog-posts', href: '/admin/pages/blog-posts' },
-      { id: 'faq-items', href: '/admin/pages/faq-items' },
-      { id: 'meeting-rooms', href: '/admin/pages/meeting-rooms' },
-      { id: 'pricing-plans', href: '/admin/pages/pricing-plans' },
-    ])
-      .map((resource) => ({
-        id: resource.id,
-        label: RESOURCE_LABELS[resource.id] ?? resource.id,
-        href: resource.href,
-        selected: location.pathname.startsWith(resource.href),
-      }))
-      .filter((resource) => itemMatchesSearch(resource.label, search)),
+    () => buildSidebarResourceItems('collections', location.pathname, search),
+    [location.pathname, search],
+  );
+
+  const operationItems = useMemo(
+    () => buildSidebarResourceItems('orders', location.pathname, search),
+    [location.pathname, search],
+  );
+
+  const customerItems = useMemo(
+    () => buildSidebarResourceItems('customers', location.pathname, search),
     [location.pathname, search],
   );
 
@@ -485,6 +509,40 @@ export default function Sidebar({ isVisible }) {
                 <span className="admin-group__count">{collectionItems.length}</span>
               </div>
               {collectionItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={`admin-nav-link${item.selected ? ' admin-nav-link--selected' : ''}`}
+                  type="button"
+                  onClick={() => navigate(item.href)}
+                >
+                  <span className="admin-nav-link__text">{item.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="admin-group">
+              <div className="admin-group__head">
+                <span className="admin-group__label">Customers</span>
+                <span className="admin-group__count">{customerItems.length}</span>
+              </div>
+              {customerItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={`admin-nav-link${item.selected ? ' admin-nav-link--selected' : ''}`}
+                  type="button"
+                  onClick={() => navigate(item.href)}
+                >
+                  <span className="admin-nav-link__text">{item.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="admin-group">
+              <div className="admin-group__head">
+                <span className="admin-group__label">Orders</span>
+                <span className="admin-group__count">{operationItems.length}</span>
+              </div>
+              {operationItems.map((item) => (
                 <button
                   key={item.id}
                   className={`admin-nav-link${item.selected ? ' admin-nav-link--selected' : ''}`}

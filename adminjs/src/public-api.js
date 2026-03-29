@@ -3,6 +3,14 @@ import { getCollectionPublicData } from './collection-pages.js';
 import { randomUUID } from 'node:crypto';
 import { sequelize } from './database.js';
 import { sendContactSubmissionEmail } from './mailer.js';
+import { createRateLimitMiddleware } from './security.js';
+
+const contactSubmissionRateLimiter = createRateLimitMiddleware({
+  keyPrefix: 'contact-submissions',
+  windowMs: 10 * 60 * 1000,
+  maxRequests: 5,
+  message: 'Too many contact submissions. Please try again later.',
+});
 
 function parseStatus(searchParams) {
   const status = searchParams.get('status');
@@ -100,7 +108,7 @@ export function registerPublicApi(app) {
     }
   });
 
-  app.post('/api/contact-submissions', async (request, response) => {
+  app.post('/api/contact-submissions', contactSubmissionRateLimiter, async (request, response) => {
     try {
       const submission = normalizeSubmissionBody(request.body);
 
@@ -121,6 +129,11 @@ export function registerPublicApi(app) {
 
       if (!submission.message) {
         response.status(400).json({ error: 'Message is required.' });
+        return;
+      }
+
+      if (submission.name.length > 120 || submission.phone.length > 40 || submission.email.length > 254 || submission.message.length > 5000) {
+        response.status(400).json({ error: 'Submission is too large.' });
         return;
       }
 

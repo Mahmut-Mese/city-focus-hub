@@ -1,6 +1,27 @@
 {
   "data": [
     {
+      "id": 4,
+      "documentId": "3e08ce67-11e3-4730-ad15-d86895914859",
+      "name": "Meeting Suite",
+      "slug": "meeting-suite",
+      "description": "Our flagship meeting room perfect for client presentations, team meetings, and workshops. Features state-of-the-art AV equipment and comfortable seating.11",
+      "capacity": 14,
+      "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800",
+      "features": [
+        "Large display",
+        "Video conferencing",
+        "Catering available"
+      ],
+      "badges": [
+        "12 people",
+        "Display",
+        "Catering"
+      ],
+      "isFeatured": false,
+      "sortOrder": 2
+    },
+    {
       "id": 6,
       "documentId": "cdebc606-78ab-47e1-bac4-c8dc17defacd",
       "name": "Open Lounge1",
@@ -23,28 +44,6 @@
       ],
       "isFeatured": false,
       "sortOrder": 1
-    },
-    {
-      "id": 4,
-      "documentId": "3e08ce67-11e3-4730-ad15-d86895914859",
-      "name": "Meeting Suite",
-      "slug": "meeting-suite",
-      "description": "Our flagship meeting room perfect for client presentations, team meetings, and workshops. Features state-of-the-art AV equipment and comfortable seating.",
-      "capacity": 12,
-      "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800",
-      "features": [
-        "Large display",
-        "Video conferencing",
-        "Catering available",
-        "Natural light"
-      ],
-      "badges": [
-        "12 people",
-        "Display",
-        "Catering"
-      ],
-      "isFeatured": false,
-      "sortOrder": 2
     },
     {
       "id": 2,

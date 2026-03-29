@@ -13,9 +13,11 @@ interface LayoutProps {
     type?: 'website' | 'article';
     noindex?: boolean;
   };
+  hideNavigation?: boolean;
+  hideFooter?: boolean;
 }
 
-export function Layout({ children, seo }: LayoutProps) {
+export function Layout({ children, seo, hideNavigation = false, hideFooter = false }: LayoutProps) {
   const { data: siteSettings } = useSiteSettings();
 
   useSeo({
@@ -29,9 +31,9 @@ export function Layout({ children, seo }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {siteSettings ? <Navbar /> : null}
+      {siteSettings && !hideNavigation ? <Navbar /> : null}
       <main className="flex-1">{children}</main>
-      {siteSettings ? <Footer /> : null}
+      {siteSettings && !hideFooter ? <Footer /> : null}
     </div>
   );
 }
