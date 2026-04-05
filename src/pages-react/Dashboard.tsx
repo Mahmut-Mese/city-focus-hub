@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { loadStripe, type Stripe, type StripeElements } from '@stripe/stripe-js';
+import { loadStripe, type Stripe, type StripeElements, type StripeCardNumberElement, type StripeCardExpiryElement, type StripeCardCvcElement } from '@stripe/stripe-js';
 import {
   ArrowRight,
   CalendarDays,
@@ -99,7 +99,7 @@ type PasswordFormState = {
 const dashboardNavItems: DashboardNavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: CalendarDays, label: 'My Bookings', path: '/dashboard/bookings' },
-  { icon: CreditCard, label: 'membership', path: '/dashboard/billing' },
+  { icon: CreditCard, label: 'Membership', path: '/dashboard/billing' },
   { icon: Receipt, label: 'Invoices', path: '/dashboard/invoices' },
   { icon: User, label: 'Profile', path: '/dashboard/profile' },
 ];
@@ -725,9 +725,9 @@ function BookingPaymentPanel({
     }
 
     let active = true;
-    let mountedCardNumber: ReturnType<StripeElements['create']> | null = null;
-    let mountedCardExpiry: ReturnType<StripeElements['create']> | null = null;
-    let mountedCardCvc: ReturnType<StripeElements['create']> | null = null;
+    let mountedCardNumber: StripeCardNumberElement | null = null;
+    let mountedCardExpiry: StripeCardExpiryElement | null = null;
+    let mountedCardCvc: StripeCardCvcElement | null = null;
 
     setReadyCount(0);
     setElementError('');

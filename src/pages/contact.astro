@@ -1,0 +1,7 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import ContactPage from '@/islands/ContactPage';
+---
+<Layout title="Contact" description="Get in touch with City Focus Hub.">
+  <ContactPage client:only="react" />
+</Layout>

@@ -4,21 +4,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import Home from "./pages/Home";
-import Pricing from "./pages/Pricing";
-import MeetingRooms from "./pages/MeetingRooms";
-import MeetingRoomBooking from "./pages/MeetingRoomBooking";
-import VirtualOffice from "./pages/VirtualOffice";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import FAQ from "./pages/FAQ";
-import Blog from "./pages/Blog";
-import BlogDetail from "./pages/BlogDetail";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import Terms from "./pages/Terms";
-import Dashboard from "./pages/Dashboard";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
+import Home from "./pages-react/Home";
+import Pricing from "./pages-react/Pricing";
+import MeetingRooms from "./pages-react/MeetingRooms";
+import MeetingRoomBooking from "./pages-react/MeetingRoomBooking";
+import VirtualOffice from "./pages-react/VirtualOffice";
+import About from "./pages-react/About";
+import Contact from "./pages-react/Contact";
+import FAQ from "./pages-react/FAQ";
+import Blog from "./pages-react/Blog";
+import BlogDetail from "./pages-react/BlogDetail";
+import PrivacyPolicy from "./pages-react/PrivacyPolicy";
+import Terms from "./pages-react/Terms";
+import Dashboard from "./pages-react/Dashboard";
+import Auth from "./pages-react/Auth";
+import NotFound from "./pages-react/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +27,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated, isReady } = useAuth();
 
   if (!isReady) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -58,7 +62,6 @@ const App = () => (
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
             <Route path="/dashboard/*" element={<RequireAuth><Dashboard /></RequireAuth>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

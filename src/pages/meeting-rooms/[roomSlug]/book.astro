@@ -1,0 +1,24 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import MeetingRoomBookingApp from '@/islands/MeetingRoomBookingApp';
+
+export async function getStaticPaths() {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const filePath = path.join(process.cwd(), 'public', 'cms', 'meeting-rooms.json');
+
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const cms = JSON.parse(raw);
+    const rooms = cms.data || [];
+    return rooms.map((room: any) => ({
+      params: { roomSlug: room.slug || String(room.id) },
+    }));
+  } catch {
+    return [{ params: { roomSlug: 'default' } }];
+  }
+}
+---
+<Layout title="Book a Meeting Room" description="Reserve a meeting room at City Focus Hub." hideNavigation={true} hideFooter={true}>
+  <MeetingRoomBookingApp client:only="react" />
+</Layout>

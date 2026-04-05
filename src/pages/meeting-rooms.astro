@@ -1,0 +1,7 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import MeetingRoomsPage from '@/islands/MeetingRoomsPage';
+---
+<Layout title="Meeting Rooms" description="Professional meeting rooms for teams of any size.">
+  <MeetingRoomsPage client:only="react" />
+</Layout>

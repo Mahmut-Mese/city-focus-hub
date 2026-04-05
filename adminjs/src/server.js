@@ -3,6 +3,7 @@ import AdminJSExpress from '@adminjs/express';
 import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
 import express from 'express';
+import helmet from 'helmet';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink } from 'node:fs/promises';
@@ -184,6 +185,8 @@ const start = async () => {
   }
 
   const allowedOrigins = new Set(config.cors.allowedOrigins);
+
+  app.use(helmet());
 
   app.use((request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -371,8 +374,30 @@ const start = async () => {
   if (hasFrontendBuild) {
     app.use(express.static(frontendDistDirectory));
 
-    app.get(/^\/(?!api(?:\/|$)|admin(?:\/|$)|uploads(?:\/|$)|admin-assets(?:\/|$)|health$).*/, (_request, response) => {
-      response.sendFile(frontendIndexFile);
+    // Astro static build: each route has its own HTML file (e.g. dist/about/index.html).
+    // Try to resolve the correct HTML file for the requested path, fall back to 404.html.
+    app.get(/^\/(?!api(?:\/|$)|admin(?:\/|$)|uploads(?:\/|$)|admin-assets(?:\/|$)|health$).*/, (request, response) => {
+      const urlPath = request.path.replace(/\/+$/, '') || '/index';
+      const candidates = [
+        path.join(frontendDistDirectory, `${urlPath}.html`),
+        path.join(frontendDistDirectory, urlPath, 'index.html'),
+      ];
+
+      for (const candidate of candidates) {
+        if (existsSync(candidate)) {
+          response.sendFile(candidate);
+          return;
+        }
+      }
+
+      // Astro generates a 404.html at the root of the dist directory
+      const notFoundFile = path.join(frontendDistDirectory, '404.html');
+
+      if (existsSync(notFoundFile)) {
+        response.status(404).sendFile(notFoundFile);
+      } else {
+        response.status(404).send('Not Found');
+      }
     });
   } else {
     app.get('/', (_request, response) => {

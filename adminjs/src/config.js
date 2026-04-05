@@ -53,6 +53,8 @@ const defaultFrontendOrigins = isLocalLikeEnv
   ? [
       'http://localhost:4000',
       'http://127.0.0.1:4000',
+      'http://localhost:4321',
+      'http://127.0.0.1:4321',
       'http://localhost:8080',
       'http://127.0.0.1:8080',
       'http://localhost:4173',

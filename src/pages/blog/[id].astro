@@ -1,0 +1,27 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import BlogDetailPage from '@/islands/BlogDetailPage';
+
+export async function getStaticPaths() {
+  // Read blog posts from CMS snapshot to get all valid IDs
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const filePath = path.join(process.cwd(), 'public', 'cms', 'blog-posts.json');
+  
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const cms = JSON.parse(raw);
+    const posts = cms.data || [];
+    return posts
+      .filter((post: any) => !post.featured)
+      .map((post: any) => ({
+        params: { id: post.slug || String(post.id) },
+      }));
+  } catch {
+    return [{ params: { id: 'placeholder' } }];
+  }
+}
+---
+<Layout title="Blog Post" description="Read this blog post from City Focus Hub.">
+  <BlogDetailPage client:only="react" />
+</Layout>

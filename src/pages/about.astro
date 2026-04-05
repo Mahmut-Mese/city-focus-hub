@@ -1,0 +1,7 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import AboutPage from '@/islands/AboutPage';
+---
+<Layout title="About" description="Learn about City Focus Hub - our story, our values, and what makes us different.">
+  <AboutPage client:only="react" />
+</Layout>

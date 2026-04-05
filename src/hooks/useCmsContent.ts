@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { useLocation } from 'react-router-dom';
 import type { CmsBlogPost, CmsFaqItem, CmsMeetingRoom, CmsPricingPlan, PlanType } from '@/types/cms';
 import { fetchApi, getMediaUrl, getMediaUrls, unwrapCollection, unwrapSingle } from '@/lib/content-api';
 import {
@@ -148,8 +147,11 @@ function formatReadTime(value: unknown): string {
 }
 
 function usePreviewStatus(): PreviewStatus | undefined {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
   const isPreview = searchParams.get('preview') === '1';
   const status = searchParams.get('status');
 

@@ -1,10 +1,6 @@
-const DEFAULT_API_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
-const API_BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
+import { API_BASE_URL, API_URL } from './api-config';
 const MEDIA_BASE_URL = API_BASE_URL.replace(/\/api$/, '');
-const API_URL = API_BASE_URL
-  ? (API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`)
-  : '/api';
-const SNAPSHOT_BASE_URL = (import.meta.env.VITE_CMS_SNAPSHOT_BASE || '/cms').replace(/\/$/, '');
+const SNAPSHOT_BASE_URL = (import.meta.env.PUBLIC_CMS_SNAPSHOT_BASE || import.meta.env.VITE_CMS_SNAPSHOT_BASE || '/cms').replace(/\/$/, '');
 
 const STATIC_SNAPSHOT_PATHS = new Set([
   'site-setting',

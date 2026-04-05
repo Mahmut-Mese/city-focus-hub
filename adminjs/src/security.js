@@ -1,15 +1,5 @@
 const rateLimitBuckets = new Map();
 
-function getRequestIp(request) {
-  const forwardedFor = request.headers['x-forwarded-for'];
-
-  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
-    return forwardedFor.split(',')[0].trim();
-  }
-
-  return request.ip || request.socket?.remoteAddress || 'unknown';
-}
-
 export function createRateLimitMiddleware({
   keyPrefix,
   windowMs,
@@ -18,7 +8,7 @@ export function createRateLimitMiddleware({
 }) {
   return (request, response, next) => {
     const now = Date.now();
-    const ip = getRequestIp(request);
+    const ip = request.ip;
     const bucketKey = `${keyPrefix}:${ip}`;
     const existingBucket = rateLimitBuckets.get(bucketKey);
 

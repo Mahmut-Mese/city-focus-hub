@@ -1,8 +1,4 @@
-const DEFAULT_API_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
-const API_BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
-const API_URL = API_BASE_URL
-  ? (API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`)
-  : '/api';
+import { API_URL } from './api-config';
 export const MEMBER_AUTH_EXPIRED_EVENT = 'city-focus-hub.member-auth-expired';
 
 type RequestOptions = {
