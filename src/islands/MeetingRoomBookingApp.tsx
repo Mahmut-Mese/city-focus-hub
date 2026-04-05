@@ -1,5 +1,5 @@
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import MeetingRoomBooking from '@/pages-react/MeetingRoomBooking';
 
 const queryClient = new QueryClient({
@@ -10,7 +10,9 @@ export default function MeetingRoomBookingApp() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <MeetingRoomBooking />
+        <Routes>
+          <Route path="/meeting-rooms/:roomSlug/book" element={<MeetingRoomBooking />} />
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   );
