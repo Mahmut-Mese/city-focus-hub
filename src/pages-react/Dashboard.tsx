@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { loadStripe, type Stripe, type StripeElements, type StripeCardNumberElement, type StripeCardExpiryElement, type StripeCardCvcElement } from '@stripe/stripe-js';
@@ -21,6 +21,7 @@ import {
   User,
   Users,
   Wallet,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/context/AuthContext';
@@ -369,6 +371,48 @@ function DashboardHeader({
   );
 }
 
+/** Full-hour time options from 07:00 to 21:00 */
+const BOOKING_HOUR_OPTIONS: string[] = [];
+for (let hour = 7; hour <= 21; hour += 1) {
+  BOOKING_HOUR_OPTIONS.push(`${String(hour).padStart(2, '0')}:00`);
+}
+
+type BookingHourSlotInfo = {
+  time: string;
+  label: string;
+  available: boolean;
+  isPast: boolean;
+};
+
+function formatBookingHourLabel(time: string) {
+  const [hourStr] = time.split(':');
+  const hour = Number(hourStr);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${displayHour}:00 ${period}`;
+}
+
+function formatBookingTimeRange(startTime: string, endHour: number) {
+  const startLabel = formatBookingHourLabel(startTime);
+  const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+  const endDisplay = endHour === 0 ? 12 : endHour > 12 ? endHour - 12 : endHour;
+  return `${startLabel} - ${endDisplay}:00 ${endPeriod}`;
+}
+
+function formatBookingDateValue(value: Date) {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, '0');
+  const day = `${value.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatBookingDateTimeValue(value: Date) {
+  const date = formatBookingDateValue(value);
+  const hours = `${value.getHours()}`.padStart(2, '0');
+  const minutes = `${value.getMinutes()}`.padStart(2, '0');
+  return `${date}T${hours}:${minutes}`;
+}
+
 function DashboardBookingDialog({
   open,
   title,
@@ -392,17 +436,217 @@ function DashboardBookingDialog({
   submitLabel: string;
   isSubmitting: boolean;
 }) {
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedHours, setSelectedHours] = useState<string[]>([]);
+  const [daySlotAvailability, setDaySlotAvailability] = useState<Map<string, boolean>>(new Map());
+  const [isDaySlotsLoading, setIsDaySlotsLoading] = useState(false);
+
+  // When the dialog opens, derive date + hours from existing formState (for edit mode)
+  useEffect(() => {
+    if (!open) {
+      setSelectedDate('');
+      setSelectedHours([]);
+      setDaySlotAvailability(new Map());
+      return;
+    }
+
+    if (formState.startAt && formState.endAt) {
+      const start = new Date(formState.startAt);
+      const end = new Date(formState.endAt);
+
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+        setSelectedDate(formatBookingDateValue(start));
+
+        const hours: string[] = [];
+        const startHour = start.getHours();
+        const endHour = end.getHours() || 24;
+        for (let h = startHour; h < endHour; h++) {
+          hours.push(`${String(h).padStart(2, '0')}:00`);
+        }
+        setSelectedHours(hours);
+        return;
+      }
+    }
+
+    // Default to today for create mode
+    setSelectedDate(formatBookingDateValue(new Date()));
+    setSelectedHours([]);
+  }, [open, formState.startAt, formState.endAt]);
+
+  // Sync selected date + hours back to the parent form as startAt/endAt
+  useEffect(() => {
+    if (!open || !selectedDate) return;
+
+    if (selectedHours.length === 0) {
+      onChange('startAt', '');
+      onChange('endAt', '');
+      return;
+    }
+
+    const sorted = [...selectedHours].sort();
+    const startAt = `${selectedDate}T${sorted[0]}`;
+    const lastHour = Number(sorted[sorted.length - 1].split(':')[0]);
+    const endDate = new Date(`${selectedDate}T${sorted[sorted.length - 1]}`);
+    endDate.setHours(lastHour + 1, 0, 0, 0);
+    const endAt = formatBookingDateTimeValue(endDate);
+
+    onChange('startAt', startAt);
+    onChange('endAt', endAt);
+  }, [selectedDate, selectedHours, open]);
+
+  // Fetch day slot availability when date or resource changes
+  const fetchDaySlots = useCallback(async (dateStr: string, resourceId: string) => {
+    setIsDaySlotsLoading(true);
+    const newAvailability = new Map<string, boolean>();
+
+    try {
+      const checks = BOOKING_HOUR_OPTIONS.map(async (time) => {
+        const slotStart = new Date(`${dateStr}T${time}`);
+        const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+        try {
+          const resources = await listMemberResources({
+            startAt: slotStart.toISOString(),
+            endAt: slotEnd.toISOString(),
+          });
+
+          if (resourceId) {
+            const match = resources.find((r) => String(r.id) === resourceId);
+            newAvailability.set(time, match ? match.available !== false : true);
+          } else {
+            newAvailability.set(time, true);
+          }
+        } catch {
+          newAvailability.set(time, true);
+        }
+      });
+
+      await Promise.all(checks);
+    } catch {
+      // If all fail, assume all available
+    }
+
+    setDaySlotAvailability(newAvailability);
+    setIsDaySlotsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !selectedDate) return;
+    void fetchDaySlots(selectedDate, formState.resourceId);
+  }, [open, selectedDate, formState.resourceId, fetchDaySlots]);
+
+  // Build hour slot list with availability
+  const hourSlots = useMemo((): BookingHourSlotInfo[] => {
+    const now = new Date();
+    const todayStr = formatBookingDateValue(now);
+    const isToday = selectedDate === todayStr;
+
+    return BOOKING_HOUR_OPTIONS.map((time) => {
+      const hour = Number(time.split(':')[0]);
+      const isPast = isToday && hour <= now.getHours();
+      const available = daySlotAvailability.get(time) ?? true;
+
+      return {
+        time,
+        label: formatBookingHourLabel(time),
+        available: !isPast && available,
+        isPast,
+      };
+    });
+  }, [selectedDate, daySlotAvailability]);
+
+  // Handle clicking an hour slot: toggle, ensure selection stays consecutive
+  const handleHourClick = useCallback((clickedTime: string, slotAvailable: boolean) => {
+    if (!slotAvailable) return;
+
+    setSelectedHours((prev) => {
+      const isAlreadySelected = prev.includes(clickedTime);
+
+      if (isAlreadySelected) {
+        const remaining = prev.filter((t) => t !== clickedTime).sort();
+        if (remaining.length === 0) return [];
+
+        const contiguous: string[] = [remaining[0]];
+        for (let i = 1; i < remaining.length; i++) {
+          const prevHour = Number(remaining[i - 1].split(':')[0]);
+          const currHour = Number(remaining[i].split(':')[0]);
+          if (currHour === prevHour + 1) {
+            contiguous.push(remaining[i]);
+          } else {
+            break;
+          }
+        }
+        return contiguous;
+      }
+
+      if (prev.length === 0) {
+        return [clickedTime];
+      }
+
+      const allHours = [...prev, clickedTime].sort();
+      const clickedIndex = allHours.indexOf(clickedTime);
+
+      let start = clickedIndex;
+      let end = clickedIndex;
+
+      while (start > 0) {
+        const prevHour = Number(allHours[start - 1].split(':')[0]);
+        const currHour = Number(allHours[start].split(':')[0]);
+        if (currHour === prevHour + 1) {
+          start--;
+        } else {
+          break;
+        }
+      }
+
+      while (end < allHours.length - 1) {
+        const currHour = Number(allHours[end].split(':')[0]);
+        const nextHour = Number(allHours[end + 1].split(':')[0]);
+        if (nextHour === currHour + 1) {
+          end++;
+        } else {
+          break;
+        }
+      }
+
+      return allHours.slice(start, end + 1);
+    });
+  }, []);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    setSelectedDate(formatBookingDateValue(date));
+    setSelectedHours([]);
+  };
+
+  const selectedCalendarDate = useMemo(() => {
+    if (!selectedDate) return undefined;
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }, [selectedDate]);
+
+  const hasSelection = selectedHours.length > 0;
+  const sortedSelection = [...selectedHours].sort();
+  const lastSelectedHour = sortedSelection.length > 0 ? Number(sortedSelection[sortedSelection.length - 1].split(':')[0]) + 1 : 0;
+  const durationLabel = hasSelection
+    ? selectedHours.length === 1 ? '1 hour' : `${selectedHours.length} hours`
+    : 'No hours selected';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-[28px] border-black/10 bg-[#fbfaf8] p-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[28px] border-black/10 bg-[#fbfaf8] p-0">
         <div className="p-6 sm:p-7">
           <DialogHeader className="space-y-3 text-left">
             <DialogTitle className="text-[2rem] font-semibold tracking-tight text-black">{title}</DialogTitle>
             <DialogDescription className="text-base text-black/50">{description}</DialogDescription>
           </DialogHeader>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
+          <div className="mt-6 space-y-5">
+            {/* Resource selector */}
+            <div className="space-y-2">
               <Label htmlFor="booking-resource">Resource</Label>
               <select
                 id="booking-resource"
@@ -419,48 +663,183 @@ function DashboardBookingDialog({
               </select>
             </div>
 
+            {/* Inline Calendar */}
             <div className="space-y-2">
-              <Label htmlFor="booking-start">Start</Label>
-              <Input
-                id="booking-start"
-                type="datetime-local"
-                value={formState.startAt}
-                onChange={(event) => onChange('startAt', event.target.value)}
-                className="h-11 rounded-2xl border-black/10 bg-white"
-              />
+              <Label className="text-sm font-medium">Select a date</Label>
+              <div className="rounded-2xl border border-black/10 bg-white p-2 sm:p-3">
+                <Calendar
+                  mode="single"
+                  size="large"
+                  selected={selectedCalendarDate}
+                  onSelect={handleDateSelect}
+                  disabled={{ before: today }}
+                  fromMonth={today}
+                  className="w-full"
+                />
+              </div>
             </div>
 
+            {/* Time Slots - Vertical list, multi-select consecutive hours */}
             <div className="space-y-2">
-              <Label htmlFor="booking-end">End</Label>
-              <Input
-                id="booking-end"
-                type="datetime-local"
-                value={formState.endAt}
-                onChange={(event) => onChange('endAt', event.target.value)}
-                className="h-11 rounded-2xl border-black/10 bg-white"
-              />
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Select your hours</Label>
+                {isDaySlotsLoading ? (
+                  <span className="flex items-center gap-2 text-xs text-black/50">
+                    <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                    Checking...
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-3 text-xs text-black/60">
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-100 border border-emerald-300" />
+                      Available
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-100 border border-red-300" />
+                      Booked
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-black/50">
+                Click hours to select them. You can pick multiple consecutive hours.
+              </p>
+
+              <div className="flex flex-col gap-1 rounded-2xl border border-black/10 bg-white p-2.5 sm:p-3 max-h-[280px] overflow-y-auto">
+                {hourSlots.map((slot) => {
+                  const isSelected = selectedHours.includes(slot.time);
+                  const isUnavailable = !slot.available;
+
+                  const sortedSel = [...selectedHours].sort();
+                  const selIndex = sortedSel.indexOf(slot.time);
+                  const isFirst = selIndex === 0;
+                  const isLast = selIndex === sortedSel.length - 1;
+                  const isOnly = sortedSel.length === 1 && isSelected;
+
+                  let roundedClass = 'rounded-xl';
+                  if (isSelected && !isOnly) {
+                    if (isFirst) roundedClass = 'rounded-t-xl rounded-b-none';
+                    else if (isLast) roundedClass = 'rounded-b-xl rounded-t-none';
+                    else roundedClass = 'rounded-none';
+                  }
+
+                  const slotHour = Number(slot.time.split(':')[0]);
+                  const endHour = slotHour + 1;
+                  const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+                  const endDisplay = endHour === 0 ? 12 : endHour > 12 ? endHour - 12 : endHour;
+
+                  return (
+                    <button
+                      key={slot.time}
+                      type="button"
+                      onClick={() => handleHourClick(slot.time, slot.available)}
+                      disabled={isUnavailable}
+                      className={[
+                        'group flex items-center justify-between px-3.5 py-3 text-left transition-all',
+                        roundedClass,
+                        isSelected
+                          ? 'bg-black text-white shadow-sm'
+                          : isUnavailable
+                            ? 'cursor-not-allowed bg-red-50/60 text-red-300'
+                            : 'bg-[#f6f5f2] text-black hover:bg-black/[0.06]',
+                        isSelected && !isOnly && !isLast ? '-mb-1' : '',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={[
+                            'flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all',
+                            isSelected
+                              ? 'border-white bg-white/20'
+                              : isUnavailable
+                                ? 'border-red-200 bg-red-50'
+                                : 'border-black/15 group-hover:border-black/30',
+                          ].join(' ')}
+                        >
+                          {isSelected ? (
+                            <Check className="h-3.5 w-3.5 text-white" />
+                          ) : isUnavailable ? (
+                            <X className="h-3 w-3 text-red-300" />
+                          ) : null}
+                        </div>
+
+                        <div>
+                          <span className="text-sm font-semibold">
+                            {slot.label}
+                          </span>
+                          <span className={[
+                            'ml-1.5 text-xs',
+                            isSelected ? 'text-white/60' : isUnavailable ? 'text-red-200' : 'text-black/40',
+                          ].join(' ')}>
+                            - {endDisplay}:00 {endPeriod}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        {isUnavailable && !slot.isPast ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-500">
+                            Booked
+                          </span>
+                        ) : isUnavailable && slot.isPast ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-300">
+                            Past
+                          </span>
+                        ) : isSelected ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium text-white/80">
+                            Selected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
+                            Available
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {hasSelection ? (
+                <div className="flex items-center justify-between rounded-xl bg-black/[0.04] px-3.5 py-2.5">
+                  <span className="text-sm font-medium text-black/80">
+                    {formatBookingTimeRange(sortedSelection[0], lastSelectedHour)} ({durationLabel})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHours([])}
+                    className="text-sm font-medium text-[#ff3b7f] hover:underline"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              ) : null}
             </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="booking-purpose">Purpose</Label>
-              <Input
-                id="booking-purpose"
-                value={formState.purpose}
-                onChange={(event) => onChange('purpose', event.target.value)}
-                className="h-11 rounded-2xl border-black/10 bg-white"
-                placeholder="Quarterly planning workshop"
-              />
-            </div>
+            {/* Purpose & Notes */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="booking-purpose">Purpose</Label>
+                <Input
+                  id="booking-purpose"
+                  value={formState.purpose}
+                  onChange={(event) => onChange('purpose', event.target.value)}
+                  className="h-11 rounded-2xl border-black/10 bg-white"
+                  placeholder="Quarterly planning workshop"
+                />
+              </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="booking-notes">Notes</Label>
-              <Textarea
-                id="booking-notes"
-                value={formState.notes}
-                onChange={(event) => onChange('notes', event.target.value)}
-                className="min-h-[120px] rounded-2xl border-black/10 bg-white"
-                placeholder="Any setup or support notes"
-              />
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="booking-notes">Notes</Label>
+                <Textarea
+                  id="booking-notes"
+                  value={formState.notes}
+                  onChange={(event) => onChange('notes', event.target.value)}
+                  className="min-h-[100px] rounded-2xl border-black/10 bg-white"
+                  placeholder="Any setup or support notes"
+                />
+              </div>
             </div>
           </div>
 
@@ -474,7 +853,7 @@ function DashboardBookingDialog({
             </Button>
             <Button
               onClick={onSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !hasSelection}
               className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
             >
               {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}

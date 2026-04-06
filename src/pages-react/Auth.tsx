@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import type { Location } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,6 @@ import { useAuth } from '@/context/AuthContext';
 type AuthMode = 'login' | 'register';
 
 export default function Auth() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { user, isReady, login, register } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -26,7 +25,8 @@ export default function Auth() {
   }
 
   if (user) {
-    return <Navigate to={redirectTarget} replace />;
+    window.location.href = redirectTarget;
+    return null;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -52,7 +52,7 @@ export default function Auth() {
       return;
     }
 
-    navigate(redirectTarget, { replace: true });
+    window.location.href = redirectTarget;
   };
 
   return (
