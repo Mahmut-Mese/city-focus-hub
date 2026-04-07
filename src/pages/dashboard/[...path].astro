@@ -3,8 +3,16 @@ import DashboardApp from '@/islands/DashboardApp';
 import '@/index.css';
 
 export function getStaticPaths() {
-  // Catch-all route for the dashboard SPA — generate one entry point
-  return [{ params: { path: '' } }];
+  // Generate a static page for every dashboard sub-route so hard refreshes
+  // don't 404.  React Router takes over client-side after hydration.
+  return [
+    { params: { path: undefined } },
+    { params: { path: 'bookings' } },
+    { params: { path: 'billing' } },
+    { params: { path: 'invoices' } },
+    { params: { path: 'profile' } },
+    { params: { path: 'settings' } },
+  ];
 }
 ---
 <html lang="en">

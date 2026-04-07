@@ -129,8 +129,9 @@ export async function registerUser({ name, email, password, entrySource = 'syste
 
 export async function authenticateUser({ email, password }) {
   const existingUser = await findUserByEmail(email);
+  const normalizedPassword = String(password || '').trim();
 
-  if (!existingUser || !verifyPassword(String(password || ''), existingUser.raw.password_hash)) {
+  if (!existingUser || !verifyPassword(normalizedPassword, existingUser.raw.password_hash)) {
     throw new Error('Email or password is incorrect.');
   }
 

@@ -13,8 +13,11 @@ import {
   cancelMembershipAdjustment,
   cancelMembership,
   changeMembershipPlan,
+  confirmMembershipPayment,
+  confirmMembershipUpgradePayment,
   createMembership,
   createMembershipCheckout,
+  createMembershipPaymentDraft,
   getUserMembership,
   handleMembershipAdjustmentCheckoutExpired,
   handleMembershipAdjustmentInvoicePaid,
@@ -32,6 +35,7 @@ import {
   cancelBookingAdjustment,
   cancelGuestMeetingRoomBookingPayment,
   createBooking,
+  confirmBookingAdjustmentPayment,
   confirmGuestMeetingRoomBookingPayment,
   confirmBookingPayment,
   handleBookingAdjustmentCheckoutExpired,
@@ -503,11 +507,6 @@ export function registerMemberPortalApi(app) {
 
   app.post('/api/public/meeting-rooms/bookings/payment-intent', guestBookingRateLimiter, async (request, response) => {
     try {
-      if (isStripeEnabled() && !isMockStripePaymentsEnabled()) {
-        response.status(400).json({ error: 'Embedded booking card payments are disabled in this environment. Use Stripe Checkout instead.' });
-        return;
-      }
-
       const guestName = String(request.body?.guestName || '').trim();
       const guestEmail = String(request.body?.guestEmail || '').trim();
 
@@ -658,11 +657,6 @@ export function registerMemberPortalApi(app) {
 
   app.post('/api/member-portal/memberships', async (request, response) => {
     try {
-      if (isStripeEnabled() && !isMockStripePaymentsEnabled()) {
-        response.status(400).json({ error: 'Direct subscription creation is disabled in this environment. Use Stripe Checkout instead.' });
-        return;
-      }
-
       const user = await requireAuthenticatedMember(request, response);
 
       if (!user) {
@@ -678,6 +672,73 @@ export function registerMemberPortalApi(app) {
 
       const membership = await createMembership({ userId: user.id, planSlug });
       response.status(201).json({ data: membership });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post('/api/member-portal/memberships/payment-draft', async (request, response) => {
+    try {
+      const user = await requireAuthenticatedMember(request, response);
+
+      if (!user) {
+        return;
+      }
+
+      const planSlug = String(request.body?.planSlug || '').trim();
+
+      if (!planSlug) {
+        response.status(400).json({ error: 'Plan slug is required.' });
+        return;
+      }
+
+      const draft = await createMembershipPaymentDraft({ userId: user.id, planSlug });
+      response.status(201).json({ data: draft });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post('/api/member-portal/memberships/confirm-payment', async (request, response) => {
+    try {
+      const user = await requireAuthenticatedMember(request, response);
+
+      if (!user) {
+        return;
+      }
+
+      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
+
+      if (!paymentIntentId) {
+        response.status(400).json({ error: 'Payment intent ID is required.' });
+        return;
+      }
+
+      const membership = await confirmMembershipPayment({ userId: user.id, paymentIntentId });
+      response.json({ data: membership });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post('/api/member-portal/memberships/confirm-upgrade-payment', async (request, response) => {
+    try {
+      const user = await requireAuthenticatedMember(request, response);
+
+      if (!user) {
+        return;
+      }
+
+      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
+      const adjustmentId = Number(request.body?.adjustmentId || 0);
+
+      if (!paymentIntentId || !adjustmentId) {
+        response.status(400).json({ error: 'Payment intent ID and adjustment ID are required.' });
+        return;
+      }
+
+      const membership = await confirmMembershipUpgradePayment({ userId: user.id, paymentIntentId, adjustmentId });
+      response.json({ data: membership });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
@@ -852,11 +913,6 @@ export function registerMemberPortalApi(app) {
 
   app.post('/api/member-portal/bookings', async (request, response) => {
     try {
-      if (isStripeEnabled() && !isMockStripePaymentsEnabled()) {
-        response.status(400).json({ error: 'Direct booking charges are disabled in this environment. Use Stripe Checkout instead.' });
-        return;
-      }
-
       const user = await requireAuthenticatedMember(request, response);
 
       if (!user) {
@@ -881,11 +937,6 @@ export function registerMemberPortalApi(app) {
 
   app.post('/api/member-portal/bookings/payment-intent', async (request, response) => {
     try {
-      if (isStripeEnabled() && !isMockStripePaymentsEnabled()) {
-        response.status(400).json({ error: 'Embedded booking card payments are disabled in this environment. Use Stripe Checkout instead.' });
-        return;
-      }
-
       const user = await requireAuthenticatedMember(request, response);
 
       if (!user) {
@@ -1007,6 +1058,29 @@ export function registerMemberPortalApi(app) {
       });
 
       response.json({ ok: true });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post('/api/member-portal/bookings/adjustments/confirm-payment', async (request, response) => {
+    try {
+      const user = await requireAuthenticatedMember(request, response);
+
+      if (!user) {
+        return;
+      }
+
+      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
+      const adjustmentId = Number(request.body?.adjustmentId || 0);
+
+      if (!paymentIntentId || !adjustmentId) {
+        response.status(400).json({ error: 'Payment intent ID and adjustment ID are required.' });
+        return;
+      }
+
+      const booking = await confirmBookingAdjustmentPayment({ userId: user.id, paymentIntentId, adjustmentId });
+      response.json({ data: booking });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }

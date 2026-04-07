@@ -3,11 +3,14 @@ import { config } from '../config.js';
 import { sequelize } from '../database.js';
 import { execute, queryAll, queryOne } from './sql.js';
 import {
+  cancelStripePaymentIntent,
   cancelStripeSubscription,
   createImmediateMockPayment,
   createMembershipAdjustmentCheckoutSession,
+  createMembershipUpgradePaymentIntentDraft,
   createStripeCheckoutSession,
   createStripeSubscription,
+  createStripeSubscriptionIncomplete,
   ensurePlanStripePrice,
   ensureStripeCustomer,
   expireStripeCheckoutSession,
@@ -15,6 +18,7 @@ import {
   listStripePaymentIntents,
   previewStripeSubscriptionPlanChange,
   retrieveStripeCheckoutSession,
+  retrieveStripePaymentIntent,
   retrieveStripeSubscription,
   updateStripeSubscriptionPlan,
 } from './stripe-service.js';
@@ -426,6 +430,11 @@ async function reconcilePendingMembershipAdjustmentRow(adjustmentRow) {
       await markMembershipAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
       return getMembershipAdjustmentRowById(adjustmentRow.id);
     }
+  } else if (adjustmentRow.stripe_payment_intent_id && isMembershipAdjustmentHoldExpired(adjustmentRow)) {
+    // Payment intent-based adjustment that has expired — cancel the PI and expire the adjustment
+    await cancelStripePaymentIntent(adjustmentRow.stripe_payment_intent_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
+    await markMembershipAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
+    return getMembershipAdjustmentRowById(adjustmentRow.id);
   } else if (isMembershipAdjustmentHoldExpired(adjustmentRow)) {
     await markMembershipAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
     return getMembershipAdjustmentRowById(adjustmentRow.id);
@@ -619,6 +628,195 @@ export async function createMembership({ userId, planSlug }) {
   }
 
   await hydrateMissingMembershipPaymentIntents(membershipId);
+
+  return getUserMembership(userId);
+}
+
+/**
+ * Creates a Stripe subscription with payment_behavior: 'default_incomplete'.
+ * Returns a payment draft with clientSecret so the frontend can collect card
+ * details via Stripe Elements and confirm the payment in-page.
+ */
+export async function createMembershipPaymentDraft({ userId, planSlug }) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  const existingMembership = await getUserMembership(userId);
+  if (existingMembership && ['active', 'trialing', 'past_due'].includes(existingMembership.status)) {
+    throw new Error('User already has an active membership.');
+  }
+
+  const plan = await getPlanBySlug(planSlug);
+  if (!plan) {
+    throw new Error('Membership plan was not found.');
+  }
+
+  const now = new Date();
+  const [insertId, metadata] = await execute(
+    `INSERT INTO memberships
+      (document_id, user_id, plan_id, status, cancel_at_period_end, current_period_start, current_period_end, failed_payment_count, created_at, updated_at)
+     VALUES
+      (:documentId, :userId, :planId, 'pending', 0, NULL, NULL, 0, :createdAt, :updatedAt)`,
+    {
+      documentId: randomUUID(),
+      userId,
+      planId: plan.id,
+      createdAt: now,
+      updatedAt: now,
+    },
+  );
+
+  const membershipId = typeof insertId === 'number' ? insertId : metadata?.insertId;
+  const customerId = await ensureStripeCustomer(user);
+  const { priceId } = await ensurePlanStripePrice({
+    id: plan.id,
+    slug: plan.slug,
+    name: plan.name,
+    description: plan.description,
+    currency: plan.currency,
+    monthlyPriceMinor: Number(plan.monthly_price_minor),
+    stripePriceId: plan.stripe_price_id,
+    stripeProductId: plan.stripe_product_id,
+  });
+
+  const subscription = await createStripeSubscriptionIncomplete({
+    customerId,
+    priceId,
+    userId,
+    membershipId,
+  });
+
+  // Update the membership row with the subscription ID so we can find it later
+  await execute(
+    `UPDATE memberships
+        SET stripe_subscription_id = :stripeSubscriptionId,
+            stripe_price_id = :stripePriceId,
+            updated_at = :updatedAt
+      WHERE id = :membershipId`,
+    {
+      membershipId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      updatedAt: new Date(),
+    },
+  );
+
+  const invoice = subscription.latest_invoice;
+  const paymentIntent = typeof invoice === 'object' ? invoice?.payment_intent : null;
+
+  if (!paymentIntent || typeof paymentIntent === 'string' || !paymentIntent.client_secret) {
+    throw new Error('Could not obtain payment intent from the subscription. Please try again.');
+  }
+
+  return {
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+    subscriptionId: subscription.id,
+    membershipId,
+    plan: {
+      slug: plan.slug,
+      name: plan.name,
+      monthlyPriceMinor: Number(plan.monthly_price_minor),
+      currency: plan.currency || 'gbp',
+    },
+    subtotalMinor: Number(invoice.subtotal || 0),
+    taxMinor: Number(invoice.tax || 0),
+    totalMinor: Number(invoice.total || 0),
+    currency: invoice.currency || plan.currency || 'gbp',
+  };
+}
+
+/**
+ * Confirms a membership payment after the user successfully pays in-page.
+ * Retrieves the subscription, updates the membership row, creates invoice, activates access.
+ */
+export async function confirmMembershipPayment({ userId, paymentIntentId }) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  const membership = await getUserMembership(userId);
+  if (!membership) {
+    throw new Error('Membership not found.');
+  }
+
+  if (!membership.stripeSubscriptionId) {
+    throw new Error('Stripe subscription is missing for this membership.');
+  }
+
+  // Retrieve the subscription to get updated status after payment
+  const subscription = await retrieveStripeSubscription(membership.stripeSubscriptionId);
+
+  if (!subscription) {
+    throw new Error('Stripe subscription could not be retrieved.');
+  }
+
+  // Update membership with latest subscription state
+  await execute(
+    `UPDATE memberships
+        SET status = :status,
+            stripe_subscription_id = :stripeSubscriptionId,
+            stripe_price_id = :stripePriceId,
+            current_period_start = :currentPeriodStart,
+            current_period_end = :currentPeriodEnd,
+            updated_at = :updatedAt
+      WHERE id = :membershipId`,
+    {
+      membershipId: membership.id,
+      status: subscription.status,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: membership.stripePriceId,
+      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null,
+      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+      updatedAt: new Date(),
+    },
+  );
+
+  // Activate access if subscription is active
+  const activatableStatuses = ['active', 'trialing'];
+  if (activatableStatuses.includes(subscription.status)) {
+    await updateUserAccessStatus(userId, 'active');
+  }
+
+  // Upsert the invoice record
+  if (subscription.latest_invoice && typeof subscription.latest_invoice !== 'string') {
+    const pi = typeof subscription.latest_invoice.payment_intent === 'string'
+      ? subscription.latest_invoice.payment_intent
+      : subscription.latest_invoice.payment_intent?.id || paymentIntentId;
+
+    // Retrieve the payment intent to get the receipt_url
+    let receiptUrl = null;
+    try {
+      const fullPaymentIntent = await retrieveStripePaymentIntent(pi);
+      receiptUrl = fullPaymentIntent?.latest_charge?.receipt_url || null;
+    } catch {
+      // Non-critical, proceed without receipt URL
+    }
+
+    const plan = await getPlanBySlug(membership.planSlug);
+
+    await upsertStripeInvoice({
+      userId,
+      membershipId: membership.id,
+      stripeInvoiceId: subscription.latest_invoice.id,
+      stripePaymentIntentId: pi,
+      invoiceNumber: subscription.latest_invoice.number || null,
+      status: subscription.latest_invoice.status || subscription.status,
+      description: `${plan?.name || membership.planName} subscription`,
+      currency: subscription.currency || 'gbp',
+      subtotalMinor: Number(subscription.latest_invoice.subtotal || 0),
+      taxMinor: Number(subscription.latest_invoice.tax || 0),
+      totalMinor: Number(subscription.latest_invoice.total || 0),
+      hostedInvoiceUrl: receiptUrl || subscription.latest_invoice.hosted_invoice_url || null,
+      invoicePdf: subscription.latest_invoice.invoice_pdf || null,
+      paidAt: subscription.latest_invoice.status === 'paid' ? new Date() : null,
+    });
+  }
+
+  await hydrateMissingMembershipPaymentIntents(membership.id);
 
   return getUserMembership(userId);
 }
@@ -927,10 +1125,6 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
     }
   }
 
-  if (!successUrl || !cancelUrl) {
-    throw new Error('Checkout success and cancel URLs are required when paying for a membership upgrade.');
-  }
-
   const now = new Date();
   const [insertId, metadata] = await execute(
     `INSERT INTO membership_adjustments
@@ -955,40 +1149,168 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
 
   const adjustmentId = typeof insertId === 'number' ? insertId : metadata?.insertId;
   const customerId = await ensureStripeCustomer(user);
-  const session = await createMembershipAdjustmentCheckoutSession({
+
+  // Create a PaymentIntent draft for in-page card collection instead of a checkout session redirect
+  const paymentIntent = await createMembershipUpgradePaymentIntentDraft({
     customerId,
+    amountMinor: settlement.paymentDueMinor,
+    currency: settlement.currency,
+    userId,
     membershipId: membership.id,
     membershipAdjustmentId: adjustmentId,
-    userId,
-    currentPlanName: membership.planName,
-    targetPlanName: plan.name,
-    subtotalMinor: settlement.subtotalMinor,
-    currency: settlement.currency,
-    successUrl,
-    cancelUrl: `${cancelUrl}${cancelUrl.includes('?') ? '&' : '?'}membership_id=${membership.id}&adjustment_id=${adjustmentId}`,
+    description: `${plan.name} membership upgrade`,
   });
 
   await execute(
     `UPDATE membership_adjustments
-        SET stripe_checkout_session_id = :stripeCheckoutSessionId,
+        SET stripe_payment_intent_id = :stripePaymentIntentId,
             updated_at = :updatedAt
       WHERE id = :adjustmentId`,
     {
       adjustmentId,
-      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: paymentIntent.id,
       updatedAt: new Date(),
     },
   );
 
   return {
     membership,
-    sessionId: session.id,
-    url: session.url,
+    sessionId: null,
+    url: null,
     adjustmentId: Number(adjustmentId),
     action: 'payment_required',
     paymentDueMinor: settlement.paymentDueMinor,
     refundMinor: 0,
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+    subtotalMinor: settlement.subtotalMinor,
+    taxMinor: settlement.taxMinor,
+    currency: settlement.currency,
   };
+}
+
+/**
+ * Confirms a membership upgrade payment after the user pays in-page.
+ * Retrieves the adjustment, verifies the payment intent succeeded, updates the subscription,
+ * creates the invoice, and marks the adjustment as completed.
+ */
+export async function confirmMembershipUpgradePayment({ userId, paymentIntentId, adjustmentId }) {
+  await expireStalePendingMembershipAdjustments();
+
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  const adjustmentRow = await getMembershipAdjustmentRowById(adjustmentId);
+  if (!adjustmentRow || Number(adjustmentRow.user_id) !== userId) {
+    throw new Error('Membership adjustment was not found.');
+  }
+
+  if (adjustmentRow.status === 'completed') {
+    return getUserMembership(userId);
+  }
+
+  if (adjustmentRow.status !== 'pending_payment') {
+    throw new Error('This membership adjustment is no longer awaiting payment.');
+  }
+
+  // Verify the payment intent succeeded
+  const paymentIntent = await retrieveStripePaymentIntent(paymentIntentId);
+  if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+    throw new Error('Payment has not been completed successfully.');
+  }
+
+  const membership = await getUserMembership(userId);
+  if (!membership || membership.id !== Number(adjustmentRow.membership_id)) {
+    throw new Error('The original membership can no longer be updated.');
+  }
+
+  const plan = await getPlanBySlug(String(adjustmentRow.target_plan_slug || ''));
+  if (!plan) {
+    throw new Error('The target membership plan was not found.');
+  }
+
+  const { priceId } = await ensurePlanStripePrice({
+    id: plan.id,
+    slug: plan.slug,
+    name: plan.name,
+    description: plan.description,
+    currency: plan.currency,
+    monthlyPriceMinor: Number(plan.monthly_price_minor),
+    stripePriceId: plan.stripe_price_id,
+    stripeProductId: plan.stripe_product_id,
+  });
+
+  const dbTransaction = await sequelize.transaction();
+  try {
+    const updatedSubscription = await updateStripeSubscriptionPlan({
+      subscriptionId: membership.stripeSubscriptionId,
+      priceId,
+      userId,
+      membershipId: membership.id,
+      prorationBehavior: 'none',
+    });
+
+    const updatedMembership = await persistMembershipSubscriptionUpdate({
+      userId,
+      membership,
+      plan,
+      stripePriceId: priceId,
+      updatedSubscription,
+      invoiceDescription: `${plan.name} subscription update`,
+      syncLatestInvoice: false,
+      transaction: dbTransaction,
+    });
+
+    const receiptUrl = paymentIntent.latest_charge?.receipt_url || null;
+
+    await createMembershipAdjustmentInvoice(adjustmentRow, paymentIntentId, {
+      stripeInvoiceId: null,
+      invoiceNumber: null,
+      status: 'paid',
+      description: `${plan.name} membership upgrade`,
+      currency: paymentIntent.currency || adjustmentRow.currency || 'gbp',
+      subtotalMinor: Number(adjustmentRow.subtotal_minor || 0),
+      taxMinor: Number(adjustmentRow.tax_minor || 0),
+      totalMinor: Number(adjustmentRow.total_minor || 0),
+      hostedInvoiceUrl: receiptUrl,
+      invoicePdf: null,
+      paidAt: new Date(),
+    }, dbTransaction);
+
+    await markMembershipAdjustmentStatus(adjustmentRow.id, 'completed', {
+      stripePaymentIntentId: paymentIntentId,
+      clearHold: true,
+      transaction: dbTransaction,
+    });
+
+    await dbTransaction.commit();
+    return updatedMembership;
+  } catch (error) {
+    await dbTransaction.rollback();
+
+    // Refund the payment since the subscription update failed
+    await refundMembershipAmount({
+      membershipId: Number(adjustmentRow.membership_id),
+      userId,
+      amountMinor: Number(adjustmentRow.total_minor || 0),
+      reason: 'requested_by_customer',
+      metadata: {
+        app_user_id: String(userId),
+        membership_id: String(adjustmentRow.membership_id),
+        membership_adjustment_id: String(adjustmentRow.id),
+        membership_adjustment_refund: 'subscription_update_failed',
+      },
+    });
+
+    await markMembershipAdjustmentStatus(adjustmentRow.id, 'refunded', {
+      stripePaymentIntentId: paymentIntentId,
+      clearHold: true,
+    });
+
+    throw new Error(`The plan change could not be completed. The extra payment was automatically refunded. ${String(error?.message || error)}`);
+  }
 }
 
 export async function previewMembershipPlanChange({ userId, planSlug }) {
@@ -1237,6 +1559,10 @@ export async function cancelMembershipAdjustment({ userId, adjustmentId }) {
 
   if (adjustmentRow.stripe_checkout_session_id) {
     await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
+  }
+
+  if (adjustmentRow.stripe_payment_intent_id) {
+    await cancelStripePaymentIntent(adjustmentRow.stripe_payment_intent_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
   }
 
   await markMembershipAdjustmentStatus(adjustmentId, 'canceled', { clearHold: true });

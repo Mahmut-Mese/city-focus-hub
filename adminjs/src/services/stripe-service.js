@@ -51,12 +51,23 @@ export async function ensureStripeCustomer(user) {
   }
 
   if (user.stripeCustomerId) {
+    try {
+      // Ensure existing customers have a default country for automatic tax calculation
+      await stripe.customers.update(user.stripeCustomerId, {
+        address: { country: 'GB' },
+      });
+    } catch (err) {
+      // Ignore update errors
+    }
     return user.stripeCustomerId;
   }
 
   const customer = await stripe.customers.create({
     email: user.email,
     name: user.name,
+    address: {
+      country: 'GB', // Default country required for Stripe automatic tax
+    },
     metadata: {
       app_user_id: String(user.id),
     },
@@ -182,6 +193,75 @@ export async function createStripeSubscription({ customerId, priceId, userId, me
       membership_id: String(membershipId),
     },
     expand: ['latest_invoice'],
+  });
+}
+
+/**
+ * Creates a subscription with payment_behavior: 'default_incomplete'.
+ * The subscription starts in 'incomplete' status and the first invoice has a
+ * PaymentIntent with a client_secret that the frontend can use to collect
+ * card details via Stripe Elements and confirm the payment in-page.
+ */
+export async function createStripeSubscriptionIncomplete({ customerId, priceId, userId, membershipId }) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.subscriptions.create({
+    customer: customerId,
+    items: [{ price: priceId }],
+    automatic_tax: {
+      enabled: true,
+    },
+    collection_method: 'charge_automatically',
+    payment_behavior: 'default_incomplete',
+    payment_settings: {
+      payment_method_types: ['card'],
+      save_default_payment_method: 'on_subscription',
+    },
+    metadata: {
+      app_user_id: String(userId),
+      membership_id: String(membershipId),
+    },
+    expand: ['latest_invoice.payment_intent'],
+  });
+}
+
+/**
+ * Creates a PaymentIntent draft for a membership upgrade proration charge.
+ * The client_secret is sent to the frontend for in-page card collection.
+ */
+export async function createMembershipUpgradePaymentIntentDraft({
+  customerId,
+  amountMinor,
+  currency,
+  userId,
+  membershipId,
+  membershipAdjustmentId,
+  description = '',
+}) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.paymentIntents.create({
+    amount: amountMinor,
+    currency,
+    customer: customerId,
+    automatic_payment_methods: {
+      enabled: true,
+      allow_redirects: 'never',
+    },
+    description: description || undefined,
+    metadata: {
+      app_user_id: String(userId),
+      membership_id: String(membershipId),
+      membership_adjustment_id: String(membershipAdjustmentId),
+    },
   });
 }
 
@@ -434,6 +514,42 @@ export async function createMembershipAdjustmentCheckoutSession({
   });
 }
 
+/**
+ * Creates a PaymentIntent draft for a booking adjustment (upgrade) charge.
+ * The client_secret is sent to the frontend for in-page card collection.
+ */
+export async function createBookingAdjustmentPaymentIntentDraft({
+  customerId,
+  amountMinor,
+  currency,
+  userId,
+  bookingId,
+  bookingAdjustmentId,
+  description = '',
+}) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.paymentIntents.create({
+    amount: amountMinor,
+    currency,
+    customer: customerId,
+    automatic_payment_methods: {
+      enabled: true,
+      allow_redirects: 'never',
+    },
+    description: description || undefined,
+    metadata: {
+      app_user_id: String(userId),
+      booking_id: String(bookingId),
+      booking_adjustment_id: String(bookingAdjustmentId),
+    },
+  });
+}
+
 export async function listStripePaymentIntents({ customerId, limit = 20 }) {
   const stripe = getStripeClient();
 
@@ -662,7 +778,9 @@ export async function retrieveStripePaymentIntent(paymentIntentId) {
     throw new Error('Stripe is not configured.');
   }
 
-  return stripe.paymentIntents.retrieve(paymentIntentId);
+  return stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ['latest_charge'],
+  });
 }
 
 export async function cancelStripePaymentIntent(paymentIntentId) {

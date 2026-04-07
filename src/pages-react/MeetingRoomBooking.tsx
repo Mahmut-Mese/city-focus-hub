@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { loadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@stripe/stripe-js';
 import { AlertCircle, ArrowLeft, Check, Clock3, LoaderCircle, X } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,13 +14,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { meetingRooms as fallbackMeetingRooms } from '@/data/mockData';
 import { useMeetingRooms } from '@/hooks/useCmsContent';
 import {
-  createGuestMeetingRoomBookingCheckoutSession,
+  cancelGuestMeetingRoomBookingPayment,
+  confirmGuestMeetingRoomBookingPayment,
+  createGuestMeetingRoomBookingPaymentIntent,
   listPublicMeetingRoomResources,
-  syncGuestMeetingRoomBookingCheckoutSession,
+  type BookingPaymentDraft,
   type MemberResource,
 } from '@/lib/member-api';
-
-const GUEST_BOOKING_EMAIL_STORAGE_KEY = 'city-focus-hub.guest-booking-email';
 
 /** Full-hour time options from 07:00 to 21:00 */
 const HOUR_OPTIONS: string[] = [];
@@ -119,15 +120,279 @@ function formatTimeRange(startTime: string, endHour: number) {
   return `${startLabel} - ${endDisplay}:00 ${endPeriod}`;
 }
 
+function GuestBookingPaymentCard({
+  publishableKey,
+  paymentDraft,
+  isSubmitting,
+  onConfirmPayment,
+  onCancelPayment,
+}: {
+  publishableKey: string;
+  paymentDraft: BookingPaymentDraft;
+  isSubmitting: boolean;
+  onConfirmPayment: (paymentIntentId: string) => Promise<void>;
+  onCancelPayment: () => Promise<void>;
+}) {
+  const cardNumberContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardExpiryContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardCvcContainerRef = useRef<HTMLDivElement | null>(null);
+  const stripeRef = useRef<Stripe | null>(null);
+  const elementsRef = useRef<StripeElements | null>(null);
+  const [readyCount, setReadyCount] = useState(0);
+  const [elementError, setElementError] = useState('');
+  const isElementReady = readyCount === 3;
+
+  useEffect(() => {
+    if (
+      !publishableKey
+      || !paymentDraft.clientSecret
+      || !cardNumberContainerRef.current
+      || !cardExpiryContainerRef.current
+      || !cardCvcContainerRef.current
+    ) {
+      return;
+    }
+
+    let active = true;
+    let mountedCardNumber: StripeCardNumberElement | null = null;
+    let mountedCardExpiry: StripeCardExpiryElement | null = null;
+    let mountedCardCvc: StripeCardCvcElement | null = null;
+
+    setReadyCount(0);
+    setElementError('');
+
+    void loadStripe(publishableKey)
+      .then((stripe) => {
+        if (!active) return;
+
+        if (!stripe) {
+          setElementError('Stripe could not be initialized.');
+          return;
+        }
+
+        if (!cardNumberContainerRef.current || !cardExpiryContainerRef.current || !cardCvcContainerRef.current) {
+          return;
+        }
+
+        stripeRef.current = stripe;
+        const elements = stripe.elements();
+        elementsRef.current = elements;
+
+        const elementStyle = {
+          style: {
+            base: {
+              color: '#10153f',
+              fontFamily: 'inherit',
+              fontSize: '16px',
+              '::placeholder': {
+                color: 'rgba(16, 21, 63, 0.4)',
+              },
+            },
+            invalid: {
+              color: '#dc2626',
+            },
+          },
+        };
+
+        const handleReady = () => {
+          if (active) {
+            setReadyCount((count) => count + 1);
+          }
+        };
+
+        const handleChange = (event: { error?: { message?: string } }) => {
+          if (active && event.error?.message) {
+            setElementError(event.error.message);
+            return;
+          }
+
+          if (active) {
+            setElementError('');
+          }
+        };
+
+        mountedCardNumber = elements.create('cardNumber', elementStyle);
+        mountedCardExpiry = elements.create('cardExpiry', elementStyle);
+        mountedCardCvc = elements.create('cardCvc', elementStyle);
+
+        mountedCardNumber.on('ready', handleReady);
+        mountedCardExpiry.on('ready', handleReady);
+        mountedCardCvc.on('ready', handleReady);
+        mountedCardNumber.on('change', handleChange);
+        mountedCardExpiry.on('change', handleChange);
+        mountedCardCvc.on('change', handleChange);
+
+        mountedCardNumber.mount(cardNumberContainerRef.current);
+        mountedCardExpiry.mount(cardExpiryContainerRef.current);
+        mountedCardCvc.mount(cardCvcContainerRef.current);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setElementError(error instanceof Error ? error.message : 'Failed to load Stripe payment form.');
+        }
+      });
+
+    return () => {
+      active = false;
+      setReadyCount(0);
+      mountedCardNumber?.destroy();
+      mountedCardExpiry?.destroy();
+      mountedCardCvc?.destroy();
+      elementsRef.current = null;
+      stripeRef.current = null;
+    };
+  }, [paymentDraft.clientSecret, publishableKey]);
+
+  const handleConfirmClick = async () => {
+    setElementError('');
+
+    if (!stripeRef.current || !elementsRef.current) {
+      setElementError('Payment form is still loading.');
+      return;
+    }
+
+    const cardElement = elementsRef.current.getElement('cardNumber');
+
+    if (!cardElement) {
+      setElementError('Card field is not ready yet.');
+      return;
+    }
+
+    const result = await stripeRef.current.confirmCardPayment(paymentDraft.clientSecret || '', {
+      payment_method: {
+        card: cardElement,
+      },
+    });
+
+    if (result.error) {
+      setElementError(result.error.message || 'Payment could not be completed.');
+      return;
+    }
+
+    if (!result.paymentIntent?.id) {
+      setElementError('Stripe did not return a payment result.');
+      return;
+    }
+
+    await onConfirmPayment(result.paymentIntent.id);
+  };
+
+  return (
+    <div className="rounded-[2rem] border border-[#10153f]/15 bg-white p-5 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-[#10153f]/60">Payment</p>
+          <h2 className="mt-1 text-[1.7rem] font-semibold tracking-tight text-[#10153f] sm:text-[2rem]">Complete payment on this page</h2>
+          <p className="mt-2 max-w-2xl text-sm text-[#10153f]/65 sm:text-base">
+            Enter your card details below to finish the booking without leaving this page.
+          </p>
+        </div>
+        <div className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+          {formatCurrency(paymentDraft.booking?.totalMinor || 0, paymentDraft.booking?.currency || 'gbp')}
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[1.5rem] border border-[#10153f]/10 bg-[#fbfaf8] p-4 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div>
+            <p className="text-lg font-semibold text-[#10153f]">{paymentDraft.booking?.resourceName}</p>
+            <p className="mt-2 text-sm text-[#10153f]/60">
+              {paymentDraft.booking?.startAt ? formatLongDate(paymentDraft.booking.startAt) : ''}
+            </p>
+            <p className="mt-1 text-sm text-[#10153f]/60">
+              {paymentDraft.booking?.startAt ? formatTimeLabel(paymentDraft.booking.startAt.slice(11, 16)) : ''}
+              {' - '}
+              {paymentDraft.booking?.endAt ? formatTimeLabel(paymentDraft.booking.endAt.slice(11, 16)) : ''}
+            </p>
+            <p className="mt-1 text-sm text-[#10153f]/60">{paymentDraft.booking?.location}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#10153f]/45">Subtotal</p>
+              <p className="mt-2 text-lg font-semibold text-[#10153f]">{formatCurrency(paymentDraft.booking?.subtotalMinor || 0, paymentDraft.booking?.currency || 'gbp')}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#10153f]/45">VAT</p>
+              <p className="mt-2 text-lg font-semibold text-[#10153f]">{formatCurrency(paymentDraft.booking?.taxMinor || 0, paymentDraft.booking?.currency || 'gbp')}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#10153f]/45">Total</p>
+              <p className="mt-2 text-lg font-semibold text-[#10153f]">{formatCurrency(paymentDraft.booking?.totalMinor || 0, paymentDraft.booking?.currency || 'gbp')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[1.5rem] border border-[#10153f]/10 bg-white p-4 sm:p-5">
+        <p className="text-sm font-medium text-[#10153f]/60">Card details</p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label className="mb-2 block text-sm text-[#10153f]/60">Card number</Label>
+            <div className="rounded-[20px] border border-[#10153f]/15 bg-[#fbfaf8] px-4 py-4">
+              <div ref={cardNumberContainerRef} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block text-sm text-[#10153f]/60">Expiry</Label>
+            <div className="rounded-[20px] border border-[#10153f]/15 bg-[#fbfaf8] px-4 py-4">
+              <div ref={cardExpiryContainerRef} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block text-sm text-[#10153f]/60">CVC</Label>
+            <div className="rounded-[20px] border border-[#10153f]/15 bg-[#fbfaf8] px-4 py-4">
+              <div ref={cardCvcContainerRef} />
+            </div>
+          </div>
+        </div>
+
+        {!isElementReady && !elementError ? (
+          <p className="mt-4 text-sm text-[#10153f]/50">Loading Stripe card form...</p>
+        ) : null}
+        {elementError ? (
+          <p className="mt-4 text-sm text-red-600">{elementError}</p>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void onCancelPayment()}
+            disabled={isSubmitting}
+            className="h-11 rounded-full border border-[#10153f]/15 bg-white px-5 text-sm font-medium text-[#10153f] hover:bg-[#fbfaf8]"
+          >
+            Cancel payment
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void handleConfirmClick()}
+            disabled={isSubmitting || !isElementReady}
+            className="h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
+            Pay now
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MeetingRoomBooking() {
   const { roomSlug = '' } = useParams();
+  const navigate = useNavigate();
   const meetingRoomsQuery = useMeetingRooms();
   const [availabilityResources, setAvailabilityResources] = useState<MemberResource[]>([]);
+  const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [availabilityError, setAvailabilityError] = useState('');
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
   const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentDraft, setPaymentDraft] = useState<BookingPaymentDraft | null>(null);
 
   // Day slot availability
   const [daySlotAvailability, setDaySlotAvailability] = useState<Map<string, boolean>>(new Map());
@@ -243,7 +508,10 @@ export default function MeetingRoomBooking() {
       endAt: new Date(bookingEndAt).toISOString(),
     })
       .then((payload) => {
-        if (active) setAvailabilityResources(payload.resources);
+        if (active) {
+          setAvailabilityResources(payload.resources);
+          setStripePublishableKey(payload.stripe.publishableKey || '');
+        }
       })
       .catch((error) => {
         if (active) setAvailabilityError(error instanceof Error ? error.message : 'Failed to load meeting room availability.');
@@ -270,6 +538,10 @@ export default function MeetingRoomBooking() {
             startAt: slotStart.toISOString(),
             endAt: slotEnd.toISOString(),
           });
+
+          if (payload.stripe.publishableKey) {
+            setStripePublishableKey(payload.stripe.publishableKey);
+          }
 
           const resource = payload.resources.find((r) =>
             normalizeRoomKey(r.slug) === normalizeRoomKey(roomSlug)
@@ -383,52 +655,6 @@ export default function MeetingRoomBooking() {
     });
   }, []);
 
-  // Stripe checkout sync on return
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const checkoutStatus = searchParams.get('booking_checkout');
-    const sessionId = searchParams.get('session_id');
-    const guestEmail = window.sessionStorage.getItem(GUEST_BOOKING_EMAIL_STORAGE_KEY) || '';
-
-    if (!checkoutStatus) return;
-
-    const clearCheckoutSearch = () => {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    };
-
-    if (checkoutStatus === 'cancel') {
-      setBookingError('Stripe checkout was canceled before the booking was completed.');
-      clearCheckoutSearch();
-      window.sessionStorage.removeItem(GUEST_BOOKING_EMAIL_STORAGE_KEY);
-      return;
-    }
-
-    if (checkoutStatus !== 'success' || !sessionId || !guestEmail) {
-      clearCheckoutSearch();
-      return;
-    }
-
-    let active = true;
-    setIsSubmitting(true);
-    setBookingError('');
-
-    void syncGuestMeetingRoomBookingCheckoutSession({ guestEmail, sessionId })
-      .then(() => {
-        if (active) setBookingSuccess('Meeting room booked and paid successfully.');
-      })
-      .catch((error) => {
-        if (active) setBookingError(error instanceof Error ? error.message : 'Failed to sync guest booking checkout session.');
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsSubmitting(false);
-        clearCheckoutSearch();
-        window.sessionStorage.removeItem(GUEST_BOOKING_EMAIL_STORAGE_KEY);
-      });
-
-    return () => { active = false; };
-  }, []);
-
   const isRoomUnavailable = selectedResource ? selectedResource.available === false : true;
   const hasSelection = selectedHours.length > 0;
 
@@ -467,7 +693,7 @@ export default function MeetingRoomBooking() {
         throw new Error('Email is required.');
       }
 
-      const session = await createGuestMeetingRoomBookingCheckoutSession({
+      const draft = await createGuestMeetingRoomBookingPaymentIntent({
         guestName: formState.guestName.trim(),
         guestEmail: formState.guestEmail.trim(),
         resourceId: selectedResource.id,
@@ -475,20 +701,64 @@ export default function MeetingRoomBooking() {
         endAt: new Date(bookingEndAt).toISOString(),
         purpose: formState.purpose.trim() || `Meeting room booking for ${selectedRoom.name}`,
         notes: formState.notes.trim(),
-        successUrl: `${window.location.origin}/meeting-rooms/${encodeURIComponent(selectedRoom.slug || selectedRoom.id)}/book?booking_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${window.location.origin}/meeting-rooms/${encodeURIComponent(selectedRoom.slug || selectedRoom.id)}/book?booking_checkout=cancel`,
       });
 
-      if (!session.url) {
+      if (!draft.booking || !draft.clientSecret) {
         setBookingSuccess('Meeting room booked successfully.');
         return;
       }
 
-      window.sessionStorage.setItem(GUEST_BOOKING_EMAIL_STORAGE_KEY, formState.guestEmail.trim());
-      window.location.assign(session.url);
+      setPaymentDraft(draft);
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : 'Failed to create guest booking.');
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmPayment = async (paymentIntentId: string) => {
+    if (!paymentDraft?.booking?.id) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setBookingError('');
+    setBookingSuccess('');
+
+    try {
+      await confirmGuestMeetingRoomBookingPayment({
+        bookingId: paymentDraft.booking.id,
+        guestEmail: formState.guestEmail.trim(),
+        paymentIntentId,
+      });
+      setPaymentDraft(null);
+      setSelectedHours([]);
+      navigate('/');
+    } catch (error) {
+      setBookingError(error instanceof Error ? error.message : 'Failed to finalize booking payment.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelPayment = async () => {
+    if (!paymentDraft?.booking?.id) {
+      setPaymentDraft(null);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await cancelGuestMeetingRoomBookingPayment({
+        bookingId: paymentDraft.booking.id,
+        guestEmail: formState.guestEmail.trim(),
+        paymentIntentId: paymentDraft.paymentIntentId || '',
+      });
+    } catch {
+      // Ignore cancellation failures so the payment form can still be dismissed.
+    } finally {
+      setPaymentDraft(null);
       setIsSubmitting(false);
     }
   };
@@ -714,7 +984,7 @@ export default function MeetingRoomBooking() {
                       <button
                         type="button"
                         onClick={() => setSelectedHours([])}
-                        className="text-sm font-medium text-[#ff3b7f] hover:underline"
+                        className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
                       >
                         Clear selection
                       </button>
@@ -779,7 +1049,7 @@ export default function MeetingRoomBooking() {
                   <p className="text-[1.7rem] font-semibold leading-none sm:text-[1.95rem]">{formatCurrency(totalMinor || 0)} total</p>
                   <p className="text-base text-[#10153f]/80 sm:text-lg">
                     Please read our{' '}
-                    <a href="/terms" className="text-[#ff3b7f] underline-offset-4 hover:underline">
+                    <a href="/terms" className="text-primary underline-offset-4 hover:underline">
                       cancellation and refund policy
                     </a>
                     .
@@ -789,12 +1059,22 @@ export default function MeetingRoomBooking() {
                 <Button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || isAvailabilityLoading || isRoomUnavailable || !hasSelection}
-                  className="h-14 rounded-full bg-[#ff3b7f] px-10 text-base font-semibold text-white hover:bg-[#e63473] disabled:bg-[#ff3b7f]/45 disabled:text-white sm:text-lg"
+                  disabled={isSubmitting || isAvailabilityLoading || isRoomUnavailable || !hasSelection || !!paymentDraft}
+                  className="h-14 rounded-full bg-primary px-10 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-primary/45 disabled:text-primary-foreground sm:text-lg"
                 >
                   {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
-                  Continue
+                  Pay on this page
                 </Button>
+
+                {paymentDraft && stripePublishableKey ? (
+                  <GuestBookingPaymentCard
+                    publishableKey={stripePublishableKey}
+                    paymentDraft={paymentDraft}
+                    isSubmitting={isSubmitting}
+                    onConfirmPayment={handleConfirmPayment}
+                    onCancelPayment={handleCancelPayment}
+                  />
+                ) : null}
 
                 {!hasSelection && !isAvailabilityLoading ? (
                   <p className="text-sm text-[#10153f]/70">
@@ -803,6 +1083,10 @@ export default function MeetingRoomBooking() {
                 ) : isRoomUnavailable && !isAvailabilityLoading && hasSelection ? (
                   <p className="text-sm text-[#10153f]/70">
                     This room is currently unavailable for the selected hours. Adjust your selection to continue.
+                  </p>
+                ) : paymentDraft && !stripePublishableKey ? (
+                  <p className="text-sm text-[#10153f]/70">
+                    Stripe is not configured yet, so the card form cannot be shown on this page.
                   </p>
                 ) : null}
               </div>

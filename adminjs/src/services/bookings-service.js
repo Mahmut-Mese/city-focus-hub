@@ -9,6 +9,7 @@ import { refundBookingAmount } from './refunds-service.js';
 import {
   cancelStripePaymentIntent,
   createBookingAdjustmentCheckoutSession,
+  createBookingAdjustmentPaymentIntentDraft,
   createBookingCheckoutSession,
   createBookingPaymentIntentDraft,
   ensureStripeCustomer,
@@ -1286,11 +1287,18 @@ export async function confirmBookingPayment({ userId, bookingId, paymentIntentId
 
   let paymentIntentStatus = 'succeeded';
   let resolvedPaymentIntentId = bookingRow.stripe_payment_intent_id;
+  let chargeReceiptUrl = null;
 
   if (isStripeEnabled()) {
     const paymentIntent = await retrieveStripePaymentIntent(bookingRow.stripe_payment_intent_id);
     resolvedPaymentIntentId = paymentIntent.id;
     paymentIntentStatus = paymentIntent.status;
+
+    // Extract the receipt URL from the expanded latest_charge
+    const latestCharge = paymentIntent.latest_charge;
+    if (latestCharge && typeof latestCharge === 'object') {
+      chargeReceiptUrl = latestCharge.receipt_url || null;
+    }
 
     if (paymentIntent.status !== 'succeeded') {
       throw new Error('Payment has not completed yet. Please try again once Stripe confirms the charge.');
@@ -1301,7 +1309,11 @@ export async function confirmBookingPayment({ userId, bookingId, paymentIntentId
     throw new Error('Booking is not awaiting payment confirmation.');
   }
 
-  await finalizeBookingAfterSuccessfulPayment(bookingRow, resolvedPaymentIntentId, paymentIntentStatus);
+  const invoiceFinancials = chargeReceiptUrl
+    ? { hostedInvoiceUrl: chargeReceiptUrl, invoicePdf: chargeReceiptUrl }
+    : null;
+
+  await finalizeBookingAfterSuccessfulPayment(bookingRow, resolvedPaymentIntentId, paymentIntentStatus, invoiceFinancials);
 
   const bookings = await listUserBookings(userId);
   return bookings.find((booking) => booking.id === Number(bookingId)) || null;
@@ -1473,52 +1485,6 @@ export async function updateBooking({
     };
   }
 
-  if (!successUrl || !cancelUrl) {
-    throw new Error('Checkout success and cancel URLs are required when paying for a booking increase.');
-  }
-
-  if (!isStripeEnabled()) {
-    const mockPaymentIntentId = `mock_adj_pi_${bookingId}_${Date.now()}`;
-
-    await applyBookingUpdate({
-      bookingId,
-      resourceId,
-      startAt,
-      endAt,
-      purpose,
-      notes,
-      financials,
-      stripePaymentIntentId: mockPaymentIntentId,
-      stripePaymentStatus: 'succeeded',
-    });
-
-    await createLocalInvoice({
-      userId,
-      membershipId: existingBooking.membership_id ? Number(existingBooking.membership_id) : null,
-      bookingId,
-      stripePaymentIntentId: mockPaymentIntentId,
-      invoiceNumber: `BK-ADJ-${bookingId}-${Date.now()}`,
-      status: 'paid',
-      description: `${resource.name} booking adjustment`,
-      currency: financials.currency,
-      subtotalMinor: adjustmentSubtotalMinor,
-      taxMinor: paymentDueMinor - adjustmentSubtotalMinor,
-      totalMinor: paymentDueMinor,
-      paidAt: new Date(),
-    });
-
-    const bookings = await listUserBookings(userId);
-    return {
-      booking: bookings.find((booking) => booking.id === Number(bookingId)) || null,
-      sessionId: null,
-      url: null,
-      adjustmentId: null,
-      action: 'updated',
-      paymentDueMinor,
-      refundMinor: 0,
-    };
-  }
-
   const user = await findUserById(userId);
 
   if (!user) {
@@ -1554,41 +1520,156 @@ export async function updateBooking({
 
   const adjustmentId = typeof insertId === 'number' ? insertId : metadata?.insertId;
   const customerId = await ensureStripeCustomer(user);
-  const session = await createBookingAdjustmentCheckoutSession({
+
+  // Create a PaymentIntent draft for in-page card collection instead of a checkout session redirect
+  const paymentIntent = await createBookingAdjustmentPaymentIntentDraft({
     customerId,
+    amountMinor: paymentDueMinor,
+    currency: financials.currency,
+    userId,
     bookingId,
     bookingAdjustmentId: adjustmentId,
-    userId,
-    resourceName: resource.name,
-    startAt,
-    endAt,
-    subtotalMinor: adjustmentSubtotalMinor,
-    currency: financials.currency,
-    successUrl,
-    cancelUrl: `${cancelUrl}${cancelUrl.includes('?') ? '&' : '?'}booking_id=${bookingId}&adjustment_id=${adjustmentId}`,
+    description: `${resource.name} booking adjustment`,
   });
 
   await execute(
     `UPDATE booking_adjustments
-        SET stripe_checkout_session_id = :stripeCheckoutSessionId,
+        SET stripe_payment_intent_id = :stripePaymentIntentId,
             updated_at = :updatedAt
       WHERE id = :adjustmentId`,
     {
       adjustmentId,
-      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: paymentIntent.id,
       updatedAt: new Date(),
     },
   );
 
   return {
     booking: toBooking(existingBooking),
-    sessionId: session.id,
-    url: session.url,
+    sessionId: null,
+    url: null,
     adjustmentId: Number(adjustmentId),
     action: 'payment_required',
     paymentDueMinor,
     refundMinor: 0,
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+    subtotalMinor: adjustmentSubtotalMinor,
+    taxMinor: paymentDueMinor - adjustmentSubtotalMinor,
+    currency: financials.currency,
   };
+}
+
+export async function confirmBookingAdjustmentPayment({ userId, paymentIntentId, adjustmentId }) {
+  await expireStalePendingBookings();
+  await expireStalePendingBookingAdjustments();
+
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  const adjustmentRow = await getBookingAdjustmentRowById(adjustmentId);
+  if (!adjustmentRow || Number(adjustmentRow.user_id) !== userId) {
+    throw new Error('Booking adjustment was not found.');
+  }
+
+  if (adjustmentRow.status === 'completed') {
+    const bookings = await listUserBookings(userId);
+    return bookings.find((booking) => booking.id === Number(adjustmentRow.booking_id)) || null;
+  }
+
+  if (adjustmentRow.status !== 'pending_payment') {
+    throw new Error('This booking adjustment is no longer awaiting payment.');
+  }
+
+  // Verify the payment intent succeeded
+  const paymentIntent = await retrieveStripePaymentIntent(paymentIntentId);
+  if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+    throw new Error('Payment has not been completed successfully.');
+  }
+
+  const bookingRow = await getBookingRowForUser(userId, Number(adjustmentRow.booking_id));
+
+  if (!bookingRow || bookingRow.status !== 'confirmed') {
+    throw new Error('The original booking can no longer be adjusted.');
+  }
+
+  try {
+    await validateAvailability({
+      resourceId: Number(adjustmentRow.resource_id),
+      startAt: adjustmentRow.start_at,
+      endAt: adjustmentRow.end_at,
+      excludeBookingId: bookingRow.id,
+      excludeAdjustmentId: adjustmentRow.id,
+      skipExpiryCleanup: true,
+    });
+  } catch (error) {
+    // Conflict after payment -- auto-refund
+    await createBookingAdjustmentInvoice(adjustmentRow, paymentIntentId, {
+      status: 'paid',
+      description: `${adjustmentRow.resource_name} booking adjustment`,
+      currency: adjustmentRow.currency || 'gbp',
+      subtotalMinor: Number(adjustmentRow.subtotal_minor || 0),
+      taxMinor: Number(adjustmentRow.tax_minor || 0),
+      totalMinor: Number(adjustmentRow.total_minor || 0),
+      hostedInvoiceUrl: paymentIntent.latest_charge?.receipt_url || null,
+      paidAt: new Date(),
+    });
+
+    await refundBookingAmount({
+      bookingId: Number(adjustmentRow.booking_id),
+      userId,
+      amountMinor: Number(adjustmentRow.adjustment_minor || adjustmentRow.total_minor || 0),
+      reason: 'requested_by_customer',
+      metadata: {
+        app_user_id: String(userId),
+        booking_id: String(adjustmentRow.booking_id),
+        booking_adjustment_id: String(adjustmentRow.id),
+        booking_adjustment_refund: 'resource_conflict',
+      },
+    });
+
+    await markBookingAdjustmentStatus(adjustmentRow.id, 'refunded', {
+      stripePaymentIntentId: paymentIntentId,
+      clearHold: true,
+    });
+
+    throw new Error('The updated booking slot is no longer available. The extra payment was automatically refunded.');
+  }
+
+  await applyBookingUpdate({
+    bookingId: bookingRow.id,
+    resourceId: Number(adjustmentRow.resource_id),
+    startAt: adjustmentRow.start_at,
+    endAt: adjustmentRow.end_at,
+    purpose: String(adjustmentRow.purpose || ''),
+    notes: String(adjustmentRow.notes || ''),
+    financials: getBookingFinancials(adjustmentRow),
+    stripePaymentIntentId: paymentIntentId,
+    stripePaymentStatus: 'succeeded',
+  });
+
+  const receiptUrl = paymentIntent.latest_charge?.receipt_url || null;
+
+  await createBookingAdjustmentInvoice(adjustmentRow, paymentIntentId, {
+    status: 'paid',
+    description: `${adjustmentRow.resource_name} booking adjustment`,
+    currency: adjustmentRow.currency || 'gbp',
+    subtotalMinor: Number(adjustmentRow.subtotal_minor || 0),
+    taxMinor: Number(adjustmentRow.tax_minor || 0),
+    totalMinor: Number(adjustmentRow.total_minor || 0),
+    hostedInvoiceUrl: receiptUrl,
+    paidAt: new Date(),
+  });
+
+  await markBookingAdjustmentStatus(adjustmentRow.id, 'completed', {
+    stripePaymentIntentId: paymentIntentId,
+    clearHold: true,
+  });
+
+  const bookings = await listUserBookings(userId);
+  return bookings.find((booking) => booking.id === Number(bookingRow.id)) || null;
 }
 
 export async function syncBookingAdjustmentCheckoutSession({ userId, sessionId }) {
@@ -1740,10 +1821,19 @@ export async function handleBookingPaymentIntentSucceeded(paymentIntent) {
     return null;
   }
 
+  const latestCharge = paymentIntent.latest_charge;
+  const chargeReceiptUrl = (latestCharge && typeof latestCharge === 'object')
+    ? latestCharge.receipt_url || null
+    : null;
+  const invoiceFinancials = chargeReceiptUrl
+    ? { hostedInvoiceUrl: chargeReceiptUrl, invoicePdf: chargeReceiptUrl }
+    : null;
+
   return (await finalizeBookingAfterSuccessfulPayment(
     bookingRow,
     paymentIntentId,
     paymentIntent.status || 'succeeded',
+    invoiceFinancials,
   )).bookingRow;
 }
 

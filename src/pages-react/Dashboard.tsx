@@ -53,9 +53,12 @@ import {
   cancelMemberBookingPayment,
   changeMemberPassword,
   changeMemberPlan,
+  confirmMemberBookingAdjustmentPayment,
   confirmMemberBookingPayment,
-  createMemberBookingCheckoutSession,
-  createMemberMembershipCheckoutSession,
+  confirmMemberMembershipPayment,
+  confirmMemberMembershipUpgradePayment,
+  createMemberBookingPaymentIntent,
+  createMemberMembershipPaymentDraft,
   getMemberDashboard,
   listMemberResources,
   previewMemberPlanChange,
@@ -69,9 +72,11 @@ import {
   type MemberDashboardPayload,
   type MemberMembership,
   type MemberResource,
+  type MembershipPaymentDraft,
   type MembershipPlanChangePreview,
   type MembershipPlan,
 } from '@/lib/member-api';
+import { downloadInvoicePdf } from '@/lib/generate-invoice-pdf';
 import { useSeo } from '@/lib/seo';
 import { cn } from '@/lib/utils';
 
@@ -311,15 +316,15 @@ function DashboardHeader({
     <header className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center gap-8">
-          <Link to="/" className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3">
             <img src={navigation.logoUrl} alt={defaultSiteSettingsContent.siteName} className="h-9 w-auto" />
-          </Link>
+          </a>
 
           <nav className="hidden items-center gap-7 md:flex">
             {navigation.links.map((link) => (
-              <Link key={link.path} to={link.path} className="text-sm font-medium text-black/65 transition-colors hover:text-black">
+              <a key={link.path} href={link.path} className="text-sm font-medium text-black/65 transition-colors hover:text-black">
                 {link.name}
-              </Link>
+              </a>
             ))}
           </nav>
         </div>
@@ -361,9 +366,9 @@ function DashboardHeader({
 
         <nav className="flex w-full items-center gap-4 overflow-x-auto pb-1 md:hidden">
           {navigation.links.map((link) => (
-            <Link key={link.path} to={link.path} className="whitespace-nowrap text-sm font-medium text-black/60 transition-colors hover:text-black">
+            <a key={link.path} href={link.path} className="whitespace-nowrap text-sm font-medium text-black/60 transition-colors hover:text-black">
               {link.name}
-            </Link>
+            </a>
           ))}
         </nav>
       </div>
@@ -440,6 +445,11 @@ function DashboardBookingDialog({
   const [selectedHours, setSelectedHours] = useState<string[]>([]);
   const [daySlotAvailability, setDaySlotAvailability] = useState<Map<string, boolean>>(new Map());
   const [isDaySlotsLoading, setIsDaySlotsLoading] = useState(false);
+  const selectedResource = useMemo(
+    () => resources.find((resource) => String(resource.id) === formState.resourceId) || null,
+    [resources, formState.resourceId],
+  );
+  const isSelectedResourceUnavailable = !!formState.resourceId && selectedResource?.available === false;
 
   // When the dialog opens, derive date + hours from existing formState (for edit mode)
   useEffect(() => {
@@ -535,6 +545,22 @@ function DashboardBookingDialog({
     void fetchDaySlots(selectedDate, formState.resourceId);
   }, [open, selectedDate, formState.resourceId, fetchDaySlots]);
 
+  useEffect(() => {
+    if (!open) return;
+    setSelectedHours([]);
+    setDaySlotAvailability(new Map());
+  }, [formState.resourceId, open]);
+
+  useEffect(() => {
+    if (!selectedHours.length) return;
+
+    const hasUnavailableSelection = selectedHours.some((time) => daySlotAvailability.get(time) === false);
+
+    if (hasUnavailableSelection) {
+      setSelectedHours([]);
+    }
+  }, [daySlotAvailability, selectedHours]);
+
   // Build hour slot list with availability
   const hourSlots = useMemo((): BookingHourSlotInfo[] => {
     const now = new Date();
@@ -549,11 +575,11 @@ function DashboardBookingDialog({
       return {
         time,
         label: formatBookingHourLabel(time),
-        available: !isPast && available,
+        available: !isPast && !!formState.resourceId && available,
         isPast,
       };
     });
-  }, [selectedDate, daySlotAvailability]);
+  }, [selectedDate, daySlotAvailability, formState.resourceId]);
 
   // Handle clicking an hour slot: toggle, ensure selection stays consecutive
   const handleHourClick = useCallback((clickedTime: string, slotAvailable: boolean) => {
@@ -703,7 +729,9 @@ function DashboardBookingDialog({
               </div>
 
               <p className="text-xs text-black/50">
-                Click hours to select them. You can pick multiple consecutive hours.
+                {formState.resourceId
+                  ? 'Click hours to select them. You can pick multiple consecutive hours.'
+                  : 'Select a resource first, then choose available hours.'}
               </p>
 
               <div className="flex flex-col gap-1 rounded-2xl border border-black/10 bg-white p-2.5 sm:p-3 max-h-[280px] overflow-y-auto">
@@ -809,7 +837,7 @@ function DashboardBookingDialog({
                   <button
                     type="button"
                     onClick={() => setSelectedHours([])}
-                    className="text-sm font-medium text-[#ff3b7f] hover:underline"
+                    className="text-sm font-medium text-primary hover:underline"
                   >
                     Clear selection
                   </button>
@@ -853,7 +881,7 @@ function DashboardBookingDialog({
             </Button>
             <Button
               onClick={onSubmit}
-              disabled={isSubmitting || !hasSelection}
+              disabled={isSubmitting || isDaySlotsLoading || !formState.resourceId || !hasSelection || isSelectedResourceUnavailable}
               className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
             >
               {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
@@ -1338,6 +1366,265 @@ function BookingPaymentPanel({
   );
 }
 
+function MembershipPaymentPanel({
+  publishableKey,
+  paymentDraft,
+  isSubmitting,
+  onConfirmPayment,
+  onCancelPayment,
+}: {
+  publishableKey: string;
+  paymentDraft: MembershipPaymentDraft | null;
+  isSubmitting: boolean;
+  onConfirmPayment: (paymentIntentId: string) => Promise<void>;
+  onCancelPayment: () => Promise<void> | void;
+}) {
+  const cardNumberContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardExpiryContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardCvcContainerRef = useRef<HTMLDivElement | null>(null);
+  const stripeRef = useRef<Stripe | null>(null);
+  const elementsRef = useRef<StripeElements | null>(null);
+  const [readyCount, setReadyCount] = useState(0);
+  const [elementError, setElementError] = useState('');
+  const isElementReady = readyCount === 3;
+
+  useEffect(() => {
+    if (
+      !publishableKey
+      || !paymentDraft?.clientSecret
+      || !cardNumberContainerRef.current
+      || !cardExpiryContainerRef.current
+      || !cardCvcContainerRef.current
+    ) {
+      return;
+    }
+
+    let active = true;
+    let mountedCardNumber: StripeCardNumberElement | null = null;
+    let mountedCardExpiry: StripeCardExpiryElement | null = null;
+    let mountedCardCvc: StripeCardCvcElement | null = null;
+
+    setReadyCount(0);
+    setElementError('');
+
+    void loadStripe(publishableKey)
+      .then((stripe) => {
+        if (!active) {
+          return;
+        }
+
+        if (!stripe) {
+          setElementError('Stripe could not be initialized.');
+          return;
+        }
+
+        if (!cardNumberContainerRef.current || !cardExpiryContainerRef.current || !cardCvcContainerRef.current) {
+          return;
+        }
+
+        stripeRef.current = stripe;
+        const elements = stripe.elements();
+
+        elementsRef.current = elements;
+        const elementStyle = {
+          style: {
+            base: {
+              color: '#111111',
+              fontFamily: 'inherit',
+              fontSize: '16px',
+              '::placeholder': {
+                color: 'rgba(17, 17, 17, 0.4)',
+              },
+            },
+            invalid: {
+              color: '#dc2626',
+            },
+          },
+        };
+
+        const handleReady = () => {
+          if (active) {
+            setReadyCount((count) => count + 1);
+          }
+        };
+
+        const handleChange = (event: { error?: { message?: string } }) => {
+          if (active && event.error?.message) {
+            setElementError(event.error.message);
+            return;
+          }
+
+          if (active) {
+            setElementError('');
+          }
+        };
+
+        mountedCardNumber = elements.create('cardNumber', elementStyle);
+        mountedCardExpiry = elements.create('cardExpiry', elementStyle);
+        mountedCardCvc = elements.create('cardCvc', elementStyle);
+
+        mountedCardNumber.on('ready', handleReady);
+        mountedCardExpiry.on('ready', handleReady);
+        mountedCardCvc.on('ready', handleReady);
+        mountedCardNumber.on('change', handleChange);
+        mountedCardExpiry.on('change', handleChange);
+        mountedCardCvc.on('change', handleChange);
+
+        mountedCardNumber.mount(cardNumberContainerRef.current);
+        mountedCardExpiry.mount(cardExpiryContainerRef.current);
+        mountedCardCvc.mount(cardCvcContainerRef.current);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setElementError(error instanceof Error ? error.message : 'Failed to load Stripe payment form.');
+        }
+      });
+
+    return () => {
+      active = false;
+      setReadyCount(0);
+      mountedCardNumber?.destroy();
+      mountedCardExpiry?.destroy();
+      mountedCardCvc?.destroy();
+      elementsRef.current = null;
+      stripeRef.current = null;
+    };
+  }, [paymentDraft?.clientSecret, publishableKey]);
+
+  const handleConfirmClick = async () => {
+    setElementError('');
+
+    if (!stripeRef.current || !elementsRef.current) {
+      setElementError('Payment form is still loading.');
+      return;
+    }
+
+    const cardElement = elementsRef.current.getElement('cardNumber');
+
+    if (!cardElement) {
+      setElementError('Card field is not ready yet.');
+      return;
+    }
+
+    const result = await stripeRef.current.confirmCardPayment(paymentDraft?.clientSecret || '', {
+      payment_method: {
+        card: cardElement,
+      },
+    });
+
+    if (result.error) {
+      setElementError(result.error.message || 'Payment could not be completed.');
+      return;
+    }
+
+    if (!result.paymentIntent?.id) {
+      setElementError('Stripe did not return a payment result.');
+      return;
+    }
+
+    await onConfirmPayment(result.paymentIntent.id);
+  };
+
+  if (!paymentDraft) {
+    return null;
+  }
+
+  return (
+    <DashboardCard>
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <p className="text-sm text-black/45">Payment required</p>
+          <h2 className="mt-2 text-[2rem] font-semibold tracking-tight">Complete membership payment</h2>
+          <p className="mt-3 max-w-2xl text-base text-black/50">
+            Enter card details below to activate your membership without leaving the dashboard.
+          </p>
+        </div>
+        <div className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">
+          {formatCurrency(paymentDraft.totalMinor, paymentDraft.currency)}
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div>
+            <p className="text-xl font-semibold tracking-tight text-black">{paymentDraft.plan.name}</p>
+            <p className="mt-2 text-sm text-black/50">
+              {formatCurrency(paymentDraft.plan.monthlyPriceMinor, paymentDraft.plan.currency)} / month
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">Subtotal</p>
+              <p className="mt-2 text-lg font-semibold text-black">{formatCurrency(paymentDraft.subtotalMinor, paymentDraft.currency)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">VAT</p>
+              <p className="mt-2 text-lg font-semibold text-black">{formatCurrency(paymentDraft.taxMinor, paymentDraft.currency)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">Total</p>
+              <p className="mt-2 text-lg font-semibold text-black">{formatCurrency(paymentDraft.totalMinor, paymentDraft.currency)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[24px] border border-black/10 bg-white p-5">
+        <p className="text-sm font-medium text-black/55">Card details</p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label className="mb-2 block text-sm text-black/55">Card number</Label>
+            <div className="rounded-[20px] border border-black/10 bg-[#fcfcfb] px-4 py-4">
+              <div ref={cardNumberContainerRef} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block text-sm text-black/55">Expiry</Label>
+            <div className="rounded-[20px] border border-black/10 bg-[#fcfcfb] px-4 py-4">
+              <div ref={cardExpiryContainerRef} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block text-sm text-black/55">CVC</Label>
+            <div className="rounded-[20px] border border-black/10 bg-[#fcfcfb] px-4 py-4">
+              <div ref={cardCvcContainerRef} />
+            </div>
+          </div>
+        </div>
+
+        {!isElementReady && !elementError ? (
+          <p className="mt-4 text-sm text-black/45">Loading Stripe card form...</p>
+        ) : null}
+        {elementError ? (
+          <p className="mt-4 text-sm text-red-600">{elementError}</p>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => void onCancelPayment()}
+            disabled={isSubmitting}
+            className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-medium text-black hover:bg-[#f3f2ef]"
+          >
+            Cancel payment
+          </Button>
+          <Button
+            onClick={() => void handleConfirmClick()}
+            disabled={isSubmitting || !isElementReady}
+            className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
+          >
+            {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
+            Pay now
+          </Button>
+        </div>
+      </div>
+    </DashboardCard>
+  );
+}
+
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1354,6 +1641,9 @@ export default function Dashboard() {
   const [isEditBookingOpen, setIsEditBookingOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [bookingPaymentDraft, setBookingPaymentDraft] = useState<BookingPaymentDraft | null>(null);
+  const [membershipPaymentDraft, setMembershipPaymentDraft] = useState<MembershipPaymentDraft | null>(null);
+  const [pendingUpgradeAdjustmentId, setPendingUpgradeAdjustmentId] = useState<number | null>(null);
+  const [pendingBookingAdjustmentId, setPendingBookingAdjustmentId] = useState<number | null>(null);
   const [isPlanChangeOpen, setIsPlanChangeOpen] = useState(false);
   const [pendingPlanSlug, setPendingPlanSlug] = useState('');
   const [planChangePreview, setPlanChangePreview] = useState<MembershipPlanChangePreview | null>(null);
@@ -1759,25 +2049,25 @@ export default function Dashboard() {
     try {
       validateBookingFormWindow(bookingForm.startAt, bookingForm.endAt);
 
-      const session = await createMemberBookingCheckoutSession({
+      const paymentDraft = await createMemberBookingPaymentIntent({
         resourceId: Number(bookingForm.resourceId),
         bookingType: bookingDraftResource?.type || 'meeting_room',
         startAt: new Date(bookingForm.startAt).toISOString(),
         endAt: new Date(bookingForm.endAt).toISOString(),
         purpose: bookingForm.purpose,
         notes: bookingForm.notes,
-        successUrl: `${window.location.origin}/dashboard/bookings?booking_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${window.location.origin}/dashboard/bookings?booking_checkout=cancel`,
       });
 
-      if (!session.url) {
+      if (!paymentDraft.booking || !paymentDraft.clientSecret) {
         await refreshDashboard();
         setIsCreateBookingOpen(false);
         setSuccessMessage('Booking created and paid successfully.');
         return;
       }
 
-      window.location.assign(session.url);
+      setBookingPaymentDraft(paymentDraft);
+      setIsCreateBookingOpen(false);
+      navigate('/dashboard/bookings');
       return;
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to create booking.');
@@ -1796,13 +2086,23 @@ export default function Dashboard() {
     setSuccessMessage('');
 
     try {
-      await confirmMemberBookingPayment({
-        bookingId: bookingPaymentDraft.booking.id,
-        paymentIntentId,
-      });
-      setBookingPaymentDraft(null);
-      await refreshDashboard();
-      setSuccessMessage('Booking created and paid successfully.');
+      if (pendingBookingAdjustmentId) {
+        // Booking adjustment (edit) payment confirmation
+        await confirmMemberBookingAdjustmentPayment(paymentIntentId, pendingBookingAdjustmentId);
+        setBookingPaymentDraft(null);
+        setPendingBookingAdjustmentId(null);
+        await refreshDashboard();
+        setSuccessMessage('Booking updated and payment completed successfully.');
+      } else {
+        // New booking payment confirmation
+        await confirmMemberBookingPayment({
+          bookingId: bookingPaymentDraft.booking.id,
+          paymentIntentId,
+        });
+        setBookingPaymentDraft(null);
+        await refreshDashboard();
+        setSuccessMessage('Booking created and paid successfully.');
+      }
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to finalize booking payment.');
     } finally {
@@ -1813,19 +2113,65 @@ export default function Dashboard() {
   const handleCancelBookingPayment = async () => {
     if (!user || !bookingPaymentDraft?.booking?.id) {
       setBookingPaymentDraft(null);
+      setPendingBookingAdjustmentId(null);
       return;
     }
 
     try {
-      await cancelMemberBookingPayment({
-        bookingId: bookingPaymentDraft.booking.id,
-      });
+      if (pendingBookingAdjustmentId) {
+        // Cancel the booking adjustment (which also cancels the PaymentIntent on the backend)
+        await cancelMemberBookingAdjustment({ adjustmentId: pendingBookingAdjustmentId });
+      } else {
+        // Cancel a new booking payment
+        await cancelMemberBookingPayment({
+          bookingId: bookingPaymentDraft.booking.id,
+        });
+      }
     } catch {
       // Ignore cancellation failures to avoid trapping the user in the modal.
     }
 
     setBookingPaymentDraft(null);
+    setPendingBookingAdjustmentId(null);
     await refreshDashboard();
+  };
+
+  const handleConfirmMembershipPayment = async (paymentIntentId: string) => {
+    if (!user) {
+      return;
+    }
+
+    setIsSaving(true);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      if (pendingUpgradeAdjustmentId) {
+        // Upgrade payment confirmation
+        await confirmMemberMembershipUpgradePayment(paymentIntentId, pendingUpgradeAdjustmentId);
+        setMembershipPaymentDraft(null);
+        setPendingUpgradeAdjustmentId(null);
+        setPlanChangePreview(null);
+        setPendingPlanSlug('');
+        await refreshDashboard();
+        setSuccessMessage('Plan upgraded and payment completed successfully.');
+      } else {
+        // New membership payment confirmation
+        await confirmMemberMembershipPayment(paymentIntentId);
+        setMembershipPaymentDraft(null);
+        await refreshDashboard();
+        setSuccessMessage('Membership activated successfully.');
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to finalize membership payment.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelMembershipPayment = () => {
+    setMembershipPaymentDraft(null);
+    setPendingUpgradeAdjustmentId(null);
   };
 
   const handleEditBooking = async () => {
@@ -1847,12 +2193,18 @@ export default function Dashboard() {
         endAt: new Date(bookingForm.endAt).toISOString(),
         purpose: bookingForm.purpose,
         notes: bookingForm.notes,
-        successUrl: `${window.location.origin}/dashboard/bookings?booking_adjustment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${window.location.origin}/dashboard/bookings?booking_adjustment=cancel`,
       });
 
-      if (result.url) {
-        window.location.assign(result.url);
+      if (result.action === 'payment_required' && result.clientSecret && result.paymentIntentId) {
+        // Show in-page payment panel for the booking adjustment
+        setIsEditBookingOpen(false);
+        setBookingPaymentDraft({
+          booking: result.booking,
+          clientSecret: result.clientSecret,
+          paymentIntentId: result.paymentIntentId,
+        });
+        setPendingBookingAdjustmentId(result.adjustmentId);
+        navigate('/dashboard/bookings');
         return;
       }
 
@@ -1884,17 +2236,13 @@ export default function Dashboard() {
 
     try {
       if (!membership) {
-        const successUrl = `${window.location.origin}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
-        const cancelUrl = `${window.location.origin}/dashboard/billing?checkout=cancel`;
-        const session = await createMemberMembershipCheckoutSession(plan.slug, successUrl, cancelUrl);
-
-        if (!session.url) {
-          throw new Error('Stripe checkout URL was not returned.');
-        }
-
-        window.location.assign(session.url);
+        // NEW MEMBERSHIP: create payment draft and show in-page card form
+        const draft = await createMemberMembershipPaymentDraft(plan.slug);
+        setMembershipPaymentDraft(draft);
+        setPendingUpgradeAdjustmentId(null);
         return;
       } else {
+        // PLAN CHANGE: preview, then open confirmation dialog
         const preview = await previewMemberPlanChange(plan.slug);
         setPendingPlanSlug(plan.slug);
         setPlanChangePreview(preview);
@@ -1918,15 +2266,27 @@ export default function Dashboard() {
     setSuccessMessage('');
 
     try {
-      const successUrl = `${window.location.origin}/dashboard/billing?membership_adjustment=success&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${window.location.origin}/dashboard/billing?membership_adjustment=cancel`;
-      const result = await changeMemberPlan(pendingPlanSlug, { successUrl, cancelUrl });
+      const result = await changeMemberPlan(pendingPlanSlug);
 
-      if (result.url) {
-        window.location.assign(result.url);
+      if (result.action === 'payment_required' && result.clientSecret && result.paymentIntentId) {
+        // Upgrade requires payment: show in-page card form
+        setIsPlanChangeOpen(false);
+        setMembershipPaymentDraft({
+          clientSecret: result.clientSecret,
+          paymentIntentId: result.paymentIntentId,
+          subscriptionId: '',
+          membershipId: result.membership?.id || 0,
+          plan: planChangePreview.nextPlan,
+          subtotalMinor: result.subtotalMinor || planChangePreview.settlement.subtotalMinor,
+          taxMinor: result.taxMinor || planChangePreview.settlement.taxMinor,
+          totalMinor: result.paymentDueMinor,
+          currency: result.currency || planChangePreview.settlement.currency,
+        });
+        setPendingUpgradeAdjustmentId(result.adjustmentId);
         return;
       }
 
+      // No payment needed (downgrade/refund/no-cost)
       await refreshDashboard();
       setIsPlanChangeOpen(false);
       setPlanChangePreview(null);
@@ -2172,16 +2532,6 @@ export default function Dashboard() {
         </div>
       </DashboardCard>
 
-      {bookingPaymentDraft ? (
-        <BookingPaymentPanel
-          publishableKey={dashboardData?.stripe.publishableKey || ''}
-          paymentDraft={bookingPaymentDraft}
-          isSubmitting={isSaving}
-          onConfirmPayment={handleConfirmBookingPayment}
-          onCancelPayment={handleCancelBookingPayment}
-        />
-      ) : null}
-
       <DashboardCard>
         <div className="grid gap-4 md:grid-cols-3">
           {summaryCards.map(({ icon: Icon, value, label, meta }) => (
@@ -2261,7 +2611,7 @@ export default function Dashboard() {
         <p className="text-sm text-black/45">Billing</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Membership lifecycle</h1>
         <p className="mt-3 max-w-2xl text-lg text-black/50">
-          New memberships launch Stripe Checkout for card entry. Later plan changes can collect extra payment or issue refunds, while recurring billing and invoice sync continue through Stripe subscriptions and webhooks.
+          Choose a plan to get started. Plan changes can collect extra payment or issue refunds, while recurring billing and invoice sync continue through Stripe subscriptions and webhooks.
         </p>
       </DashboardCard>
 
@@ -2289,7 +2639,7 @@ export default function Dashboard() {
                     onClick={() => handleMembershipAction(plan)}
                     className="h-11 flex-1 rounded-full bg-black text-sm font-medium text-white hover:bg-black/90"
                   >
-                    {isCurrentPlan ? 'Current plan' : membership ? 'Change plan' : 'Checkout with Stripe'}
+                    {isCurrentPlan ? 'Current plan' : membership ? 'Change plan' : 'Get started'}
                   </Button>
                 </div>
               </div>
@@ -2355,19 +2705,26 @@ export default function Dashboard() {
                   <td className="px-4 py-5 text-sm font-medium text-black">{formatCurrency(invoice.totalMinor, invoice.currency)}</td>
                   <td className="px-4 py-5 text-sm font-medium capitalize text-black">{invoice.status}</td>
                   <td className="px-4 py-5 text-right">
-                    {invoice.hostedInvoiceUrl || invoice.invoicePdf ? (
-                      <a
-                        href={invoice.invoicePdf || invoice.hostedInvoiceUrl || '#'}
-                        target="_blank"
-                        rel="noreferrer"
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => downloadInvoicePdf(invoice, user?.name || '')}
                         className="inline-flex h-10 items-center rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
                       >
                         <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </a>
-                    ) : (
-                      <span className="text-sm text-black/35">Local record</span>
-                    )}
+                        PDF
+                      </button>
+                      {invoice.hostedInvoiceUrl ? (
+                        <a
+                          href={invoice.hostedInvoiceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-10 items-center rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
+                        >
+                          Receipt
+                        </a>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -2629,7 +2986,27 @@ export default function Dashboard() {
               </div>
             </aside>
 
-            {renderCurrentSection()}
+            <div className="space-y-6">
+              {bookingPaymentDraft ? (
+                <BookingPaymentPanel
+                  publishableKey={dashboardData?.stripe.publishableKey || ''}
+                  paymentDraft={bookingPaymentDraft}
+                  isSubmitting={isSaving}
+                  onConfirmPayment={handleConfirmBookingPayment}
+                  onCancelPayment={handleCancelBookingPayment}
+                />
+              ) : null}
+              {membershipPaymentDraft ? (
+                <MembershipPaymentPanel
+                  publishableKey={dashboardData?.stripe.publishableKey || ''}
+                  paymentDraft={membershipPaymentDraft}
+                  isSubmitting={isSaving}
+                  onConfirmPayment={handleConfirmMembershipPayment}
+                  onCancelPayment={handleCancelMembershipPayment}
+                />
+              ) : null}
+              {renderCurrentSection()}
+            </div>
           </div>
         )}
       </main>

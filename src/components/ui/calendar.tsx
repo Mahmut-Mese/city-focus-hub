@@ -53,7 +53,7 @@ function Calendar({ className, classNames, showOutsideDays = true, size = "defau
         ),
         day_today: cn(
           isLarge
-            ? "bg-[#ff3b7f]/10 text-[#ff3b7f] font-semibold rounded-xl"
+            ? "bg-primary/10 text-primary font-semibold rounded-xl"
             : "bg-accent text-accent-foreground",
         ),
         day_outside:
