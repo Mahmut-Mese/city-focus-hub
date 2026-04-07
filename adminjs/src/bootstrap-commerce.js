@@ -198,39 +198,39 @@ const TABLE_DEFINITIONS = [
 
 const DEFAULT_PLANS = [
   {
-    slug: 'hot-desk',
-    name: 'Hot Desk Membership',
-    description: 'Flexible access to shared workspace zones with monthly recurring billing.',
-    monthlyPriceMinor: 25000,
+    slug: 'lounge1',
+    name: 'Lounge1',
+    description: 'Perfect for freelancers who need occasional workspace access.',
+    monthlyPriceMinor: 12900,
     features: [
-      'Access to hot desking areas',
-      'High-speed internet included',
-      '10% discount on meeting rooms',
-      'Mail handling services',
+      'Access to lounge area1',
+      'High-speed Wi-Fi1',
+      '5 hours meeting room/month',
+      'Community events access',
     ],
   },
   {
-    slug: 'dedicated-desk',
-    name: 'Dedicated Desk Membership',
-    description: 'Reserved desk membership for members who need a consistent setup.',
-    monthlyPriceMinor: 35000,
+    slug: 'smart-office',
+    name: 'Smart Office',
+    description: 'Ideal for remote workers who need a dedicated desk.',
+    monthlyPriceMinor: 3900,
     features: [
-      'Reserved desk access',
-      'Locker storage',
-      '15% discount on meeting rooms',
-      'Business mail handling',
+      'Dedicated desk access',
+      'High-speed Wi-Fi',
+      '10 hours meeting room/month',
+      'Mail handling',
     ],
   },
   {
-    slug: 'virtual-office',
-    name: 'Virtual Office Membership',
-    description: 'Business address and mail handling with monthly recurring billing.',
-    monthlyPriceMinor: 15000,
+    slug: 'full-space',
+    name: 'Full Space',
+    description: 'Complete access to all amenities and private office.',
+    monthlyPriceMinor: 5900,
     features: [
-      'Prestigious business address',
-      'Mail forwarding',
-      'Member community access',
-      'Discounted day passes',
+      'Private office access',
+      'High-speed Wi-Fi',
+      'Unlimited meeting rooms',
+      '24/7 access',
     ],
   },
 ];
@@ -339,34 +339,51 @@ async function runCommerceMigrations() {
 }
 
 async function seedPlans() {
-  const [rows] = await sequelize.query('SELECT COUNT(*) AS count FROM membership_plans');
-  const count = Number(rows?.[0]?.count || 0);
-
-  if (count > 0) {
-    return;
-  }
-
   const now = new Date();
 
   for (const plan of DEFAULT_PLANS) {
-    await sequelize.query(
-      `INSERT INTO membership_plans
-        (document_id, slug, name, description, monthly_price_minor, currency, interval_name, features, active, created_at, updated_at)
-       VALUES
-        (:documentId, :slug, :name, :description, :monthlyPriceMinor, 'gbp', 'month', :features, 1, :createdAt, :updatedAt)`,
-      {
-        replacements: {
-          documentId: randomUUID(),
-          slug: plan.slug,
-          name: plan.name,
-          description: plan.description,
-          monthlyPriceMinor: plan.monthlyPriceMinor,
-          features: JSON.stringify(plan.features),
-          createdAt: now,
-          updatedAt: now,
-        },
-      },
+    const [existingRows] = await sequelize.query(
+      'SELECT id FROM membership_plans WHERE slug = :slug LIMIT 1',
+      { replacements: { slug: plan.slug } },
     );
+
+    if (existingRows.length > 0) {
+      await sequelize.query(
+        `UPDATE membership_plans
+           SET name = :name, description = :description, monthly_price_minor = :monthlyPriceMinor,
+               features = :features, active = 1, updated_at = :updatedAt
+         WHERE slug = :slug`,
+        {
+          replacements: {
+            slug: plan.slug,
+            name: plan.name,
+            description: plan.description,
+            monthlyPriceMinor: plan.monthlyPriceMinor,
+            features: JSON.stringify(plan.features),
+            updatedAt: now,
+          },
+        },
+      );
+    } else {
+      await sequelize.query(
+        `INSERT INTO membership_plans
+          (document_id, slug, name, description, monthly_price_minor, currency, interval_name, features, active, created_at, updated_at)
+         VALUES
+          (:documentId, :slug, :name, :description, :monthlyPriceMinor, 'gbp', 'month', :features, 1, :createdAt, :updatedAt)`,
+        {
+          replacements: {
+            documentId: randomUUID(),
+            slug: plan.slug,
+            name: plan.name,
+            description: plan.description,
+            monthlyPriceMinor: plan.monthlyPriceMinor,
+            features: JSON.stringify(plan.features),
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+      );
+    }
   }
 }
 

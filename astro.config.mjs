@@ -24,6 +24,14 @@ export default defineConfig({
           target: 'http://localhost:3001',
           changeOrigin: true,
         },
+        '/admin': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+        '/admin-assets': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
       },
     },
   },

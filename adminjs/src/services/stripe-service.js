@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { config } from '../config.js';
 import { updateUserStripeCustomerId } from './users-service.js';
 import { execute } from './sql.js';
+import { calculateVat } from './payments-service.js';
 
 let stripeClient = null;
 
@@ -102,14 +103,16 @@ export async function ensurePlanStripePrice(plan) {
   const price = await stripe.prices.create({
     product: product.id,
     currency: plan.currency,
-    unit_amount: plan.monthlyPriceMinor,
+    unit_amount: plan.monthlyPriceMinor + calculateVat(plan.monthlyPriceMinor),
     recurring: {
       interval: 'month',
     },
     metadata: {
       plan_slug: plan.slug,
+      net_amount: String(plan.monthlyPriceMinor),
+      vat_amount: String(calculateVat(plan.monthlyPriceMinor)),
     },
-    tax_behavior: 'exclusive',
+    tax_behavior: 'inclusive',
   });
 
   await execute(
@@ -212,9 +215,11 @@ export async function createStripeSubscriptionIncomplete({ customerId, priceId, 
   return stripe.subscriptions.create({
     customer: customerId,
     items: [{ price: priceId }],
-    automatic_tax: {
-      enabled: true,
-    },
+    // NOTE: automatic_tax requires Stripe Tax to be enabled on the dashboard.
+    // When it is not configured, invoices may be created without a payment_intent,
+    // which breaks the incomplete-subscription flow. Re-enable once Stripe Tax is
+    // properly set up on the account.
+    // automatic_tax: { enabled: true },
     collection_method: 'charge_automatically',
     payment_behavior: 'default_incomplete',
     payment_settings: {
@@ -225,7 +230,10 @@ export async function createStripeSubscriptionIncomplete({ customerId, priceId, 
       app_user_id: String(userId),
       membership_id: String(membershipId),
     },
-    expand: ['latest_invoice.payment_intent'],
+    // Stripe API >= 2025-03-31.basil removed invoice.payment_intent.
+    // Use confirmation_secret to get client_secret for card collection.
+    // The payment_intent ID is extracted from the confirmation_secret or invoice.payments separately.
+    expand: ['latest_invoice.confirmation_secret', 'latest_invoice.payments'],
   });
 }
 

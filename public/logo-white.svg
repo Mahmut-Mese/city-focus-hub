@@ -9,9 +9,9 @@
     <path d="M126 178v-57h62" />
   </g>
 
-  <g fill="#fff" font-family="Inter, Arial, sans-serif" font-weight="800" letter-spacing="1">
+  <g fill="#fff" font-family="'Times New Roman', 'Georgia', serif" font-weight="400" letter-spacing="2">
     <text x="235" y="78" font-size="56">THE</text>
-    <text x="235" y="136" font-size="72">LEADENHALL</text>
-    <text x="235" y="198" font-size="72">WORKS</text>
+    <text x="235" y="140" font-size="68">LEADENHALL</text>
+    <text x="235" y="198" font-size="68">WORKS</text>
   </g>
 </svg>

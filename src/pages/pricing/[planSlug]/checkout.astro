@@ -1,0 +1,24 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import MembershipCheckoutApp from '@/islands/MembershipCheckoutApp';
+
+export async function getStaticPaths() {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const filePath = path.join(process.cwd(), 'public', 'cms', 'pricing-plans.json');
+
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const cms = JSON.parse(raw);
+    const plans = cms.data || [];
+    return plans.map((plan: any) => ({
+      params: { planSlug: plan.slug || String(plan.id) },
+    }));
+  } catch {
+    return [{ params: { planSlug: 'default' } }];
+  }
+}
+---
+<Layout title="Checkout" description="Complete your membership purchase at City Focus Hub." hideNavigation={true} hideFooter={true}>
+  <MembershipCheckoutApp client:only="react" />
+</Layout>

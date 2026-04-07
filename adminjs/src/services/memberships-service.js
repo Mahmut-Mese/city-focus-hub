@@ -25,6 +25,7 @@ import {
 import { findUserById, updateUserAccessStatus } from './users-service.js';
 import { createLocalInvoice, upsertStripeInvoice } from './invoices-service.js';
 import { refundMembershipAmount } from './refunds-service.js';
+import { calculateVat, extractInvoicePaymentIntentId } from './payments-service.js';
 
 function toMembership(row) {
   if (!row) {
@@ -277,9 +278,7 @@ async function persistMembershipSubscriptionUpdate({
       userId,
       membershipId: membership.id,
       stripeInvoiceId: updatedSubscription.latest_invoice.id,
-      stripePaymentIntentId: typeof updatedSubscription.latest_invoice.payment_intent === 'string'
-        ? updatedSubscription.latest_invoice.payment_intent
-        : updatedSubscription.latest_invoice.payment_intent?.id || null,
+      stripePaymentIntentId: extractInvoicePaymentIntentId(updatedSubscription.latest_invoice),
       invoiceNumber: updatedSubscription.latest_invoice.number || null,
       status: updatedSubscription.latest_invoice.status || updatedSubscription.status,
       description: invoiceDescription,
@@ -611,9 +610,7 @@ export async function createMembership({ userId, planSlug }) {
       userId,
       membershipId,
       stripeInvoiceId: subscription.latest_invoice.id,
-      stripePaymentIntentId: typeof subscription.latest_invoice.payment_intent === 'string'
-        ? subscription.latest_invoice.payment_intent
-        : subscription.latest_invoice.payment_intent?.id || null,
+      stripePaymentIntentId: extractInvoicePaymentIntentId(subscription.latest_invoice),
       invoiceNumber: subscription.latest_invoice.number || null,
       status: subscription.latest_invoice.status || subscription.status,
       description: `${plan.name} subscription`,
@@ -681,12 +678,18 @@ export async function createMembershipPaymentDraft({ userId, planSlug }) {
     stripeProductId: plan.stripe_product_id,
   });
 
-  const subscription = await createStripeSubscriptionIncomplete({
-    customerId,
-    priceId,
-    userId,
-    membershipId,
-  });
+  let subscription;
+  try {
+    subscription = await createStripeSubscriptionIncomplete({
+      customerId,
+      priceId,
+      userId,
+      membershipId,
+    });
+  } catch (stripeErr) {
+    console.error('[createMembershipPaymentDraft] Stripe subscription creation failed:', stripeErr?.message || stripeErr);
+    throw new Error(`Stripe subscription failed: ${stripeErr?.message || 'Unknown error'}`);
+  }
 
   // Update the membership row with the subscription ID so we can find it later
   await execute(
@@ -704,26 +707,73 @@ export async function createMembershipPaymentDraft({ userId, planSlug }) {
   );
 
   const invoice = subscription.latest_invoice;
-  const paymentIntent = typeof invoice === 'object' ? invoice?.payment_intent : null;
 
-  if (!paymentIntent || typeof paymentIntent === 'string' || !paymentIntent.client_secret) {
+  // Stripe API >= 2025-03-31.basil removed invoice.payment_intent.
+  // Use confirmation_secret for the client_secret that Stripe Elements needs,
+  // and look up the payment_intent ID from invoice.payments.
+  let clientSecret = null;
+  let paymentIntentId = null;
+
+  if (typeof invoice === 'object' && invoice !== null) {
+    // 1. Get client_secret from confirmation_secret (new API)
+    if (invoice.confirmation_secret && invoice.confirmation_secret.client_secret) {
+      clientSecret = invoice.confirmation_secret.client_secret;
+      // Extract payment_intent ID from client_secret (format: pi_XXX_secret_YYY)
+      const secretMatch = clientSecret.match(/^(pi_[^_]+)/);
+      if (secretMatch) {
+        paymentIntentId = secretMatch[1];
+      }
+    }
+
+    // 2. Try to get payment_intent ID from invoice.payments (new API)
+    if (!paymentIntentId && invoice.payments && invoice.payments.data && invoice.payments.data.length > 0) {
+      for (const invoicePayment of invoice.payments.data) {
+        const pi = invoicePayment.payment?.payment_intent;
+        if (pi) {
+          paymentIntentId = typeof pi === 'string' ? pi : pi.id;
+          // If we didn't get clientSecret from confirmation_secret, try from expanded PI
+          if (!clientSecret && typeof pi === 'object' && pi.client_secret) {
+            clientSecret = pi.client_secret;
+          }
+          break;
+        }
+      }
+    }
+
+    // 3. Fallback: try legacy invoice.payment_intent (pre-Basil API versions)
+    if (!clientSecret && invoice.payment_intent) {
+      const legacyPI = invoice.payment_intent;
+      clientSecret = typeof legacyPI === 'object' ? legacyPI.client_secret : null;
+      paymentIntentId = paymentIntentId || (typeof legacyPI === 'object' ? legacyPI.id : legacyPI);
+    }
+  }
+
+  if (!clientSecret) {
+    console.error('[createMembershipPaymentDraft] Could not obtain client_secret.',
+      'invoice.confirmation_secret:', invoice?.confirmation_secret,
+      'invoice.payments:', JSON.stringify(invoice?.payments?.data?.map(p => ({ type: p.payment?.type, piId: p.payment?.payment_intent?.id || p.payment?.payment_intent })), null, 2),
+      'invoice.payment_intent:', invoice?.payment_intent);
     throw new Error('Could not obtain payment intent from the subscription. Please try again.');
   }
 
+  const netMinor = Number(plan.monthly_price_minor);
+  const vatMinor = calculateVat(netMinor);
+  const grossMinor = netMinor + vatMinor;
+
   return {
-    clientSecret: paymentIntent.client_secret,
-    paymentIntentId: paymentIntent.id,
+    clientSecret,
+    paymentIntentId,
     subscriptionId: subscription.id,
     membershipId,
     plan: {
       slug: plan.slug,
       name: plan.name,
-      monthlyPriceMinor: Number(plan.monthly_price_minor),
+      monthlyPriceMinor: netMinor,
       currency: plan.currency || 'gbp',
     },
-    subtotalMinor: Number(invoice.subtotal || 0),
-    taxMinor: Number(invoice.tax || 0),
-    totalMinor: Number(invoice.total || 0),
+    subtotalMinor: netMinor,
+    taxMinor: vatMinor,
+    totalMinor: grossMinor,
     currency: invoice.currency || plan.currency || 'gbp',
   };
 }
@@ -783,9 +833,21 @@ export async function confirmMembershipPayment({ userId, paymentIntentId }) {
 
   // Upsert the invoice record
   if (subscription.latest_invoice && typeof subscription.latest_invoice !== 'string') {
-    const pi = typeof subscription.latest_invoice.payment_intent === 'string'
-      ? subscription.latest_invoice.payment_intent
-      : subscription.latest_invoice.payment_intent?.id || paymentIntentId;
+    // Stripe API >= 2025-03-31.basil removed invoice.payment_intent.
+    // Use the paymentIntentId passed from the frontend, or try invoice.payments.
+    let pi = paymentIntentId;
+    if (!pi && subscription.latest_invoice.payments?.data?.length > 0) {
+      const firstPayment = subscription.latest_invoice.payments.data[0];
+      pi = typeof firstPayment.payment?.payment_intent === 'string'
+        ? firstPayment.payment.payment_intent
+        : firstPayment.payment?.payment_intent?.id;
+    }
+    // Fallback: try legacy field (pre-Basil API versions)
+    if (!pi && subscription.latest_invoice.payment_intent) {
+      pi = typeof subscription.latest_invoice.payment_intent === 'string'
+        ? subscription.latest_invoice.payment_intent
+        : subscription.latest_invoice.payment_intent?.id;
+    }
 
     // Retrieve the payment intent to get the receipt_url
     let receiptUrl = null;
@@ -892,9 +954,7 @@ export async function syncMembershipCheckoutSession({ userId, sessionId }) {
         userId,
         membershipId,
         stripeInvoiceId: subscription.latest_invoice.id,
-        stripePaymentIntentId: typeof subscription.latest_invoice.payment_intent === 'string'
-          ? subscription.latest_invoice.payment_intent
-          : subscription.latest_invoice.payment_intent?.id || null,
+        stripePaymentIntentId: extractInvoicePaymentIntentId(subscription.latest_invoice),
         invoiceNumber: subscription.latest_invoice.number || null,
         status: subscription.latest_invoice.status || subscription.status,
         description: 'Membership subscription',
@@ -1585,9 +1645,7 @@ export async function handleMembershipAdjustmentCheckoutExpired(session) {
 export async function handleMembershipAdjustmentInvoicePaid(invoice) {
   const adjustmentId = Number(invoice?.metadata?.membership_adjustment_id || 0);
   const adjustmentRow = await getMembershipAdjustmentRowById(adjustmentId);
-  const stripePaymentIntentId = typeof invoice?.payment_intent === 'string'
-    ? invoice.payment_intent
-    : invoice?.payment_intent?.id || null;
+  const stripePaymentIntentId = extractInvoicePaymentIntentId(invoice);
 
   if (!adjustmentRow || !stripePaymentIntentId) {
     return adjustmentRow;
@@ -1675,7 +1733,7 @@ export async function handleInvoicePaid(invoice) {
     userId,
     membershipId,
     stripeInvoiceId: invoice.id,
-    stripePaymentIntentId: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id || null,
+    stripePaymentIntentId: extractInvoicePaymentIntentId(invoice),
     invoiceNumber: invoice.number || null,
     status: invoice.status || 'paid',
     description: invoice.description || 'Stripe invoice',
@@ -1725,7 +1783,7 @@ export async function handleInvoicePaymentFailed(invoice) {
     userId,
     membershipId,
     stripeInvoiceId: invoice.id,
-    stripePaymentIntentId: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id || null,
+    stripePaymentIntentId: extractInvoicePaymentIntentId(invoice),
     invoiceNumber: invoice.number || null,
     status: invoice.status || 'payment_failed',
     description: invoice.description || 'Stripe invoice',

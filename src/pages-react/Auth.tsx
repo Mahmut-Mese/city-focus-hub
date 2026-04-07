@@ -1,7 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { Location } from 'react-router-dom';
-import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,16 +16,25 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const redirectTarget = ((location.state as { from?: Location } | null)?.from?.pathname || '/dashboard');
 
   if (!isReady) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f5f2]">
+        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   if (user) {
     window.location.href = redirectTarget;
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f5f2]">
+        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -43,143 +51,152 @@ export default function Auth() {
       return;
     }
 
-    const result = mode === 'login'
-      ? await login({ email, password })
-      : await register({ name, email, password });
-
-    if (!result.ok) {
-      setError(result.error || 'Unable to continue.');
+    if (mode === 'register' && !name.trim()) {
+      setError('Full name is required.');
       return;
     }
 
-    window.location.href = redirectTarget;
+    setIsSubmitting(true);
+
+    try {
+      const result = mode === 'login'
+        ? await login({ email, password })
+        : await register({ name, email, password });
+
+      if (!result.ok) {
+        setError(result.error || 'Unable to continue.');
+        return;
+      }
+
+      window.location.href = redirectTarget;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Layout
-      seo={{
-        title: mode === 'login' ? 'Login' : 'Register',
-        description: 'Sign in or create a member account to access your membership dashboard.',
-        noindex: true,
-      }}
-    >
-      <section className="min-h-[calc(100vh-8rem)] bg-[#f6f5f2] py-12">
-        <div className="container-custom">
-          <div className="mx-auto grid max-w-5xl gap-8 rounded-[36px] border border-black/10 bg-white p-6 shadow-[0_16px_48px_rgba(15,23,42,0.06)] lg:grid-cols-[1.05fr_0.95fr] lg:p-8">
-            <div className="rounded-[30px] bg-black p-8 text-white">
-              <p className="text-sm uppercase tracking-[0.16em] text-white/60">Member access</p>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-                Access your coworking dashboard
-              </h1>
-              <p className="mt-4 max-w-md text-base leading-7 text-white/70">
-                Sign in to manage bookings, billing, invoices, and your workspace profile. New here? Create an account and the dashboard becomes available immediately.
-              </p>
+    <section className="min-h-screen bg-[#f6f5f2] py-12 flex items-center">
+      <div className="container-custom">
+        <div className="mx-auto grid max-w-5xl gap-8 rounded-[36px] border border-black/10 bg-white p-6 shadow-[0_16px_48px_rgba(15,23,42,0.06)] lg:grid-cols-[1.05fr_0.95fr] lg:p-8">
+          <div className="rounded-[30px] bg-black p-8 text-white">
+            <p className="text-sm uppercase tracking-[0.16em] text-white/60">Member access</p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+              Access your coworking dashboard
+            </h1>
+            <p className="mt-4 max-w-md text-base leading-7 text-white/70">
+              Sign in to manage bookings, billing, invoices, and your workspace profile. New here? Create an account and the dashboard becomes available immediately.
+            </p>
 
-              <div className="mt-8 space-y-4">
-                {[
-                  'Open your member dashboard after sign in',
-                  'Create a frontend-only account in seconds',
-                  'Log out from the navbar or dashboard at any time',
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm text-white/80">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">+</span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[30px] bg-[#fbfaf8] p-6 sm:p-8">
-              <div className="inline-flex rounded-full border border-black/10 bg-white p-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setError('');
-                  }}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    mode === 'login' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
-                  }`}
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('register');
-                    setError('');
-                  }}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    mode === 'register' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
-                  }`}
-                >
-                  Register
-                </button>
-              </div>
-
-              <div className="mt-6">
-                <h2 className="text-3xl font-semibold tracking-tight text-black">
-                  {mode === 'login' ? 'Welcome back' : 'Create your account'}
-                </h2>
-                <p className="mt-2 text-sm text-black/50">
-                  {mode === 'login'
-                    ? 'Use your member credentials to continue.'
-                    : 'Register a new frontend account to access the membership dashboard.'}
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-                {mode === 'register' ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="auth-name">Full name</Label>
-                    <Input
-                      id="auth-name"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      className="h-12 rounded-2xl border-black/10 bg-white"
-                      placeholder="John Smith"
-                    />
-                  </div>
-                ) : null}
-
-                <div className="space-y-2">
-                  <Label htmlFor="auth-email">Email</Label>
-                  <Input
-                    id="auth-email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="h-12 rounded-2xl border-black/10 bg-white"
-                    placeholder="john@example.com"
-                  />
+            <div className="mt-8 space-y-4">
+              {[
+                'Open your member dashboard after sign in',
+                'Create a frontend-only account in seconds',
+                'Log out from the navbar or dashboard at any time',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 text-sm text-white/80">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">+</span>
+                  <span>{item}</span>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="auth-password">Password</Label>
-                  <Input
-                    id="auth-password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="h-12 rounded-2xl border-black/10 bg-white"
-                    placeholder="Enter your password"
-                  />
-                </div>
-
-                {error ? (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                ) : null}
-
-                <Button type="submit" className="h-12 w-full rounded-full bg-black text-sm font-medium text-white hover:bg-black/90">
-                  {mode === 'login' ? 'Login to dashboard' : 'Create account'}
-                </Button>
-              </form>
+              ))}
             </div>
           </div>
+
+          <div className="rounded-[30px] bg-[#fbfaf8] p-6 sm:p-8">
+            <div className="inline-flex rounded-full border border-black/10 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setError('');
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  mode === 'login' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register');
+                  setError('');
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  mode === 'register' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
+                }`}
+              >
+                Register
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <h2 className="text-3xl font-semibold tracking-tight text-black">
+                {mode === 'login' ? 'Welcome back' : 'Create your account'}
+              </h2>
+              <p className="mt-2 text-sm text-black/50">
+                {mode === 'login'
+                  ? 'Use your member credentials to continue.'
+                  : 'Register a new frontend account to access the membership dashboard.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+              {mode === 'register' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="auth-name">Full name</Label>
+                  <Input
+                    id="auth-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    className="h-12 rounded-2xl border-black/10 bg-white"
+                    placeholder="John Smith"
+                  />
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <Label htmlFor="auth-email">Email</Label>
+                <Input
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="h-12 rounded-2xl border-black/10 bg-white"
+                  placeholder="john@example.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="auth-password">Password</Label>
+                <Input
+                  id="auth-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-12 rounded-2xl border-black/10 bg-white"
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              {error ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              ) : null}
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-12 w-full rounded-full bg-black text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
+              >
+                {isSubmitting
+                  ? 'Please wait...'
+                  : mode === 'login' ? 'Login to dashboard' : 'Create account'}
+              </Button>
+            </form>
+          </div>
         </div>
-      </section>
-    </Layout>
+      </div>
+    </section>
   );
 }

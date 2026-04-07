@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { config } from '../config.js';
-import { calculateVat, chargeBooking } from './payments-service.js';
+import { calculateVat, chargeBooking, extractInvoicePaymentIntentId } from './payments-service.js';
 import { createLocalInvoice, upsertStripeInvoice } from './invoices-service.js';
 import { execute, queryAll, queryOne } from './sql.js';
 import { getResourceById, listResources } from './resources-service.js';
@@ -1900,9 +1900,7 @@ export async function handleBookingAdjustmentCheckoutExpired(session) {
 
 export async function handleBookingAdjustmentInvoicePaid(invoice) {
   const adjustmentId = Number(invoice?.metadata?.booking_adjustment_id || 0);
-  const paymentIntentId = typeof invoice?.payment_intent === 'string'
-    ? invoice.payment_intent
-    : invoice?.payment_intent?.id || null;
+  const paymentIntentId = extractInvoicePaymentIntentId(invoice);
   const adjustmentRow = adjustmentId ? await getBookingAdjustmentRowById(adjustmentId) : null;
 
   if (!adjustmentRow || !paymentIntentId) {
@@ -1929,9 +1927,7 @@ export async function handleBookingInvoicePaid(invoice) {
     return handleBookingAdjustmentInvoicePaid(invoice);
   }
 
-  const paymentIntentId = typeof invoice?.payment_intent === 'string'
-    ? invoice.payment_intent
-    : invoice?.payment_intent?.id || null;
+  const paymentIntentId = extractInvoicePaymentIntentId(invoice);
   const metadataBookingId = Number(invoice?.metadata?.booking_id || 0);
 
   let bookingRow = await getBookingRowByPaymentIntentId(paymentIntentId)
@@ -1989,9 +1985,7 @@ export async function handleBookingInvoicePaymentFailed(invoice) {
     return adjustmentRow;
   }
 
-  const paymentIntentId = typeof invoice?.payment_intent === 'string'
-    ? invoice.payment_intent
-    : invoice?.payment_intent?.id || null;
+  const paymentIntentId = extractInvoicePaymentIntentId(invoice);
   const metadataBookingId = Number(invoice?.metadata?.booking_id || 0);
   let bookingRow = await getBookingRowByPaymentIntentId(paymentIntentId)
     || (metadataBookingId ? await getBookingRowById(metadataBookingId) : null);

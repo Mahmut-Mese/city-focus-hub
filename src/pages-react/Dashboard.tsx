@@ -2705,26 +2705,14 @@ export default function Dashboard() {
                   <td className="px-4 py-5 text-sm font-medium text-black">{formatCurrency(invoice.totalMinor, invoice.currency)}</td>
                   <td className="px-4 py-5 text-sm font-medium capitalize text-black">{invoice.status}</td>
                   <td className="px-4 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => downloadInvoicePdf(invoice, user?.name || '')}
-                        className="inline-flex h-10 items-center rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        PDF
-                      </button>
-                      {invoice.hostedInvoiceUrl ? (
-                        <a
-                          href={invoice.hostedInvoiceUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex h-10 items-center rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
-                        >
-                          Receipt
-                        </a>
-                      ) : null}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => downloadInvoicePdf(invoice, user?.name || '')}
+                      className="inline-flex h-10 items-center rounded-full border border-black/10 bg-white px-4 text-sm font-medium text-black hover:bg-[#f3f2ef]"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      PDF
+                    </button>
                   </td>
                 </tr>
               ))}

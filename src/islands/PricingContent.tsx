@@ -4,14 +4,8 @@ import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Check, X } from 'lucide-react';
 import { usePricingPageContent, usePricingPlans } from '@/hooks/useCmsContent';
 
-function buildPricingContactPath(planName: string, price: number, period: string) {
-  const searchParams = new URLSearchParams({
-    plan: planName,
-    intent: 'purchase',
-    message: `Hello, I would like to buy the ${planName} plan for $${price}/${period}. Please contact me with the next steps.`,
-  });
-
-  return `/contact?${searchParams.toString()}`;
+function buildCheckoutPath(planSlug: string) {
+  return `/pricing/${encodeURIComponent(planSlug)}/checkout`;
 }
 
 export default function PricingContent() {
@@ -80,7 +74,7 @@ export default function PricingContent() {
                 <p className="text-sm text-black/50 mb-4">{plan.description}</p>
 
                 <a
-                  href={buildPricingContactPath(plan.name, plan.price, plan.period)}
+                  href={buildCheckoutPath(plan.id)}
                   className="flex h-11 w-full items-center justify-center rounded-xl bg-black text-sm font-semibold uppercase tracking-[0.02em] text-white"
                 >
                   {content.purchaseButtonLabel}

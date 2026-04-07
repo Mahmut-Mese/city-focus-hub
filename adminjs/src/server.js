@@ -187,7 +187,21 @@ const start = async () => {
 
   const allowedOrigins = new Set(config.cors.allowedOrigins);
 
-  app.use(helmet());
+  const defaultHelmet = helmet();
+  const adminHelmet = helmet({ contentSecurityPolicy: false });
+
+  // AdminJS relies on inline <script> tags to bootstrap its React app.
+  // Disable CSP only for the admin HTML routes; keep helmet defaults elsewhere.
+  app.use((request, response, next) => {
+    const isAdminPageRequest = request.path === config.rootPath
+      || request.path.startsWith(`${config.rootPath}/`);
+
+    if (isAdminPageRequest) {
+      return adminHelmet(request, response, next);
+    }
+
+    return defaultHelmet(request, response, next);
+  });
 
   app.use((request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
