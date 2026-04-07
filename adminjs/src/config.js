@@ -140,6 +140,22 @@ if (runtimeEnv === 'production') {
     productionErrors.push('FRONTEND_ORIGINS or PUBLIC_ORIGIN must be configured in production.');
   }
 
+  if (!config.stripe.secretKey) {
+    productionErrors.push('STRIPE_SECRET_KEY must be set in production.');
+  }
+
+  if (config.stripe.webhookSecret === 'whsec_city_focus_hub_local') {
+    productionErrors.push('STRIPE_WEBHOOK_SECRET must be set to a real value in production.');
+  }
+
+  if (config.stripe.allowMockPayments) {
+    productionErrors.push('STRIPE_ALLOW_MOCK_PAYMENTS must not be enabled in production.');
+  }
+
+  if (!config.database.password) {
+    productionErrors.push('DATABASE_PASSWORD must be set in production.');
+  }
+
   if (productionErrors.length > 0) {
     throw new Error(productionErrors.join(' '));
   }

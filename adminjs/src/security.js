@@ -1,5 +1,17 @@
 const rateLimitBuckets = new Map();
 
+// P0-20: Evict expired buckets every 60 seconds to prevent unbounded memory growth
+const EVICTION_INTERVAL_MS = 60_000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitBuckets) {
+    if (bucket.resetAt <= now) {
+      rateLimitBuckets.delete(key);
+    }
+  }
+}, EVICTION_INTERVAL_MS).unref();
+
 export function createRateLimitMiddleware({
   keyPrefix,
   windowMs,

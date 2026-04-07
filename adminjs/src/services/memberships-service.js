@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { config } from '../config.js';
+import { sequelize } from '../database.js';
 import { execute, queryAll, queryOne } from './sql.js';
 import {
   cancelStripeSubscription,
@@ -200,6 +201,7 @@ async function getActivePendingMembershipAdjustment(membershipId) {
 
 async function markMembershipAdjustmentStatus(adjustmentId, status, options = {}) {
   const shouldUpdateHold = options.clearHold || Object.prototype.hasOwnProperty.call(options, 'paymentHoldExpiresAt');
+  const txOpts = options.transaction ? { transaction: options.transaction } : {};
 
   await execute(
     `UPDATE membership_adjustments
@@ -219,6 +221,7 @@ async function markMembershipAdjustmentStatus(adjustmentId, status, options = {}
       paymentHoldExpiresAt: options.clearHold ? null : (options.paymentHoldExpiresAt ?? null),
       updatedAt: new Date(),
     },
+    txOpts,
   );
 }
 
@@ -237,7 +240,10 @@ async function persistMembershipSubscriptionUpdate({
   updatedSubscription,
   invoiceDescription,
   syncLatestInvoice = true,
+  transaction = undefined,
 }) {
+  const txOpts = transaction ? { transaction } : {};
+
   await execute(
     `UPDATE memberships
         SET plan_id = :planId,
@@ -259,6 +265,7 @@ async function persistMembershipSubscriptionUpdate({
       currentPeriodEnd: updatedSubscription.current_period_end ? new Date(updatedSubscription.current_period_end * 1000) : null,
       updatedAt: new Date(),
     },
+    txOpts,
   );
 
   if (syncLatestInvoice && updatedSubscription.latest_invoice && typeof updatedSubscription.latest_invoice !== 'string') {
@@ -279,16 +286,20 @@ async function persistMembershipSubscriptionUpdate({
       hostedInvoiceUrl: updatedSubscription.latest_invoice.hosted_invoice_url || null,
       invoicePdf: updatedSubscription.latest_invoice.invoice_pdf || null,
       paidAt: updatedSubscription.latest_invoice.status === 'paid' ? new Date() : null,
+      transaction,
     });
   }
 
   return getUserMembership(userId);
 }
 
-async function createMembershipAdjustmentInvoice(adjustmentRow, stripePaymentIntentId, invoiceOptions = {}) {
+async function createMembershipAdjustmentInvoice(adjustmentRow, stripePaymentIntentId, invoiceOptions = {}, transaction = undefined) {
+  const txOpts = transaction ? { transaction } : {};
+
   const existingInvoice = await queryOne(
     'SELECT id FROM invoices WHERE stripe_payment_intent_id = :stripePaymentIntentId LIMIT 1',
     { stripePaymentIntentId },
+    txOpts,
   );
 
   const payload = {
@@ -310,11 +321,11 @@ async function createMembershipAdjustmentInvoice(adjustmentRow, stripePaymentInt
   };
 
   if (existingInvoice?.id || payload.stripeInvoiceId) {
-    await upsertStripeInvoice(payload);
+    await upsertStripeInvoice({ ...payload, transaction });
     return;
   }
 
-  await createLocalInvoice(payload);
+  await createLocalInvoice({ ...payload, transaction });
 }
 
 async function hydrateMissingMembershipPaymentIntents(membershipId) {
@@ -409,7 +420,7 @@ async function reconcilePendingMembershipAdjustmentRow(adjustmentRow) {
 
     if (session.status === 'expired' || isMembershipAdjustmentHoldExpired(adjustmentRow)) {
       if (session.status === 'open') {
-        await expireStripeCheckoutSession(session.id).catch(() => {});
+        await expireStripeCheckoutSession(session.id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
       }
 
       await markMembershipAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
@@ -580,7 +591,11 @@ export async function createMembership({ userId, planSlug }) {
     },
   );
 
-  await updateUserAccessStatus(userId, 'active');
+  // P0-9: Only activate access if subscription status indicates payment succeeded
+  const activatableStatuses = ['active', 'trialing'];
+  if (activatableStatuses.includes(subscription.status)) {
+    await updateUserAccessStatus(userId, 'active');
+  }
 
   if (subscription.latest_invoice && typeof subscription.latest_invoice !== 'string') {
     await upsertStripeInvoice({
@@ -669,7 +684,10 @@ export async function syncMembershipCheckoutSession({ userId, sessionId }) {
       preferredPlanSlug: String(session.metadata?.plan_slug || ''),
     });
 
-    await updateUserAccessStatus(userId, 'active');
+    // P0-8: Only activate access if checkout payment was actually paid
+    if (session.payment_status === 'paid') {
+      await updateUserAccessStatus(userId, 'active');
+    }
 
     if (subscription.latest_invoice && typeof subscription.latest_invoice !== 'string') {
       await upsertStripeInvoice({
@@ -840,21 +858,24 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
       },
     });
 
-    await createLocalInvoice({
-      userId,
-      membershipId: membership.id,
-      stripePaymentIntentId: paymentIntent.id,
-      invoiceNumber: `MEM-ADJ-${membership.id}-${Date.now()}`,
-      status: 'paid',
-      description: `${plan.name} membership upgrade`,
-      currency: settlement.currency,
-      subtotalMinor: settlement.subtotalMinor,
-      taxMinor: settlement.taxMinor,
-      totalMinor: settlement.paymentDueMinor,
-      paidAt: new Date(),
-    });
-
+    // P0-5: Wrap DB writes in transaction for mock-mode membership change
+    const mockTransaction = await sequelize.transaction();
     try {
+      await createLocalInvoice({
+        userId,
+        membershipId: membership.id,
+        stripePaymentIntentId: paymentIntent.id,
+        invoiceNumber: `MEM-ADJ-${membership.id}-${Date.now()}`,
+        status: 'paid',
+        description: `${plan.name} membership upgrade`,
+        currency: settlement.currency,
+        subtotalMinor: settlement.subtotalMinor,
+        taxMinor: settlement.taxMinor,
+        totalMinor: settlement.paymentDueMinor,
+        paidAt: new Date(),
+        transaction: mockTransaction,
+      });
+
       const updatedSubscription = await updateStripeSubscriptionPlan({
         subscriptionId: membership.stripeSubscriptionId,
         priceId,
@@ -863,16 +884,21 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
         prorationBehavior: 'none',
       });
 
+      const updatedMembership = await persistMembershipSubscriptionUpdate({
+        userId,
+        membership,
+        plan,
+        stripePriceId: priceId,
+        updatedSubscription,
+        invoiceDescription: `${plan.name} subscription update`,
+        syncLatestInvoice: false,
+        transaction: mockTransaction,
+      });
+
+      await mockTransaction.commit();
+
       return {
-        membership: await persistMembershipSubscriptionUpdate({
-          userId,
-          membership,
-          plan,
-          stripePriceId: priceId,
-          updatedSubscription,
-          invoiceDescription: `${plan.name} subscription update`,
-          syncLatestInvoice: false,
-        }),
+        membership: updatedMembership,
         sessionId: null,
         url: null,
         adjustmentId: null,
@@ -881,6 +907,8 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
         refundMinor: 0,
       };
     } catch (error) {
+      await mockTransaction.rollback();
+
       await refundMembershipAmount({
         membershipId: membership.id,
         userId,
@@ -1111,6 +1139,8 @@ export async function syncMembershipAdjustmentCheckoutSession({ userId, sessionI
     stripeProductId: plan.stripe_product_id,
   });
 
+  // P0-5: Wrap DB writes in transaction — Stripe API calls are outside since they can't be rolled back
+  const dbTransaction = await sequelize.transaction();
   try {
     const updatedSubscription = await updateStripeSubscriptionPlan({
       subscriptionId: membership.stripeSubscriptionId,
@@ -1128,6 +1158,7 @@ export async function syncMembershipAdjustmentCheckoutSession({ userId, sessionI
       updatedSubscription,
       invoiceDescription: `${plan.name} subscription update`,
       syncLatestInvoice: false,
+      transaction: dbTransaction,
     });
 
     await createMembershipAdjustmentInvoice(adjustmentRow, paymentIntentId, {
@@ -1142,15 +1173,19 @@ export async function syncMembershipAdjustmentCheckoutSession({ userId, sessionI
       hostedInvoiceUrl: session.invoice?.hosted_invoice_url || null,
       invoicePdf: session.invoice?.invoice_pdf || null,
       paidAt: new Date(),
-    });
+    }, dbTransaction);
 
     await markMembershipAdjustmentStatus(adjustmentRow.id, 'completed', {
       stripePaymentIntentId: paymentIntentId,
       clearHold: true,
+      transaction: dbTransaction,
     });
 
+    await dbTransaction.commit();
     return updatedMembership;
   } catch (error) {
+    await dbTransaction.rollback();
+
     await createMembershipAdjustmentInvoice(adjustmentRow, paymentIntentId, {
       stripeInvoiceId: session.invoice?.id || null,
       invoiceNumber: session.invoice?.number || null,
@@ -1201,7 +1236,7 @@ export async function cancelMembershipAdjustment({ userId, adjustmentId }) {
   }
 
   if (adjustmentRow.stripe_checkout_session_id) {
-    await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch(() => {});
+    await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
   }
 
   await markMembershipAdjustmentStatus(adjustmentId, 'canceled', { clearHold: true });

@@ -10,6 +10,7 @@ import { mkdir, readFile, rename, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRateLimitMiddleware } from './security.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -171,7 +172,7 @@ const start = async () => {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: config.memberSession.sameSite,
+      sameSite: config.memberSession.sameSite === 'none' ? 'none' : 'strict',
       maxAge: config.memberSession.cookieMaxAgeMs,
       secure: config.publicOrigin.startsWith('https://') || config.memberSession.sameSite === 'none',
     },
@@ -231,6 +232,15 @@ const start = async () => {
   await mkdir(config.uploads.directory, { recursive: true });
   await mkdir(config.staticSnapshots.directory, { recursive: true });
 
+  // P0-18: Rate limit admin login attempts
+  const adminLoginRateLimiter = createRateLimitMiddleware({
+    keyPrefix: 'admin-login',
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 10,
+    message: 'Too many admin login attempts. Please try again later.',
+  });
+  app.use('/admin/api/login', adminLoginRateLimiter);
+
   registerStripeWebhook(app);
   app.use('/api', express.json({ limit: '2mb' }));
   app.use('/api/member-auth', memberSessionMiddleware);
@@ -242,12 +252,7 @@ const start = async () => {
   registerMemberPortalApi(app);
 
   app.get('/health', (_request, response) => {
-    response.json({
-      ok: true,
-      database: config.database.name,
-      rootPath: config.rootPath,
-      resources: resourceDefinitions.map((resource) => resource.table),
-    });
+    response.json({ ok: true });
   });
 
   const adminRouter = AdminJSExpress.buildAuthenticatedRouter(

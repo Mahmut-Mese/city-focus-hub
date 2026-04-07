@@ -63,6 +63,7 @@ Backend admin: `http://localhost:3001/admin`
 ```sh
 cp .env.example .env.local
 npm run dev
+hi
 ```
 
 Frontend: `http://localhost:8080`

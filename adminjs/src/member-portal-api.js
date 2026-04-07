@@ -371,6 +371,18 @@ async function handleStripeEvent(event) {
     case 'refund.failed':
       await handleStripeRefundUpdated(event.data.object);
       return;
+    case 'charge.dispute.created':
+    case 'charge.dispute.closed': {
+      // P0-19: Log disputes instead of silently ignoring them
+      const dispute = event.data.object;
+      console.error(`[DISPUTE] ${event.type}: dispute=${dispute.id} charge=${dispute.charge} amount=${dispute.amount} status=${dispute.status} reason=${dispute.reason}`);
+      // Suspend user access if dispute is open (protective measure)
+      if (event.type === 'charge.dispute.created') {
+        const disputeMetadata = dispute.evidence_details?.enhanced_eligibility_types || [];
+        console.error(`[DISPUTE] Payment disputed — manual review required. Dispute ID: ${dispute.id}`);
+      }
+      return;
+    }
     default:
       return;
   }

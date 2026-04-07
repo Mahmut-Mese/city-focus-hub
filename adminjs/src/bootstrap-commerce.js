@@ -299,12 +299,43 @@ async function ensureColumn(tableName, columnName, definition) {
   await sequelize.query(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`);
 }
 
+async function ensureForeignKey(tableName, constraintName, columnName, refTable, refColumn) {
+  const [rows] = await sequelize.query(
+    `SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tableName AND CONSTRAINT_NAME = :constraintName AND CONSTRAINT_TYPE = 'FOREIGN KEY'`,
+    { replacements: { tableName, constraintName } },
+  );
+  if (Array.isArray(rows) && rows.length > 0) {
+    return;
+  }
+  try {
+    await sequelize.query(
+      `ALTER TABLE \`${tableName}\` ADD CONSTRAINT \`${constraintName}\` FOREIGN KEY (\`${columnName}\`) REFERENCES \`${refTable}\` (\`${refColumn}\`)`,
+    );
+  } catch (error) {
+    console.warn(`[P0-22] Could not add FK ${constraintName} on ${tableName}.${columnName} → ${refTable}.${refColumn}: ${error.original?.sqlMessage || error.message}. Fix orphaned rows and restart.`);
+  }
+}
+
 async function runCommerceMigrations() {
   await ensureColumn('member_users', 'entry_source', "entry_source VARCHAR(32) NOT NULL DEFAULT 'system' AFTER stripe_customer_id");
   await ensureColumn('bookings', 'entry_source', "entry_source VARCHAR(32) NOT NULL DEFAULT 'system' AFTER resource_id");
   await ensureColumn('invoices', 'entry_source', "entry_source VARCHAR(32) NOT NULL DEFAULT 'system' AFTER booking_id");
   await ensureColumn('bookings', 'stripe_checkout_session_id', 'stripe_checkout_session_id VARCHAR(255) NULL AFTER stripe_payment_intent_id');
   await ensureColumn('bookings', 'payment_hold_expires_at', 'payment_hold_expires_at DATETIME(6) NULL AFTER stripe_payment_status');
+
+  // P0-22: Add foreign key constraints to prevent orphaned records
+  await ensureForeignKey('memberships', 'fk_memberships_user', 'user_id', 'member_users', 'id');
+  await ensureForeignKey('memberships', 'fk_memberships_plan', 'plan_id', 'membership_plans', 'id');
+  await ensureForeignKey('membership_adjustments', 'fk_membership_adj_membership', 'membership_id', 'memberships', 'id');
+  await ensureForeignKey('membership_adjustments', 'fk_membership_adj_user', 'user_id', 'member_users', 'id');
+  await ensureForeignKey('membership_adjustments', 'fk_membership_adj_target_plan', 'target_plan_id', 'membership_plans', 'id');
+  await ensureForeignKey('bookings', 'fk_bookings_user', 'user_id', 'member_users', 'id');
+  await ensureForeignKey('bookings', 'fk_bookings_resource', 'resource_id', 'resources', 'id');
+  await ensureForeignKey('booking_adjustments', 'fk_booking_adj_booking', 'booking_id', 'bookings', 'id');
+  await ensureForeignKey('booking_adjustments', 'fk_booking_adj_user', 'user_id', 'member_users', 'id');
+  await ensureForeignKey('booking_adjustments', 'fk_booking_adj_resource', 'resource_id', 'resources', 'id');
+  await ensureForeignKey('invoices', 'fk_invoices_user', 'user_id', 'member_users', 'id');
 }
 
 async function seedPlans() {

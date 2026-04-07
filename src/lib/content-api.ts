@@ -215,6 +215,16 @@ async function fetchStaticSnapshot<T>(path: string): Promise<T> {
   return payload as T;
 }
 
+/**
+ * Check whether the given path can be served from a static CMS snapshot.
+ * Unlike `shouldUseStaticSnapshot` (production-only), this only checks the
+ * path — not the environment — so it can be used as a dev-mode fallback.
+ */
+function canFallbackToSnapshot(path: string): boolean {
+  const { pathname, searchParams } = parseRequestPath(path);
+  return STATIC_SNAPSHOT_PATHS.has(pathname) && searchParams.get('status') !== 'draft';
+}
+
 export async function fetchApi<T>(path: string): Promise<T> {
   if (shouldUseStaticSnapshot(path)) {
     try {
@@ -226,17 +236,26 @@ export async function fetchApi<T>(path: string): Promise<T> {
 
   const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
 
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    // In dev mode, fall back to static CMS snapshots when the API is unreachable
+    if (!import.meta.env.PROD && canFallbackToSnapshot(path)) {
+      console.warn(`[cms] API unreachable for "${path}", falling back to static snapshot`);
+      return fetchStaticSnapshot<T>(path);
+    }
+    throw error;
   }
-
-  return response.json() as Promise<T>;
 }
 
 export async function postApi<T>(path: string, body: unknown): Promise<T> {

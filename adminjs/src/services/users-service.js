@@ -227,6 +227,9 @@ export async function changeUserPassword({ userId, currentPassword, newPassword 
     },
   );
 
+  // P0-16: Invalidate all existing sessions after password change
+  await revokeMemberSessions(userId);
+
   return toUserRecord(row);
 }
 

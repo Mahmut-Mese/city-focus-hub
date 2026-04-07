@@ -18,6 +18,7 @@ import {
   retrieveStripePaymentIntent,
 } from './stripe-service.js';
 import { createOrGetGuestUser, findUserByEmail, findUserById } from './users-service.js';
+import { sequelize } from '../database.js';
 
 const BOOKING_SELECT_QUERY = `SELECT bookings.*, resources.name AS resource_name, resources.type AS resource_type, resources.capacity AS resource_capacity, resources.metadata AS resource_metadata
        FROM bookings
@@ -496,6 +497,7 @@ async function applyBookingUpdate({
   financials,
   stripePaymentIntentId = undefined,
   stripePaymentStatus = undefined,
+  transaction = undefined,
 }) {
   const fields = [
     'resource_id = :resourceId',
@@ -537,6 +539,7 @@ async function applyBookingUpdate({
       stripePaymentStatus: stripePaymentStatus ?? null,
       updatedAt: new Date(),
     },
+    ...(transaction ? [{ transaction }] : []),
   );
 }
 
@@ -747,7 +750,7 @@ async function reconcilePendingBookingRow(bookingRow) {
 
     if (session.status === 'expired' || isBookingHoldExpired(bookingRow)) {
       if (session.status === 'open') {
-        await expireStripeCheckoutSession(session.id).catch(() => {});
+        await expireStripeCheckoutSession(session.id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
       }
 
       await markPendingBookingCanceled(bookingRow, 'expired');
@@ -766,7 +769,7 @@ async function reconcilePendingBookingRow(bookingRow) {
 
     if (['canceled', 'requires_payment_method'].includes(paymentIntent.status) || isBookingHoldExpired(bookingRow)) {
       if (!['canceled', 'succeeded'].includes(paymentIntent.status)) {
-        await cancelStripePaymentIntent(paymentIntent.id).catch(() => {});
+        await cancelStripePaymentIntent(paymentIntent.id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
       }
 
       await markPendingBookingCanceled(
@@ -807,7 +810,7 @@ async function reconcilePendingBookingAdjustmentRow(adjustmentRow) {
 
     if (session.status === 'expired' || isAdjustmentHoldExpired(adjustmentRow)) {
       if (session.status === 'open') {
-        await expireStripeCheckoutSession(session.id).catch(() => {});
+        await expireStripeCheckoutSession(session.id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
       }
 
       await markBookingAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
@@ -868,77 +871,111 @@ export async function createBooking({
 }) {
   validateBookingWindow(startAt, endAt);
   const membership = await getUserMembership(userId);
-  const resource = await validateAvailability({ resourceId, startAt, endAt });
-  const subtotalMinor = calculateBookingSubtotalMinor(resource, startAt, endAt);
-  const taxMinor = calculateVat(subtotalMinor);
-  const totalMinor = subtotalMinor + taxMinor;
-  const now = new Date();
 
-  const [insertId, metadata] = await execute(
-    `INSERT INTO bookings
-      (document_id, user_id, membership_id, resource_id, booking_type, status, start_at, end_at, purpose, notes, subtotal_minor, tax_minor, total_minor, currency, payment_hold_expires_at, created_at, updated_at)
-     VALUES
-      (:documentId, :userId, :membershipId, :resourceId, :bookingType, 'pending', :startAt, :endAt, :purpose, :notes, :subtotalMinor, :taxMinor, :totalMinor, 'gbp', :paymentHoldExpiresAt, :createdAt, :updatedAt)`,
-    {
-      documentId: randomUUID(),
+  // P0-4: Wrap availability check + insert in a transaction to prevent double-booking
+  const transaction = await sequelize.transaction();
+  let resource;
+  try {
+    resource = await validateAvailability({ resourceId, startAt, endAt });
+    const subtotalMinor = calculateBookingSubtotalMinor(resource, startAt, endAt);
+    const taxMinor = calculateVat(subtotalMinor);
+    const totalMinor = subtotalMinor + taxMinor;
+    const now = new Date();
+
+    const [insertId, metadata] = await execute(
+      `INSERT INTO bookings
+        (document_id, user_id, membership_id, resource_id, booking_type, status, start_at, end_at, purpose, notes, subtotal_minor, tax_minor, total_minor, currency, payment_hold_expires_at, created_at, updated_at)
+       VALUES
+        (:documentId, :userId, :membershipId, :resourceId, :bookingType, 'pending', :startAt, :endAt, :purpose, :notes, :subtotalMinor, :taxMinor, :totalMinor, 'gbp', :paymentHoldExpiresAt, :createdAt, :updatedAt)`,
+      {
+        documentId: randomUUID(),
+        userId,
+        membershipId: membership?.id || null,
+        resourceId,
+        bookingType,
+        startAt: toUtcMysqlDateTime(startAt),
+        endAt: toUtcMysqlDateTime(endAt),
+        purpose,
+        notes,
+        subtotalMinor,
+        taxMinor,
+        totalMinor,
+        paymentHoldExpiresAt: getBookingHoldExpiryDate(now),
+        createdAt: now,
+        updatedAt: now,
+      },
+      { transaction },
+    );
+
+    const bookingId = typeof insertId === 'number' ? insertId : metadata?.insertId;
+
+    // P0-7: Charge then update status; if DB update fails, auto-refund
+    const chargeResult = await chargeBooking({
+      userId,
+      bookingId,
+      totalMinor,
+      currency: 'gbp',
+    });
+
+    try {
+      await execute(
+        `UPDATE bookings
+            SET status = 'confirmed',
+                stripe_payment_intent_id = :stripePaymentIntentId,
+                stripe_payment_status = :stripePaymentStatus,
+                payment_hold_expires_at = NULL,
+                updated_at = :updatedAt
+          WHERE id = :bookingId`,
+        {
+          bookingId,
+          stripePaymentIntentId: chargeResult.stripePaymentIntentId,
+          stripePaymentStatus: chargeResult.stripePaymentStatus,
+          updatedAt: new Date(),
+        },
+        { transaction },
+      );
+    } catch (dbError) {
+      // P0-7: DB update failed after charge — attempt auto-refund
+      console.error(`[P0-7] createBooking DB update failed after charge for booking ${bookingId}, attempting refund:`, dbError.message);
+      try {
+        await refundBookingAmount({
+          bookingId,
+          userId,
+          membershipId: membership?.id || null,
+          amountMinor: totalMinor,
+          reason: 'requested_by_customer',
+          metadata: { booking_id: String(bookingId), auto_refund: 'db_failure' },
+        });
+      } catch (refundError) {
+        console.error(`[P0-7] CRITICAL: Auto-refund also failed for booking ${bookingId}:`, refundError.message);
+      }
+      throw dbError;
+    }
+
+    await createLocalInvoice({
       userId,
       membershipId: membership?.id || null,
-      resourceId,
-      bookingType,
-      startAt: toUtcMysqlDateTime(startAt),
-      endAt: toUtcMysqlDateTime(endAt),
-      purpose,
-      notes,
+      bookingId,
+      stripePaymentIntentId: chargeResult.stripePaymentIntentId,
+      invoiceNumber: `BK-${bookingId}`,
+      status: chargeResult.stripePaymentStatus === 'succeeded' ? 'paid' : chargeResult.stripePaymentStatus,
+      description: `${resource.name} booking`,
+      currency: 'gbp',
       subtotalMinor,
       taxMinor,
       totalMinor,
-      paymentHoldExpiresAt: getBookingHoldExpiryDate(now),
-      createdAt: now,
-      updatedAt: now,
-    },
-  );
+      paidAt: chargeResult.stripePaymentStatus === 'succeeded' ? new Date() : null,
+      transaction,
+    });
 
-  const bookingId = typeof insertId === 'number' ? insertId : metadata?.insertId;
-  const chargeResult = await chargeBooking({
-    userId,
-    bookingId,
-    totalMinor,
-    currency: 'gbp',
-  });
+    await transaction.commit();
 
-  await execute(
-    `UPDATE bookings
-        SET status = 'confirmed',
-            stripe_payment_intent_id = :stripePaymentIntentId,
-            stripe_payment_status = :stripePaymentStatus,
-            payment_hold_expires_at = NULL,
-            updated_at = :updatedAt
-      WHERE id = :bookingId`,
-    {
-      bookingId,
-      stripePaymentIntentId: chargeResult.stripePaymentIntentId,
-      stripePaymentStatus: chargeResult.stripePaymentStatus,
-      updatedAt: new Date(),
-    },
-  );
-
-  await createLocalInvoice({
-    userId,
-    membershipId: membership?.id || null,
-    bookingId,
-    stripePaymentIntentId: chargeResult.stripePaymentIntentId,
-    invoiceNumber: `BK-${bookingId}`,
-    status: chargeResult.stripePaymentStatus === 'succeeded' ? 'paid' : chargeResult.stripePaymentStatus,
-    description: `${resource.name} booking`,
-    currency: 'gbp',
-    subtotalMinor,
-    taxMinor,
-    totalMinor,
-    paidAt: chargeResult.stripePaymentStatus === 'succeeded' ? new Date() : null,
-  });
-
-  const bookings = await listUserBookings(userId);
-  return bookings.find((booking) => booking.id === Number(bookingId)) || null;
+    const bookings = await listUserBookings(userId);
+    return bookings.find((booking) => booking.id === Number(bookingId)) || null;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 }
 
 export async function initiateBookingPayment({
@@ -1288,11 +1325,11 @@ export async function cancelPendingBooking({ userId, bookingId, paymentIntentId 
 
   if (isStripeEnabled()) {
     if (bookingRow.stripe_checkout_session_id) {
-      await expireStripeCheckoutSession(bookingRow.stripe_checkout_session_id).catch(() => {});
+      await expireStripeCheckoutSession(bookingRow.stripe_checkout_session_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
     }
 
     if (bookingRow.stripe_payment_intent_id) {
-      await cancelStripePaymentIntent(bookingRow.stripe_payment_intent_id).catch(() => {});
+      await cancelStripePaymentIntent(bookingRow.stripe_payment_intent_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
     }
   }
 
@@ -1390,29 +1427,39 @@ export async function updateBooking({
   }
 
   if (refundMinor > 0) {
-    await applyBookingUpdate({
-      bookingId,
-      resourceId,
-      startAt,
-      endAt,
-      purpose,
-      notes,
-      financials,
-      stripePaymentStatus: 'succeeded',
-    });
+    // P0-6: Wrap update + refund in transaction — rollback booking update if refund fails
+    const refundTransaction = await sequelize.transaction();
+    try {
+      await applyBookingUpdate({
+        bookingId,
+        resourceId,
+        startAt,
+        endAt,
+        purpose,
+        notes,
+        financials,
+        stripePaymentStatus: 'succeeded',
+        transaction: refundTransaction,
+      });
 
-    await refundBookingAmount({
-      bookingId,
-      userId,
-      membershipId: existingBooking.membership_id ? Number(existingBooking.membership_id) : null,
-      amountMinor: refundMinor,
-      reason: 'requested_by_customer',
-      metadata: {
-        app_user_id: String(userId),
-        booking_id: String(bookingId),
-        booking_adjustment: 'decrease',
-      },
-    });
+      await refundBookingAmount({
+        bookingId,
+        userId,
+        membershipId: existingBooking.membership_id ? Number(existingBooking.membership_id) : null,
+        amountMinor: refundMinor,
+        reason: 'requested_by_customer',
+        metadata: {
+          app_user_id: String(userId),
+          booking_id: String(bookingId),
+          booking_adjustment: 'decrease',
+        },
+      });
+
+      await refundTransaction.commit();
+    } catch (error) {
+      await refundTransaction.rollback();
+      throw error;
+    }
 
     const bookings = await listUserBookings(userId);
     return {
@@ -1672,7 +1719,7 @@ export async function cancelBookingAdjustment({ userId, adjustmentId }) {
   }
 
   if (isStripeEnabled() && adjustmentRow.stripe_checkout_session_id) {
-    await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch(() => {});
+    await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
   }
 
   await markBookingAdjustmentStatus(adjustmentId, 'canceled', { clearHold: true });

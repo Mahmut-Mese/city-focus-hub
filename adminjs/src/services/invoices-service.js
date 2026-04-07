@@ -50,9 +50,12 @@ export async function createLocalInvoice({
   hostedInvoiceUrl = null,
   invoicePdf = null,
   paidAt = null,
+  transaction = undefined,
 }) {
   const now = new Date();
   const documentId = randomUUID();
+
+  const txOpts = transaction ? { transaction } : {};
 
   await execute(
     `INSERT INTO invoices
@@ -80,11 +83,13 @@ export async function createLocalInvoice({
       createdAt: now,
       updatedAt: now,
     },
+    txOpts,
   );
 
   const createdInvoice = await queryOne(
     'SELECT id FROM invoices WHERE document_id = :documentId LIMIT 1',
     { documentId },
+    txOpts,
   );
 
   return createdInvoice?.id ? Number(createdInvoice.id) : null;
@@ -106,15 +111,19 @@ export async function upsertStripeInvoice({
   hostedInvoiceUrl = null,
   invoicePdf = null,
   paidAt = null,
+  transaction = undefined,
 }) {
+  const txOpts = transaction ? { transaction } : {};
+
   let existingInvoice = stripeInvoiceId
-    ? await queryOne('SELECT id FROM invoices WHERE stripe_invoice_id = :stripeInvoiceId LIMIT 1', { stripeInvoiceId })
+    ? await queryOne('SELECT id FROM invoices WHERE stripe_invoice_id = :stripeInvoiceId LIMIT 1', { stripeInvoiceId }, txOpts)
     : null;
 
   if (!existingInvoice && stripePaymentIntentId) {
     existingInvoice = await queryOne(
       'SELECT id FROM invoices WHERE stripe_payment_intent_id = :stripePaymentIntentId ORDER BY id DESC LIMIT 1',
       { stripePaymentIntentId },
+      txOpts,
     );
   }
 
@@ -122,6 +131,7 @@ export async function upsertStripeInvoice({
     existingInvoice = await queryOne(
       'SELECT id FROM invoices WHERE booking_id = :bookingId ORDER BY id DESC LIMIT 1',
       { bookingId },
+      txOpts,
     );
   }
 
@@ -166,6 +176,7 @@ export async function upsertStripeInvoice({
         paidAt,
         updatedAt: now,
       },
+      txOpts,
     );
     return;
   }
@@ -186,5 +197,6 @@ export async function upsertStripeInvoice({
     hostedInvoiceUrl,
     invoicePdf,
     paidAt,
+    transaction,
   });
 }

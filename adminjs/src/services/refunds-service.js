@@ -212,6 +212,20 @@ async function refundInvoicePayments({
     return [];
   }
 
+  // P0-15: Pre-validate that sufficient refundable balance exists BEFORE issuing any Stripe refunds
+  let totalAvailableMinor = 0;
+  for (const invoice of refundableInvoices) {
+    const availableMinor = Math.max(0, Number(invoice.total_minor || 0) - Number(invoice.refunded_minor || 0));
+    const stripePaymentIntentId = invoice.stripe_payment_intent_id || null;
+    if (stripePaymentIntentId && availableMinor > 0) {
+      totalAvailableMinor += availableMinor;
+    }
+  }
+
+  if (totalAvailableMinor < targetAmountMinor) {
+    throw new Error(insufficientBalanceMessage);
+  }
+
   let remainingMinor = targetAmountMinor;
   const refunds = [];
 
@@ -251,10 +265,6 @@ async function refundInvoicePayments({
     if (remainingMinor <= 0) {
       break;
     }
-  }
-
-  if (remainingMinor > 0) {
-    throw new Error(insufficientBalanceMessage);
   }
 
   return refunds;
