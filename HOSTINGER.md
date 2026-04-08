@@ -50,6 +50,10 @@ SMTP_USER=mahmutmese.uk@gmail.com
 SMTP_PASSWORD=your-gmail-app-password
 SMTP_FROM=mahmutmese.uk@gmail.com
 ADMIN_NOTIFICATION_EMAIL=mahmutmese.uk@gmail.com
+
+STRIPE_PUBLISHABLE_KEY=pk_live_or_pk_test_key
+STRIPE_SECRET_KEY=sk_live_or_sk_test_key
+STRIPE_WEBHOOK_SECRET=whsec_real_webhook_secret
 ```
 
 ## Database
@@ -65,6 +69,7 @@ The backend bootstraps required tables automatically on startup, including the p
 - Uploaded images are served from `/uploads`.
 - Set `UPLOADS_DIR` to a writable folder outside the deployed app bundle so uploads survive deploys and restarts.
 - Admin sessions are stored in MySQL table `admin_sessions`, so admin logins persist across Node restarts.
+- The Hostinger build step also loads the production env because `npm run build` prebundles AdminJS components. Make sure the required runtime env vars above are present during both build and start.
 
 ## URLs
 
