@@ -1,6 +1,7 @@
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BrowserRouter } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Dashboard from '@/pages-react/Dashboard';
 
 const queryClient = new QueryClient({
@@ -28,14 +29,16 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 export default function DashboardApp() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <RequireAuth>
-            <Dashboard />
-          </RequireAuth>
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <BrowserRouter>
+            <RequireAuth>
+              <Dashboard />
+            </RequireAuth>
+          </BrowserRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

@@ -40,6 +40,8 @@ function toUserRecord(row) {
     id: Number(row.id),
     name: String(row.name),
     email: String(row.email),
+    phone: row.phone || '',
+    location: row.location || '',
     initials: String(row.name)
       .trim()
       .split(/\s+/)
@@ -264,4 +266,53 @@ export async function updateUserAccessStatus(userId, accessStatus) {
   if (accessStatus === 'suspended') {
     await revokeMemberSessions(userId);
   }
+}
+
+export async function updateUserProfile(userId, { name, email, phone }) {
+  const normalizedName = String(name || '').trim();
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedName) {
+    throw new Error('Name is required.');
+  }
+
+  if (!normalizedEmail) {
+    throw new Error('Email is required.');
+  }
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Email is invalid.');
+  }
+
+  const row = await queryOne('SELECT * FROM member_users WHERE id = :userId LIMIT 1', { userId });
+
+  if (!row) {
+    throw new Error('User not found.');
+  }
+
+  // Check if another user already has this email
+  if (normalizedEmail !== normalizeEmail(row.email)) {
+    const existingUser = await findUserByEmail(normalizedEmail);
+    if (existingUser) {
+      throw new Error('An account with this email already exists.');
+    }
+  }
+
+  await execute(
+    `UPDATE member_users
+        SET name = :name,
+            email = :email,
+            phone = :phone,
+            updated_at = :updatedAt
+      WHERE id = :userId`,
+    {
+      userId,
+      name: normalizedName,
+      email: normalizedEmail,
+      phone: String(phone || '').trim(),
+      updatedAt: new Date(),
+    },
+  );
+
+  return toUserRecord({ ...row, name: normalizedName, email: normalizedEmail, phone: String(phone || '').trim(), updated_at: new Date() });
 }

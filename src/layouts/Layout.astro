@@ -24,7 +24,27 @@ const {
 const siteName = 'City Focus Hub';
 const pageTitle = title ? `${title} | ${siteName}` : `${siteName} - Your Space to Work, Connect and Focus`;
 const pageDescription = description || 'Premium coworking spaces in the heart of the city. Flexible memberships, meeting rooms, and virtual offices.';
-const pageImage = image || '/logo.svg';
+const pageImage = image || '/og-default.png';
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site || 'https://cityfocushub.com').toString();
+
+// P1-70: JSON-LD structured data for Organization
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': canonicalUrl,
+  name: siteName,
+  description: pageDescription,
+  url: Astro.site?.toString() || 'https://cityfocushub.com',
+  logo: new URL('/logo.svg', Astro.site || 'https://cityfocushub.com').toString(),
+  image: new URL(pageImage, Astro.site || 'https://cityfocushub.com').toString(),
+  priceRange: '$$',
+  openingHoursSpecification: {
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    opens: '08:00',
+    closes: '18:00',
+  },
+});
 ---
 <!doctype html>
 <html lang="en">
@@ -44,19 +64,30 @@ const pageImage = image || '/logo.svg';
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDescription} />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content={pageImage} />
+    <meta property="og:image" content={new URL(pageImage, Astro.site || 'https://cityfocushub.com').toString()} />
+    <meta property="og:url" content={canonicalUrl} />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content={pageImage} />
+    <meta name="twitter:image" content={new URL(pageImage, Astro.site || 'https://cityfocushub.com').toString()} />
+
+    <!-- P1-70: Canonical URL for search engines -->
+    <link rel="canonical" href={canonicalUrl} />
 
     {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <!-- P1-70: JSON-LD structured data -->
+    <script type="application/ld+json" set:html={jsonLd} />
 
     <slot name="head" />
   </head>
   <body>
+    <!-- P1-69: WCAG skip navigation link -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-lg focus:bg-black focus:px-4 focus:py-2 focus:text-white focus:outline-none">
+      Skip to main content
+    </a>
     <div class="min-h-screen flex flex-col">
       {!hideNavigation && <NavbarIsland client:only="react" />}
-      <main class="flex-1">
+      <main id="main-content" class="flex-1">
         <slot />
       </main>
       {!hideFooter && <FooterIsland client:only="react" />}

@@ -157,7 +157,11 @@ export async function attachMockPaymentMethod(customerId) {
     : { id: configuredPaymentMethod };
 
   await stripe.paymentMethods.attach(paymentMethod.id, { customer: customerId }).catch((error) => {
-    if (!String(error?.message || '').includes('already been attached')) {
+    // Stripe error code for already-attached payment method — more robust than string matching
+    const isAlreadyAttached =
+      error?.code === 'payment_method_already_attached' ||
+      String(error?.message || '').includes('already been attached');
+    if (!isAlreadyAttached) {
       throw error;
     }
   });
@@ -502,6 +506,7 @@ export async function createMembershipAdjustmentCheckoutSession({
             description: `Plan change from ${currentPlanName} to ${targetPlanName}`,
           },
           unit_amount: subtotalMinor,
+          tax_behavior: 'exclusive',
         },
         quantity: 1,
       },
@@ -624,6 +629,10 @@ export async function updateStripeSubscriptionPlan({
     throw new Error('Stripe subscription item was not found.');
   }
 
+  if (existingSubscription.items.data.length > 1) {
+    console.warn(`[stripe] Subscription ${subscriptionId} has ${existingSubscription.items.data.length} items — only updating the first item.`);
+  }
+
   return stripe.subscriptions.update(subscriptionId, {
     items: [
       {
@@ -631,6 +640,7 @@ export async function updateStripeSubscriptionPlan({
         price: priceId,
       },
     ],
+    cancel_at_period_end: false,
     proration_behavior: prorationBehavior,
     automatic_tax: {
       enabled: true,

@@ -336,6 +336,24 @@ async function ensureSchema() {
   for (const statement of TABLE_DEFINITIONS) {
     await sequelize.query(statement);
   }
+
+  // #108: Ensure indexes on contact_submissions for common filter queries (email lookup, date-based listing)
+  await ensureContentIndex('contact_submissions', 'contact_submissions_email_idx', '`email`');
+  await ensureContentIndex('contact_submissions', 'contact_submissions_created_at_idx', '`created_at`');
+}
+
+async function ensureContentIndex(tableName, indexName, columnDefs) {
+  const [rows] = await sequelize.query(
+    `SELECT INDEX_NAME FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tableName AND INDEX_NAME = :indexName LIMIT 1`,
+    { replacements: { tableName, indexName } },
+  );
+
+  if (Array.isArray(rows) && rows.length > 0) {
+    return;
+  }
+
+  await sequelize.query(`ALTER TABLE \`${tableName}\` ADD INDEX \`${indexName}\` (${columnDefs})`);
 }
 
 async function insertDraftRows() {

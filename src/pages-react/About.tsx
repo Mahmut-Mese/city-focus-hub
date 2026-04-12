@@ -64,7 +64,7 @@ export default function About() {
           <SectionTitle
             title={content.whyChooseTitle}
             className="mb-10 md:mb-12"
-            titleClassName="text-3xl md:text-4xl lg:text-5xl"
+            titleClassName="text-2xl md:text-3xl lg:text-4xl"
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {content.whyChooseItems.map((item) => {

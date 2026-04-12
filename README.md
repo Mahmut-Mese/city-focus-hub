@@ -1,105 +1,134 @@
-# Welcome to the CoworkingHub project
+# City Focus Hub — Coworking Space Platform
 
-## Project info
+## Tech Stack
 
-**URL**: https://coworkinghub.com
+- **Frontend:** Astro 6 + React 18 (SSG), TypeScript, Tailwind CSS, shadcn-ui
+- **Backend:** Express.js + AdminJS, plain JS, MySQL
+- **Payments:** Stripe (PaymentIntent, Checkout Session, Subscriptions)
+- **Auth:** Session-based via `express-session` with MySQL store
 
-## How can I edit this code?
+## Local Development
 
-There are several ways of editing your application.
+### Prerequisites
 
-**Use CoworkingHub**
+- Node.js 20+ & npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- MySQL 8+ running locally
 
-Simply visit the CoworkingHub project and start working.
-
-Changes made in the project should be committed to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### 1. Clone & install
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+cd city-focus-hub
+npm install
+cd adminjs && npm install && cd ..
 ```
 
-## Local development with AdminJS + Express + MySQL
-
-### 1. Start MySQL
+### 2. Start MySQL
 
 ```sh
 brew services start mysql
 ```
 
-### 2. Create the local content database (one-time)
+### 3. Create the database (one-time)
 
 ```sh
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS city_focus_hub_admin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-### 3. Run backend
+### 4. Configure environment
+
+```sh
+# Backend
+cp adminjs/.env.example adminjs/.env
+# Edit adminjs/.env with your DB credentials, Stripe keys, etc.
+
+# Frontend
+cp .env.example .env.local
+# Edit .env.local if needed
+```
+
+### 5. Run backend (port 3001)
 
 ```sh
 npm run adminjs:dev
 ```
 
-Backend admin: `http://localhost:3001/admin`
+- Admin panel: http://localhost:3001/admin
+- API: http://localhost:3001/api/
 
-### 4. Run frontend
+### 6. Run frontend (port 8080)
 
 ```sh
-cp .env.example .env.local
 npm run dev
-hi
 ```
 
-Frontend: `http://localhost:8080`
+- Frontend: http://localhost:8080
 
-**Edit a file directly in GitHub**
+> The Astro dev server is configured to run on port **8080** (see `astro.config.mjs`).
+> The Vite proxy forwards `/api`, `/uploads`, `/admin`, and `/admin-assets` to the backend at `:3001`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Running Tests
 
-**Use GitHub Codespaces**
+### Unit tests (Vitest)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```sh
+npm test
+```
 
-## What technologies are used for this project?
+### E2E tests (Playwright)
 
-This project is built with:
+E2E tests require **all three services running** before you start:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. MySQL on `localhost:3306`
+2. Backend on `localhost:3001` (`npm run adminjs:dev`)
+3. Frontend on `localhost:8080` (`npm run dev`)
 
-## How can I deploy this project?
+Then run:
 
-Deploy using your preferred hosting platform after running a production build.
+```sh
+# Install Playwright browsers (one-time)
+npx playwright install chromium
 
-## Can I connect a custom domain to this project?
+# Run all e2e tests
+npm run test:e2e
+```
 
-Yes, you can!
+**What the E2E tests cover:**
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+| File | What it tests |
+|------|---------------|
+| `e2e/smoke.spec.ts` | Every frontend page returns **HTTP 200** with **no console errors** (12 static pages, 5 blog posts, 3 meeting room booking pages, plus 404 handling) |
+| `e2e/api.spec.ts` | All backend API endpoints return expected status codes (CMS pages, collections, auth, member portal, Stripe webhook, health check) |
 
-Read your hosting provider docs for custom domain setup.
+## Project Structure
+
+```
+city-focus-hub/
+  adminjs/              # Backend — Express + AdminJS + MySQL
+    src/
+      services/         # Business logic (bookings, memberships, payments, etc.)
+      server.js         # Express app setup
+      config.js         # Environment config
+      bootstrap-*.js    # DB schema + seed data
+      member-portal-api.js  # Member-facing API routes
+      public-api.js     # Public API routes (CMS, contact, guest booking)
+  src/                  # Frontend — Astro + React
+    pages/              # Astro SSG pages
+    pages-react/        # React SPA pages (Dashboard, Auth, MeetingRoomBooking)
+    components/         # Shared React components
+    lib/                # API client, utilities
+    context/            # React context (Auth)
+    hooks/              # Custom hooks (CMS content)
+  e2e/                  # Playwright E2E tests
+  public/cms/           # Static CMS JSON snapshots
+```
+
+## Deployment
+
+Run a production build:
+
+```sh
+npx astro build
+```
+
+The static output goes to `dist/`. Deploy using your preferred static hosting (Netlify, Vercel, S3, etc.). The backend must be deployed separately as a Node.js server.

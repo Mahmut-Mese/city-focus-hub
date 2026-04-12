@@ -14,7 +14,6 @@ import {
   LoaderCircle,
   LogOut,
   Mail,
-  MapPin,
   Phone,
   Receipt,
   Settings,
@@ -28,7 +27,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
+   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -49,8 +48,10 @@ import { defaultSiteSettingsContent } from '@/data/siteContent';
 import {
   cancelMemberMembership,
   cancelMemberMembershipAdjustment,
+  cancelMemberScheduledDowngrade,
   cancelMemberBookingAdjustment,
   cancelMemberBookingPayment,
+  cancelMemberBooking,
   changeMemberPassword,
   changeMemberPlan,
   confirmMemberBookingAdjustmentPayment,
@@ -67,6 +68,7 @@ import {
   syncMemberMembershipAdjustmentCheckoutSession,
   syncMemberMembershipCheckoutSession,
   updateMemberBooking,
+  updateMemberProfile,
   type BookingPaymentDraft,
   type MemberBooking,
   type MemberDashboardPayload,
@@ -75,6 +77,7 @@ import {
   type MembershipPaymentDraft,
   type MembershipPlanChangePreview,
   type MembershipPlan,
+  type MemberUser,
 } from '@/lib/member-api';
 import { downloadInvoicePdf } from '@/lib/generate-invoice-pdf';
 import { useSeo } from '@/lib/seo';
@@ -101,6 +104,12 @@ type PasswordFormState = {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+};
+
+type ProfileFormState = {
+  name: string;
+  email: string;
+  phone: string;
 };
 
 const dashboardNavItems: DashboardNavItem[] = [
@@ -251,9 +260,9 @@ function DashboardFooter() {
       <div className="mx-auto max-w-[1240px] px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <Link to="/" className="inline-flex items-center gap-3">
+            <a href="/" className="inline-flex items-center gap-3">
               <img src={footer.logoUrl} alt={defaultSiteSettingsContent.siteName} className="h-9 w-auto" />
-            </Link>
+            </a>
             <p className="mt-4 max-w-xs text-sm leading-7 text-white/65">Space to work, connect, focus.</p>
           </div>
 
@@ -261,9 +270,9 @@ function DashboardFooter() {
             <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Services</h3>
             <div className="mt-5 space-y-3 text-sm text-white/80">
               {footer.serviceLinks.slice(0, 3).map((link) => (
-                <Link key={link.name} to={link.path} className="block transition-colors hover:text-white">
+                <a key={link.name} href={link.path} className="block transition-colors hover:text-white">
                   {link.name}
-                </Link>
+                </a>
               ))}
             </div>
           </div>
@@ -271,9 +280,9 @@ function DashboardFooter() {
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Company</h3>
             <div className="mt-5 space-y-3 text-sm text-white/80">
-              <Link to="/about" className="block transition-colors hover:text-white">About</Link>
-              <Link to="/contact" className="block transition-colors hover:text-white">Contact</Link>
-              <Link to="/terms" className="block transition-colors hover:text-white">Terms & Conditions</Link>
+              <a href="/about" className="block transition-colors hover:text-white">About</a>
+              <a href="/contact" className="block transition-colors hover:text-white">Contact</a>
+              <a href="/terms" className="block transition-colors hover:text-white">Terms & Conditions</a>
             </div>
           </div>
 
@@ -290,8 +299,8 @@ function DashboardFooter() {
         <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-white/55 sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; 2026 Coworking Hub</p>
           <div className="flex items-center gap-6">
-            <Link to="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link>
-            <Link to="/terms" className="transition-colors hover:text-white">Cookie Policy</Link>
+            <a href="/privacy" className="transition-colors hover:text-white">Privacy Policy</a>
+            <a href="/terms" className="transition-colors hover:text-white">Cookie Policy</a>
           </div>
         </div>
       </div>
@@ -428,7 +437,10 @@ function DashboardBookingDialog({
   onChange,
   onSubmit,
   submitLabel,
+  cancelLabel = 'Cancel',
   isSubmitting,
+  booking,
+  onCancelBooking,
 }: {
   open: boolean;
   title: string;
@@ -439,8 +451,13 @@ function DashboardBookingDialog({
   onChange: (field: keyof BookingFormState, value: string) => void;
   onSubmit: () => void;
   submitLabel: string;
+  cancelLabel?: string;
   isSubmitting: boolean;
+  booking?: MemberBooking | null;
+  onCancelBooking?: (booking: MemberBooking) => Promise<void>;
 }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isRefundLoading, setIsRefundLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedHours, setSelectedHours] = useState<string[]>([]);
   const [daySlotAvailability, setDaySlotAvailability] = useState<Map<string, boolean>>(new Map());
@@ -457,6 +474,7 @@ function DashboardBookingDialog({
       setSelectedDate('');
       setSelectedHours([]);
       setDaySlotAvailability(new Map());
+      setIsConfirming(false);
       return;
     }
 
@@ -478,8 +496,10 @@ function DashboardBookingDialog({
       }
     }
 
-    // Default to today for create mode
-    setSelectedDate(formatBookingDateValue(new Date()));
+    // Default to today for create mode (only if a resource is already selected)
+    if (formState.resourceId) {
+      setSelectedDate(formatBookingDateValue(new Date()));
+    }
     setSelectedHours([]);
   }, [open, formState.startAt, formState.endAt]);
 
@@ -522,12 +542,14 @@ function DashboardBookingDialog({
 
           if (resourceId) {
             const match = resources.find((r) => String(r.id) === resourceId);
-            newAvailability.set(time, match ? match.available !== false : true);
+            newAvailability.set(time, match ? match.available !== false : false);
           } else {
-            newAvailability.set(time, true);
+            // No resource selected — check if ANY resource is available for this slot
+            const anyAvailable = resources.some((r) => r.available !== false);
+            newAvailability.set(time, anyAvailable);
           }
         } catch {
-          newAvailability.set(time, true);
+          newAvailability.set(time, false);
         }
       });
 
@@ -549,6 +571,10 @@ function DashboardBookingDialog({
     if (!open) return;
     setSelectedHours([]);
     setDaySlotAvailability(new Map());
+    // Auto-set date to today when resource is first selected (progressive disclosure)
+    if (formState.resourceId && !selectedDate) {
+      setSelectedDate(formatBookingDateValue(new Date()));
+    }
   }, [formState.resourceId, open]);
 
   useEffect(() => {
@@ -575,11 +601,11 @@ function DashboardBookingDialog({
       return {
         time,
         label: formatBookingHourLabel(time),
-        available: !isPast && !!formState.resourceId && available,
+        available: !isPast && available,
         isPast,
       };
     });
-  }, [selectedDate, daySlotAvailability, formState.resourceId]);
+  }, [selectedDate, daySlotAvailability]);
 
   // Handle clicking an hour slot: toggle, ensure selection stays consecutive
   const handleHourClick = useCallback((clickedTime: string, slotAvailable: boolean) => {
@@ -664,9 +690,49 @@ function DashboardBookingDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[28px] border-black/10 bg-[#fbfaf8] p-0">
+        {isConfirming && booking && onCancelBooking ? (
+          <div className="p-6 sm:p-7">
+            <DialogHeader className="space-y-3 text-left">
+              <DialogTitle className="text-[1.5rem] font-semibold tracking-tight text-black">Request a refund?</DialogTitle>
+              <DialogDescription className="text-base text-black/50">
+                Your booking for <strong>{booking.resourceName}</strong> on{' '}
+                <strong>{formatDate(booking.startAt, { weekday: 'long', day: 'numeric', month: 'long' })}</strong>{' '}
+                will be submitted for a full refund of{' '}
+                <strong>{formatCurrency(booking.totalMinor, booking.currency)}</strong>.
+                Our team will review and approve your request — you'll receive a confirmation email once processed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button
+                variant="secondary"
+                disabled={isRefundLoading}
+                onClick={() => setIsConfirming(false)}
+                className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-medium text-black hover:bg-[#f3f2ef]"
+              >
+                Keep booking
+              </Button>
+              <Button
+                disabled={isRefundLoading}
+                onClick={async () => {
+                  setIsRefundLoading(true);
+                  try {
+                    await onCancelBooking(booking);
+                    setIsConfirming(false);
+                    onOpenChange(false);
+                  } finally {
+                    setIsRefundLoading(false);
+                  }
+                }}
+                className="h-11 rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700"
+              >
+                {isRefundLoading ? 'Submitting…' : 'Yes, request refund'}
+              </Button>
+            </div>
+          </div>
+        ) : (
         <div className="p-6 sm:p-7">
           <DialogHeader className="space-y-3 text-left">
-            <DialogTitle className="text-[2rem] font-semibold tracking-tight text-black">{title}</DialogTitle>
+            <DialogTitle className="text-[1.5rem] font-semibold tracking-tight text-black">{title}</DialogTitle>
             <DialogDescription className="text-base text-black/50">{description}</DialogDescription>
           </DialogHeader>
 
@@ -687,26 +753,32 @@ function DashboardBookingDialog({
                   </option>
                 ))}
               </select>
+              {!formState.resourceId && (
+                <p className="text-xs text-black/40">Select a room to see available dates and times.</p>
+              )}
             </div>
 
-            {/* Inline Calendar */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Select a date</Label>
-              <div className="rounded-2xl border border-black/10 bg-white p-2 sm:p-3">
-                <Calendar
-                  mode="single"
-                  size="large"
-                  selected={selectedCalendarDate}
-                  onSelect={handleDateSelect}
-                  disabled={{ before: today }}
-                  fromMonth={today}
-                  className="w-full"
-                />
+            {/* Inline Calendar — only visible after resource is selected */}
+            {formState.resourceId ? (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Select a date</Label>
+                <div className="rounded-2xl border border-black/10 bg-white p-2 sm:p-3">
+                  <Calendar
+                    mode="single"
+                    size="large"
+                    selected={selectedCalendarDate}
+                    onSelect={handleDateSelect}
+                    disabled={{ before: today }}
+                    fromMonth={today}
+                    className="w-full"
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            {/* Time Slots - Vertical list, multi-select consecutive hours */}
-            <div className="space-y-2">
+            {/* Time Slots — only visible after resource AND date are selected */}
+            {formState.resourceId && selectedDate ? (
+              <>
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Select your hours</Label>
                 {isDaySlotsLoading ? (
@@ -731,7 +803,7 @@ function DashboardBookingDialog({
               <p className="text-xs text-black/50">
                 {formState.resourceId
                   ? 'Click hours to select them. You can pick multiple consecutive hours.'
-                  : 'Select a resource first, then choose available hours.'}
+                  : 'Showing general availability. Select a room to see exact room availability.'}
               </p>
 
               <div className="flex flex-col gap-1 rounded-2xl border border-black/10 bg-white p-2.5 sm:p-3 max-h-[280px] overflow-y-auto">
@@ -843,7 +915,8 @@ function DashboardBookingDialog({
                   </button>
                 </div>
               ) : null}
-            </div>
+              </>
+            ) : null}
 
             {/* Purpose & Notes */}
             <div className="grid gap-4 sm:grid-cols-2">
@@ -872,12 +945,37 @@ function DashboardBookingDialog({
           </div>
 
           <DialogFooter className="mt-6 gap-3 sm:justify-end">
+            {booking && onCancelBooking && booking.status === 'confirmed' && !booking.refundRequestStatus && (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setIsConfirming(true)}
+                className="h-11 rounded-full border border-red-200 bg-white px-5 text-sm font-medium text-red-600 hover:bg-red-50 sm:mr-auto"
+              >
+                Cancel &amp; request refund
+              </Button>
+            )}
+            {booking?.refundRequestStatus === 'pending' && (
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 sm:mr-auto">
+                ⏳ Refund pending admin approval
+              </span>
+            )}
+            {booking?.refundRequestStatus === 'approved' && (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 sm:mr-auto">
+                ✓ Refund approved
+              </span>
+            )}
+            {booking?.refundRequestStatus === 'rejected' && (
+              <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 sm:mr-auto">
+                ✕ Refund request declined
+              </span>
+            )}
             <Button
               variant="secondary"
               onClick={() => onOpenChange(false)}
               className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-medium text-black hover:bg-[#f3f2ef]"
             >
-              Cancel
+              {cancelLabel}
             </Button>
             <Button
               onClick={onSubmit}
@@ -889,6 +987,7 @@ function DashboardBookingDialog({
             </Button>
           </DialogFooter>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -899,19 +998,69 @@ function BookingDetailsDialog({
   open,
   onOpenChange,
   onEdit,
+  onCancelBooking,
 }: {
   booking: MemberBooking | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (booking: MemberBooking) => void;
+  onCancelBooking: (booking: MemberBooking) => Promise<void>;
 }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isRefundLoading, setIsRefundLoading] = useState(false);
+
+  // Reset confirmation view when dialog closes
+  useEffect(() => {
+    if (!open) setIsConfirming(false);
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl rounded-[28px] border-black/10 bg-[#fbfaf8] p-0">
         {booking ? (
+          isConfirming ? (
+            <div className="p-6 sm:p-7">
+              <DialogHeader className="space-y-3 text-left">
+                <DialogTitle className="text-[1.5rem] font-semibold tracking-tight text-black">Request a refund?</DialogTitle>
+                <DialogDescription className="text-base text-black/50">
+                  Your booking for <strong>{booking.resourceName}</strong> on{' '}
+                  <strong>{formatDate(booking.startAt, { weekday: 'long', day: 'numeric', month: 'long' })}</strong>{' '}
+                  will be submitted for a full refund of{' '}
+                  <strong>{formatCurrency(booking.totalMinor, booking.currency)}</strong>.
+                  Our team will review and approve your request — you'll receive a confirmation email once processed.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  variant="secondary"
+                  disabled={isRefundLoading}
+                  onClick={() => setIsConfirming(false)}
+                  className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-medium text-black hover:bg-[#f3f2ef]"
+                >
+                  Keep booking
+                </Button>
+                <Button
+                  disabled={isRefundLoading}
+                  onClick={async () => {
+                    setIsRefundLoading(true);
+                    try {
+                      await onCancelBooking(booking);
+                      setIsConfirming(false);
+                      onOpenChange(false);
+                    } finally {
+                      setIsRefundLoading(false);
+                    }
+                  }}
+                  className="h-11 rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700"
+                >
+                  {isRefundLoading ? 'Submitting…' : 'Yes, request refund'}
+                </Button>
+              </div>
+            </div>
+          ) : (
           <div className="p-6 sm:p-7">
             <DialogHeader className="space-y-3 text-left">
-              <DialogTitle className="text-[2rem] font-semibold tracking-tight text-black">{booking.resourceName}</DialogTitle>
+              <DialogTitle className="text-[1.5rem] font-semibold tracking-tight text-black">{booking.resourceName}</DialogTitle>
               <DialogDescription className="text-base text-black/50">
                 Booking details and payment summary for this reservation.
               </DialogDescription>
@@ -946,6 +1095,11 @@ function BookingDetailsDialog({
                 <div className="rounded-[24px] border border-black/10 bg-white p-5">
                   <p className="text-sm text-black/45">Payment status</p>
                   <p className="mt-2 text-lg font-semibold tracking-tight text-black">{booking.status}</p>
+                  {booking.refundRequestStatus && (
+                    <p className="mt-1 text-sm text-black/50">
+                      Refund: {booking.refundRequestStatus === 'pending' ? '⏳ Pending admin approval' : booking.refundRequestStatus === 'approved' ? '✓ Approved' : booking.refundRequestStatus === 'rejected' ? '✕ Declined' : booking.refundRequestStatus}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -960,7 +1114,14 @@ function BookingDetailsDialog({
               </div>
             </div>
 
-            <DialogFooter className="mt-6 gap-3 sm:justify-end">
+            <DialogFooter className="mt-6 gap-3 sm:justify-start sm:flex-row-reverse">
+              <Button
+                onClick={() => onEdit(booking)}
+                disabled={booking.status === 'canceled'}
+                className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
+              >
+                Edit booking
+              </Button>
               <Button
                 variant="secondary"
                 onClick={() => onOpenChange(false)}
@@ -968,14 +1129,33 @@ function BookingDetailsDialog({
               >
                 Close
               </Button>
-              <Button
-                onClick={() => onEdit(booking)}
-                className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
-              >
-                Edit booking
-              </Button>
+              {booking.status === 'confirmed' && !booking.refundRequestStatus && (
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsConfirming(true)}
+                  className="h-11 rounded-full border border-red-200 bg-white px-5 text-sm font-medium text-red-600 hover:bg-red-50 sm:mr-auto"
+                >
+                  Cancel &amp; request refund
+                </Button>
+              )}
+              {booking.refundRequestStatus === 'pending' && (
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 sm:mr-auto">
+                  ⏳ Refund pending admin approval
+                </span>
+              )}
+              {booking.refundRequestStatus === 'approved' && (
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 sm:mr-auto">
+                  ✓ Refund approved
+                </span>
+              )}
+              {booking.refundRequestStatus === 'rejected' && (
+                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 sm:mr-auto">
+                  ✕ Refund request declined
+                </span>
+              )}
             </DialogFooter>
           </div>
+          )
         ) : null}
       </DialogContent>
     </Dialog>
@@ -996,7 +1176,7 @@ function PlanChangeDialog({
   onConfirm: () => void;
 }) {
   const immediateAmountMinor = Math.max(0, preview?.settlement.paymentDueMinor ?? 0);
-  const immediateRefundMinor = Math.max(0, preview?.settlement.refundMinor ?? 0);
+  const isDowngrade = preview ? preview.nextPlan.monthlyPriceMinor < preview.currentPlan.monthlyPriceMinor : false;
   const currency = preview?.settlement.currency || preview?.preview.currency || preview?.nextPlan.currency || 'gbp';
 
   return (
@@ -1005,9 +1185,13 @@ function PlanChangeDialog({
         {preview ? (
           <div className="p-6 sm:p-7">
             <DialogHeader className="space-y-3 text-left">
-              <DialogTitle className="text-[2rem] font-semibold tracking-tight text-black">Confirm plan change</DialogTitle>
+              <DialogTitle className="text-[1.5rem] font-semibold tracking-tight text-black">
+                {isDowngrade ? 'Confirm downgrade' : 'Confirm plan change'}
+              </DialogTitle>
               <DialogDescription className="text-base text-black/50">
-                The plan change takes effect immediately. Any extra amount is collected now, and any downgrade difference is sent back as a refund request.
+                {isDowngrade
+                  ? `You'll keep your current plan benefits until the end of this billing period. Your plan then switches to ${preview.nextPlan.name} and you'll be billed the new rate.`
+                  : 'The plan change takes effect immediately. Any extra amount is collected now.'}
               </DialogDescription>
             </DialogHeader>
 
@@ -1028,20 +1212,20 @@ function PlanChangeDialog({
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="rounded-[24px] border border-black/10 bg-white p-5">
                 <p className="text-sm text-black/45">
-                  {immediateRefundMinor > 0 && immediateAmountMinor <= 0 ? 'Refund today' : 'Charge today'}
+                  {isDowngrade ? 'Charge today' : 'Charge today'}
                 </p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-black">
-                  {immediateAmountMinor > 0
-                    ? formatCurrency(immediateAmountMinor, currency)
-                    : immediateRefundMinor > 0
-                      ? formatCurrency(immediateRefundMinor, currency)
+                  {isDowngrade
+                    ? '£0.00'
+                    : immediateAmountMinor > 0
+                      ? formatCurrency(immediateAmountMinor, currency)
                       : '£0.00'}
                 </p>
                 <p className="mt-2 text-sm text-black/50">
-                  {immediateAmountMinor > 0
-                    ? 'Prorated amount required before the upgrade is applied.'
-                    : immediateRefundMinor > 0
-                      ? 'A prorated refund request will be issued after the downgrade is applied.'
+                  {isDowngrade
+                    ? 'No charge or refund. You keep your current plan until the period ends.'
+                    : immediateAmountMinor > 0
+                      ? 'Prorated amount required before the upgrade is applied.'
                       : 'No extra charge right now. The change still updates recurring billing.'}
                 </p>
               </div>
@@ -1052,27 +1236,31 @@ function PlanChangeDialog({
                   {formatCurrency(preview.nextPlan.monthlyPriceMinor, preview.nextPlan.currency)}
                 </p>
                 <p className="mt-2 text-sm text-black/50">
-                  Renewing monthly after the current billing period.
+                  {isDowngrade
+                    ? `Starting ${formatDate(preview.preview.periodEnd)}.`
+                    : 'Renewing monthly after the current billing period.'}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 rounded-[24px] border border-black/10 bg-white p-5">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">Subtotal</p>
-                  <p className="mt-2 text-base font-semibold text-black">{formatCurrency(preview.preview.subtotalMinor, currency)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">VAT</p>
-                  <p className="mt-2 text-base font-semibold text-black">{formatCurrency(preview.preview.taxMinor, currency)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">Invoice total</p>
-                  <p className="mt-2 text-base font-semibold text-black">{formatCurrency(preview.preview.totalMinor, currency)}</p>
+            {!isDowngrade ? (
+              <div className="mt-4 rounded-[24px] border border-black/10 bg-white p-5">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">Subtotal</p>
+                    <p className="mt-2 text-base font-semibold text-black">{formatCurrency(preview.preview.subtotalMinor, currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">VAT</p>
+                    <p className="mt-2 text-base font-semibold text-black">{formatCurrency(preview.preview.taxMinor, currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/40">Invoice total</p>
+                    <p className="mt-2 text-base font-semibold text-black">{formatCurrency(preview.preview.totalMinor, currency)}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
             <DialogFooter className="mt-6 gap-3 sm:justify-end">
               <Button
@@ -1088,7 +1276,9 @@ function PlanChangeDialog({
                 className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
               >
                 {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
-                {immediateAmountMinor > 0 ? 'Pay and change plan' : 'Confirm plan change'}
+                {isDowngrade
+                  ? 'Schedule downgrade'
+                  : immediateAmountMinor > 0 ? 'Pay and change plan' : 'Confirm plan change'}
               </Button>
             </DialogFooter>
           </div>
@@ -1238,11 +1428,19 @@ function BookingPaymentPanel({
       return;
     }
 
-    const result = await stripeRef.current.confirmCardPayment(paymentDraft?.clientSecret || '', {
-      payment_method: {
-        card: cardElement,
-      },
-    });
+    // #114: Wrap confirmCardPayment in try/catch — network failures or unexpected
+    // Stripe SDK errors can throw JS exceptions that the result.error path does not catch.
+    let result: Awaited<ReturnType<typeof stripeRef.current.confirmCardPayment>>;
+    try {
+      result = await stripeRef.current.confirmCardPayment(paymentDraft?.clientSecret || '', {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+    } catch (err) {
+      setElementError(err instanceof Error ? err.message : 'Payment could not be completed.');
+      return;
+    }
 
     if (result.error) {
       setElementError(result.error.message || 'Payment could not be completed.');
@@ -1266,7 +1464,7 @@ function BookingPaymentPanel({
       <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <p className="text-sm text-black/45">Payment required</p>
-          <h2 className="mt-2 text-[2rem] font-semibold tracking-tight">Complete booking payment</h2>
+          <h2 className="mt-2 text-[1.5rem] font-semibold tracking-tight">Complete booking payment</h2>
           <p className="mt-3 max-w-2xl text-base text-black/50">
             Enter card details below to confirm this reservation without leaving the dashboard.
           </p>
@@ -1506,11 +1704,19 @@ function MembershipPaymentPanel({
       return;
     }
 
-    const result = await stripeRef.current.confirmCardPayment(paymentDraft?.clientSecret || '', {
-      payment_method: {
-        card: cardElement,
-      },
-    });
+    // #114: Wrap confirmCardPayment in try/catch — network failures or unexpected
+    // Stripe SDK errors can throw JS exceptions that the result.error path does not catch.
+    let result: Awaited<ReturnType<typeof stripeRef.current.confirmCardPayment>>;
+    try {
+      result = await stripeRef.current.confirmCardPayment(paymentDraft?.clientSecret || '', {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+    } catch (err) {
+      setElementError(err instanceof Error ? err.message : 'Payment could not be completed.');
+      return;
+    }
 
     if (result.error) {
       setElementError(result.error.message || 'Payment could not be completed.');
@@ -1534,7 +1740,7 @@ function MembershipPaymentPanel({
       <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <p className="text-sm text-black/45">Payment required</p>
-          <h2 className="mt-2 text-[2rem] font-semibold tracking-tight">Complete membership payment</h2>
+          <h2 className="mt-2 text-[1.5rem] font-semibold tracking-tight">Complete membership payment</h2>
           <p className="mt-3 max-w-2xl text-base text-black/50">
             Enter card details below to activate your membership without leaving the dashboard.
           </p>
@@ -1625,6 +1831,79 @@ function MembershipPaymentPanel({
   );
 }
 
+// #118: Shared hook to handle Stripe checkout return URLs — replaces 4 identical useEffect blocks.
+// Each checkout flow has a different URL param, sync function, cancel handler, and success message.
+function useCheckoutSync({
+  user,
+  location,
+  navigate,
+  paramName,
+  syncFn,
+  cancelMessage,
+  onCancel,
+  onSuccess,
+  onSyncStart,
+  onSyncEnd,
+  onError,
+}: {
+  user: ReturnType<typeof useAuth>['user'];
+  location: ReturnType<typeof useLocation>;
+  navigate: ReturnType<typeof useNavigate>;
+  paramName: string;
+  syncFn: (sessionId: string) => Promise<unknown>;
+  cancelMessage: string;
+  onCancel?: () => void;
+  onSuccess: () => Promise<void>;
+  onSyncStart: () => void;
+  onSyncEnd: () => void;
+  onError: (message: string) => void;
+}) {
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    const checkoutStatus = searchParams.get(paramName);
+    const sessionId = searchParams.get('session_id');
+
+    if (checkoutStatus === 'cancel') {
+      onError(cancelMessage);
+      onCancel?.();
+      navigate(location.pathname, { replace: true });
+      return;
+    }
+
+    if (checkoutStatus !== 'success' || !sessionId) {
+      return;
+    }
+
+    let active = true;
+    onSyncStart();
+    onError('');
+
+    void syncFn(sessionId)
+      .then(async () => {
+        if (!active) return;
+        await onSuccess();
+      })
+      .catch((error) => {
+        if (!active) return;
+        onError(error instanceof Error ? error.message : `Failed to sync ${paramName} checkout session.`);
+      })
+      .finally(() => {
+        if (!active) return;
+        onSyncEnd();
+        navigate(location.pathname, { replace: true });
+      });
+
+    return () => {
+      active = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, navigate, user?.id]);
+}
+
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1636,6 +1915,9 @@ export default function Dashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const successRef = useRef<HTMLDivElement>(null);
+  const paymentPanelRef = useRef<HTMLDivElement>(null);
+  const skipNextSectionClear = useRef(false);
   const [selectedBooking, setSelectedBooking] = useState<MemberBooking | null>(null);
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
   const [isEditBookingOpen, setIsEditBookingOpen] = useState(false);
@@ -1653,6 +1935,13 @@ export default function Dashboard() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({
+    name: '',
+    email: '',
+    phone: '',
+  });
+  const [isProfileEditing, setIsProfileEditing] = useState(false);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [bookingForm, setBookingForm] = useState<BookingFormState>({
     bookingId: null,
     resourceId: '',
@@ -1682,6 +1971,11 @@ export default function Dashboard() {
     try {
       const payload = await getMemberDashboard();
       setDashboardData(payload);
+      setProfileForm({
+        name: payload.user.name || '',
+        email: payload.user.email || '',
+        phone: payload.user.phone || '',
+      });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to load dashboard.');
     } finally {
@@ -1701,239 +1995,105 @@ export default function Dashboard() {
     }
   };
 
+  // #120: Depend on user.id (stable primitive) instead of the user object reference
+  // to avoid spurious dashboard re-fetches on every render.
   useEffect(() => {
     void refreshDashboard();
-  }, [user]);
+  }, [user?.id]);
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
+  // #118: Membership checkout return handler
+  useCheckoutSync({
+    user,
+    location,
+    navigate,
+    paramName: 'checkout',
+    syncFn: (sessionId) => syncMemberMembershipCheckoutSession(sessionId),
+    cancelMessage: 'Stripe checkout was canceled before the membership was created.',
+    onSuccess: async () => {
+      await refreshDashboard();
+      skipNextSectionClear.current = true;
+      navigate('/dashboard/billing');
+      setSuccessMessage('Membership activated successfully.');
+    },
+    onSyncStart: () => setIsCheckoutSyncing(true),
+    onSyncEnd: () => setIsCheckoutSyncing(false),
+    onError: setActionError,
+  });
 
-    const searchParams = new URLSearchParams(location.search);
-    const checkoutStatus = searchParams.get('checkout');
-    const sessionId = searchParams.get('session_id');
-
-    if (checkoutStatus === 'cancel') {
-      setActionError('Stripe checkout was canceled before the membership was created.');
-      navigate(location.pathname, { replace: true });
-      return;
-    }
-
-    if (checkoutStatus !== 'success' || !sessionId) {
-      return;
-    }
-
-    let active = true;
-    setIsCheckoutSyncing(true);
-    setActionError('');
-
-    void syncMemberMembershipCheckoutSession(sessionId)
-      .then(async () => {
-        if (!active) {
-          return;
-        }
-
-        await refreshDashboard();
-        setSuccessMessage('Membership activated successfully.');
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setActionError(error instanceof Error ? error.message : 'Failed to sync checkout session.');
-      })
-      .finally(() => {
-        if (!active) {
-          return;
-        }
-
-        setIsCheckoutSyncing(false);
-        navigate(location.pathname, { replace: true });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [location.pathname, location.search, navigate, user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    const searchParams = new URLSearchParams(location.search);
-    const checkoutStatus = searchParams.get('membership_adjustment');
-    const sessionId = searchParams.get('session_id');
-    const adjustmentId = Number(searchParams.get('adjustment_id') || 0);
-
-    if (checkoutStatus === 'cancel') {
-      setActionError('Stripe checkout was canceled before the membership change was completed.');
-
+  // #118: Membership upgrade checkout return handler
+  useCheckoutSync({
+    user,
+    location,
+    navigate,
+    paramName: 'membership_adjustment',
+    syncFn: (sessionId) => syncMemberMembershipAdjustmentCheckoutSession({ sessionId }),
+    cancelMessage: 'Stripe checkout was canceled before the membership change was completed.',
+    onCancel: () => {
+      const adjustmentId = Number(new URLSearchParams(location.search).get('adjustment_id') || 0);
       if (adjustmentId) {
         void cancelMemberMembershipAdjustment({ adjustmentId }).catch(() => {});
       }
+    },
+    onSuccess: async () => {
+      await refreshDashboard();
+      skipNextSectionClear.current = true;
+      navigate('/dashboard/billing');
+      setSuccessMessage('Membership upgraded and additional payment captured successfully.');
+    },
+    onSyncStart: () => setIsCheckoutSyncing(true),
+    onSyncEnd: () => setIsCheckoutSyncing(false),
+    onError: setActionError,
+  });
 
-      navigate(location.pathname, { replace: true });
-      return;
-    }
-
-    if (checkoutStatus !== 'success' || !sessionId) {
-      return;
-    }
-
-    let active = true;
-    setIsCheckoutSyncing(true);
-    setActionError('');
-
-    void syncMemberMembershipAdjustmentCheckoutSession({ sessionId })
-      .then(async () => {
-        if (!active) {
-          return;
-        }
-
-        await refreshDashboard();
-        setSuccessMessage('Membership upgraded and additional payment captured successfully.');
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setActionError(error instanceof Error ? error.message : 'Failed to sync membership adjustment checkout session.');
-      })
-      .finally(() => {
-        if (!active) {
-          return;
-        }
-
-        setIsCheckoutSyncing(false);
-        navigate(location.pathname, { replace: true });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [location.pathname, location.search, navigate, user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    const searchParams = new URLSearchParams(location.search);
-    const checkoutStatus = searchParams.get('booking_adjustment');
-    const sessionId = searchParams.get('session_id');
-    const adjustmentId = Number(searchParams.get('adjustment_id') || 0);
-
-    if (checkoutStatus === 'cancel') {
-      setActionError('Stripe checkout was canceled before the booking update was completed.');
-
+  // #118: Booking adjustment checkout return handler
+  useCheckoutSync({
+    user,
+    location,
+    navigate,
+    paramName: 'booking_adjustment',
+    syncFn: (sessionId) => syncMemberBookingAdjustmentCheckoutSession({ sessionId }),
+    cancelMessage: 'Stripe checkout was canceled before the booking update was completed.',
+    onCancel: () => {
+      const adjustmentId = Number(new URLSearchParams(location.search).get('adjustment_id') || 0);
       if (adjustmentId) {
         void cancelMemberBookingAdjustment({ adjustmentId }).catch(() => {});
       }
+    },
+    onSuccess: async () => {
+      await refreshDashboard();
+      skipNextSectionClear.current = true;
+      navigate('/dashboard/bookings');
+      setSuccessMessage('Booking updated and additional payment captured successfully.');
+    },
+    onSyncStart: () => setIsCheckoutSyncing(true),
+    onSyncEnd: () => setIsCheckoutSyncing(false),
+    onError: setActionError,
+  });
 
-      navigate(location.pathname, { replace: true });
-      return;
-    }
-
-    if (checkoutStatus !== 'success' || !sessionId) {
-      return;
-    }
-
-    let active = true;
-    setIsCheckoutSyncing(true);
-    setActionError('');
-
-    void syncMemberBookingAdjustmentCheckoutSession({ sessionId })
-      .then(async () => {
-        if (!active) {
-          return;
-        }
-
-        await refreshDashboard();
-        setSuccessMessage('Booking updated and additional payment captured successfully.');
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setActionError(error instanceof Error ? error.message : 'Failed to sync booking adjustment checkout session.');
-      })
-      .finally(() => {
-        if (!active) {
-          return;
-        }
-
-        setIsCheckoutSyncing(false);
-        navigate(location.pathname, { replace: true });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [location.pathname, location.search, navigate, user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    const searchParams = new URLSearchParams(location.search);
-    const checkoutStatus = searchParams.get('booking_checkout');
-    const sessionId = searchParams.get('session_id');
-    const bookingId = Number(searchParams.get('booking_id') || 0);
-
-    if (checkoutStatus === 'cancel') {
-      setActionError('Stripe checkout was canceled before the booking was completed.');
-
+  // #118: Booking checkout return handler
+  useCheckoutSync({
+    user,
+    location,
+    navigate,
+    paramName: 'booking_checkout',
+    syncFn: (sessionId) => syncMemberBookingCheckoutSession({ sessionId }),
+    cancelMessage: 'Stripe checkout was canceled before the booking was completed.',
+    onCancel: () => {
+      const bookingId = Number(new URLSearchParams(location.search).get('booking_id') || 0);
       if (bookingId) {
         void cancelMemberBookingPayment({ bookingId }).catch(() => {});
       }
-
-      navigate(location.pathname, { replace: true });
-      return;
-    }
-
-    if (checkoutStatus !== 'success' || !sessionId) {
-      return;
-    }
-
-    let active = true;
-    setIsCheckoutSyncing(true);
-    setActionError('');
-
-    void syncMemberBookingCheckoutSession({ sessionId })
-      .then(async () => {
-        if (!active) {
-          return;
-        }
-
-        await refreshDashboard();
-        setSuccessMessage('Booking created and paid successfully.');
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setActionError(error instanceof Error ? error.message : 'Failed to sync booking checkout session.');
-      })
-      .finally(() => {
-        if (!active) {
-          return;
-        }
-
-        setIsCheckoutSyncing(false);
-        navigate(location.pathname, { replace: true });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [location.pathname, location.search, navigate, user]);
+    },
+    onSuccess: async () => {
+      await refreshDashboard();
+      skipNextSectionClear.current = true;
+      navigate('/dashboard/bookings');
+      setSuccessMessage('Booking created and paid successfully.');
+    },
+    onSyncStart: () => setIsCheckoutSyncing(true),
+    onSyncEnd: () => setIsCheckoutSyncing(false),
+    onError: setActionError,
+  });
 
   useEffect(() => {
     if (isCreateBookingOpen || isEditBookingOpen) {
@@ -1941,22 +2101,52 @@ export default function Dashboard() {
     }
   }, [bookingForm.startAt, bookingForm.endAt, isCreateBookingOpen, isEditBookingOpen]);
 
+  // #116: Only seed availableResources from dashboardData when no booking dialog is open
+  // to avoid overwriting a fresh time-window-specific fetch with stale data.
   useEffect(() => {
-    if (dashboardData?.resources) {
+    if (!isCreateBookingOpen && !isEditBookingOpen && dashboardData?.resources) {
       setAvailableResources(dashboardData.resources);
     }
-  }, [dashboardData?.resources]);
+  }, [dashboardData?.resources, isCreateBookingOpen, isEditBookingOpen]);
 
+  // #117: Only close membership and details dialogs on error — do NOT close booking
+  // create/edit dialogs since the user's form input would be lost. Booking errors
+  // are shown inline in the dialog via the actionError banner.
   useEffect(() => {
     if (!actionError) {
       return;
     }
 
-    setIsCreateBookingOpen(false);
-    setIsEditBookingOpen(false);
     setIsDetailsOpen(false);
     setIsPlanChangeOpen(false);
   }, [actionError]);
+
+  // #115: Clear stale action messages when the user navigates between dashboard sections
+  // (skip if we just navigated programmatically after a success action)
+  useEffect(() => {
+    if (skipNextSectionClear.current) {
+      skipNextSectionClear.current = false;
+      return;
+    }
+    setActionError('');
+    setSuccessMessage('');
+  }, [currentSection]);
+
+  // Auto-scroll to top when success notification appears
+  useEffect(() => {
+    if (successMessage) {
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+    }
+  }, [successMessage]);
+
+  // Auto-scroll to payment panel when card form appears
+  useEffect(() => {
+    if ((membershipPaymentDraft || bookingPaymentDraft) && paymentPanelRef.current) {
+      setTimeout(() => {
+        paymentPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [membershipPaymentDraft, bookingPaymentDraft]);
 
   const membership = dashboardData?.membership || null;
   const plans = dashboardData?.plans || [];
@@ -1996,7 +2186,7 @@ export default function Dashboard() {
 
   const logoutAndLeave = () => {
     logout();
-    navigate('/');
+    window.location.href = '/';
   };
 
   const openCreateBookingDialog = () => {
@@ -2037,6 +2227,48 @@ export default function Dashboard() {
     setPasswordForm((current) => ({ ...current, [field]: value }));
   };
 
+  const handleProfileFormChange = (field: keyof ProfileFormState, value: string) => {
+    setProfileForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    if (!profileForm.name.trim()) {
+      setActionError('Name is required.');
+      return;
+    }
+
+    setIsProfileSaving(true);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      await updateMemberProfile({
+        name: profileForm.name.trim(),
+        email: profileForm.email.trim(),
+        phone: profileForm.phone.trim(),
+      });
+      await refreshDashboard();
+      setIsProfileEditing(false);
+      setSuccessMessage('Profile updated successfully.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to update profile.');
+    } finally {
+      setIsProfileSaving(false);
+    }
+  };
+
+  const handleCancelProfileEdit = () => {
+    setProfileForm({
+      name: dashboardData?.user.name || user?.name || '',
+      email: dashboardData?.user.email || user?.email || '',
+      phone: dashboardData?.user.phone || '',
+    });
+    setIsProfileEditing(false);
+    setActionError('');
+  };
+
   const handleCreateBooking = async () => {
     if (!user) {
       return;
@@ -2061,6 +2293,8 @@ export default function Dashboard() {
       if (!paymentDraft.booking || !paymentDraft.clientSecret) {
         await refreshDashboard();
         setIsCreateBookingOpen(false);
+        skipNextSectionClear.current = true;
+        navigate('/dashboard/bookings');
         setSuccessMessage('Booking created and paid successfully.');
         return;
       }
@@ -2092,6 +2326,8 @@ export default function Dashboard() {
         setBookingPaymentDraft(null);
         setPendingBookingAdjustmentId(null);
         await refreshDashboard();
+        skipNextSectionClear.current = true;
+        navigate('/dashboard/bookings');
         setSuccessMessage('Booking updated and payment completed successfully.');
       } else {
         // New booking payment confirmation
@@ -2101,6 +2337,8 @@ export default function Dashboard() {
         });
         setBookingPaymentDraft(null);
         await refreshDashboard();
+        skipNextSectionClear.current = true;
+        navigate('/dashboard/bookings');
         setSuccessMessage('Booking created and paid successfully.');
       }
     } catch (error) {
@@ -2154,12 +2392,16 @@ export default function Dashboard() {
         setPlanChangePreview(null);
         setPendingPlanSlug('');
         await refreshDashboard();
+        skipNextSectionClear.current = true;
+        navigate('/dashboard/billing');
         setSuccessMessage('Plan upgraded and payment completed successfully.');
       } else {
         // New membership payment confirmation
         await confirmMemberMembershipPayment(paymentIntentId);
         setMembershipPaymentDraft(null);
         await refreshDashboard();
+        skipNextSectionClear.current = true;
+        navigate('/dashboard/billing');
         setSuccessMessage('Membership activated successfully.');
       }
     } catch (error) {
@@ -2286,22 +2528,28 @@ export default function Dashboard() {
         return;
       }
 
-      // No payment needed (downgrade/refund/no-cost)
+      // No payment needed (downgrade scheduled / no-cost switch)
       await refreshDashboard();
       setIsPlanChangeOpen(false);
       setPlanChangePreview(null);
       setPendingPlanSlug('');
+      skipNextSectionClear.current = true;
+      navigate('/dashboard/billing');
 
-      const todayAmount = result.paymentDueMinor;
-      const refundAmount = result.refundMinor;
-      const settlementCurrency = planChangePreview.settlement.currency || planChangePreview.preview.currency;
-      setSuccessMessage(
-        todayAmount > 0
-          ? `Plan changed. Stripe charged ${formatCurrency(todayAmount, settlementCurrency)} today and recurring billing stays active.`
-          : refundAmount > 0
-            ? `Plan changed. A refund of ${formatCurrency(refundAmount, settlementCurrency)} has been requested.`
+      if (result.action === 'scheduled') {
+        const effectiveDate = result.effectiveDate ? formatDate(result.effectiveDate) : 'the end of your billing period';
+        setSuccessMessage(
+          `Your plan will change to ${result.scheduledPlanName || planChangePreview.nextPlan.name} on ${effectiveDate}. You keep your current plan benefits until then.`,
+        );
+      } else {
+        const todayAmount = result.paymentDueMinor;
+        const settlementCurrency = planChangePreview.settlement.currency || planChangePreview.preview.currency;
+        setSuccessMessage(
+          todayAmount > 0
+            ? `Plan changed. Stripe charged ${formatCurrency(todayAmount, settlementCurrency)} today and recurring billing stays active.`
             : `Plan changed. Recurring billing is now set to ${formatCurrency(planChangePreview.nextPlan.monthlyPriceMinor, planChangePreview.nextPlan.currency)} per month.`,
-      );
+        );
+      }
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to change membership plan.');
     } finally {
@@ -2326,6 +2574,38 @@ export default function Dashboard() {
       setActionError(error instanceof Error ? error.message : 'Failed to cancel membership.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCancelScheduledDowngrade = async () => {
+    if (!user) {
+      return;
+    }
+
+    setIsSaving(true);
+    setActionError('');
+    setSuccessMessage('');
+
+    try {
+      await cancelMemberScheduledDowngrade();
+      await refreshDashboard();
+      setSuccessMessage('Scheduled plan change has been cancelled. You will stay on your current plan.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to cancel scheduled downgrade.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelBooking = async (booking: MemberBooking) => {
+    setActionError('');
+    setSuccessMessage('');
+    try {
+      await cancelMemberBooking({ bookingId: booking.id });
+      await refreshDashboard();
+      setSuccessMessage('Your refund request has been submitted. Our team will review it and process your refund shortly — you\'ll receive a confirmation email once approved.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to submit refund request.');
     }
   };
 
@@ -2375,7 +2655,7 @@ export default function Dashboard() {
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <p className="text-sm text-black/45">Member dashboard</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Welcome back, {firstName}</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[2rem]">Welcome back, {firstName}</h1>
             <p className="mt-3 text-lg text-black/50">Your membership, bookings, invoices, and Stripe status are synced from the backend.</p>
           </div>
 
@@ -2414,7 +2694,7 @@ export default function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <DashboardCard>
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-[2rem] font-semibold tracking-tight">Upcoming bookings</h2>
+            <h2 className="text-[1.5rem] font-semibold tracking-tight">Upcoming bookings</h2>
             <Link to="/dashboard/bookings" className="text-sm font-medium text-black/50 transition-colors hover:text-black">View all</Link>
           </div>
           <div className="mt-5 space-y-4">
@@ -2458,58 +2738,62 @@ export default function Dashboard() {
 
         <DashboardCard>
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-[2rem] font-semibold tracking-tight">Membership details</h2>
+            <h2 className="text-[1.5rem] font-semibold tracking-tight">Membership details</h2>
             <span className="inline-flex rounded-full bg-black px-3 py-1.5 text-xs font-semibold capitalize text-white">
               {membership?.status || 'inactive'}
             </span>
           </div>
 
-          <div className="mt-5 rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
-            <h3 className="text-xl font-semibold tracking-tight">{membership?.planName || 'No active membership'}</h3>
-            <p className="mt-2 text-sm text-black/45">
-              {membership
-                ? `Current period ends ${formatDate(membership.currentPeriodEnd)}`
-                : 'Choose a plan from the billing page to start recurring billing.'}
-            </p>
-
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <div>
-                <p className="text-sm text-black/45">Monthly fee</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight">
-                  {membership ? formatCurrency(membership.monthlyPriceMinor, membership.currency) : '£0.00'}
+          {membership ? (
+            <>
+              <div className="mt-5 rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
+                <h3 className="text-xl font-semibold tracking-tight">{membership.planName}</h3>
+                <p className="mt-2 text-sm text-black/45">
+                  Current period ends {formatDate(membership.currentPeriodEnd)}
                 </p>
-              </div>
-              <div>
-                <p className="text-sm text-black/45">Next billing date</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight">{formatDate(membership?.currentPeriodEnd || null)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-black/45">Stripe mode</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight capitalize">{dashboardData?.stripe.mode || 'test'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-black/45">Publishable key</p>
-                <p className="mt-1 text-sm font-semibold tracking-tight text-black">
-                  {dashboardData?.stripe.publishableKey ? 'Configured' : 'Missing'}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <div className="mt-4 rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
-            <h3 className="text-xl font-semibold tracking-tight">Benefits</h3>
-            <div className="mt-5 space-y-4">
-              {(plans.find((plan) => plan.slug === membership?.planSlug)?.features || []).map((benefit) => (
-                <div key={benefit} className="flex items-center gap-3 text-base text-black/75">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-white">
-                    <Check size={14} />
-                  </span>
-                  <span>{benefit}</span>
+                <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-black/45">Monthly fee</p>
+                    <p className="mt-1 text-2xl font-semibold tracking-tight">
+                      {formatCurrency(membership.monthlyPriceMinor, membership.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-black/45">Next billing date</p>
+                    <p className="mt-1 text-2xl font-semibold tracking-tight">{formatDate(membership.currentPeriodEnd)}</p>
+                  </div>
                 </div>
-              ))}
-              {!membership ? <p className="text-sm text-black/50">Activate a plan to see included benefits.</p> : null}
+              </div>
+
+              <div className="mt-4 rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
+                <h3 className="text-xl font-semibold tracking-tight">Benefits</h3>
+                <div className="mt-5 space-y-4">
+                  {(plans.find((plan) => plan.slug === membership.planSlug)?.features || []).map((benefit) => (
+                    <div key={benefit} className="flex items-center gap-3 text-base text-black/75">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-white">
+                        <Check size={14} />
+                      </span>
+                      <span>{benefit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="mt-5 rounded-[24px] border border-dashed border-black/15 bg-[#fcfcfb] p-6 text-center">
+              <p className="text-lg font-semibold text-black/80">No active membership</p>
+              <p className="mt-2 text-sm text-black/50">
+                Choose a plan from the billing page to unlock meeting room credits, dedicated desks, and more.
+              </p>
+              <Button
+                onClick={() => navigate('/dashboard/billing')}
+                className="mt-4 h-10 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
+              >
+                View plans
+              </Button>
             </div>
-          </div>
+          )}
         </DashboardCard>
       </div>
     </div>
@@ -2518,15 +2802,13 @@ export default function Dashboard() {
   const renderBookings = () => (
     <div className="space-y-6">
       <DashboardCard>
-        <p className="text-sm text-black/45">My bookings</p>
-        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-[3rem]">Booking engine</h1>
-            <p className="mt-3 max-w-2xl text-lg text-black/50">
-              Availability is validated before a draft is reserved, then payment is collected directly inside the dashboard before the booking is confirmed.
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-black/45">My bookings</p>
+            <span className="text-sm text-black/20">/</span>
+            <h1 className="text-sm font-semibold">Booking engine</h1>
           </div>
-          <Button onClick={openCreateBookingDialog} className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90">
+          <Button onClick={openCreateBookingDialog} className="h-8 rounded-full bg-black px-4 text-xs font-medium text-white hover:bg-black/90">
             New booking
           </Button>
         </div>
@@ -2542,7 +2824,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm text-black/40 capitalize">{meta}</span>
               </div>
-              <p className="mt-6 text-[2rem] font-semibold leading-none tracking-tight">{value}</p>
+              <p className="mt-6 text-[1.5rem] font-semibold leading-none tracking-tight">{value}</p>
               <p className="mt-3 text-base text-black/50">{label}</p>
             </div>
           ))}
@@ -2551,7 +2833,7 @@ export default function Dashboard() {
 
       <DashboardCard>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-[2rem] font-semibold tracking-tight">Confirmed reservations</h2>
+          <h2 className="text-[1.5rem] font-semibold tracking-tight">Confirmed reservations</h2>
           <p className="text-sm text-black/45">{bookings.length} bookings</p>
         </div>
 
@@ -2571,9 +2853,29 @@ export default function Dashboard() {
                     {new Date(booking.startAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} - {new Date(booking.endAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   <p className="mt-1 text-sm text-black/45">{booking.location}</p>
+                  {booking.refundRequestStatus === 'pending' && (
+                    <span className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                      Refund pending approval
+                    </span>
+                  )}
+                  {booking.refundRequestStatus === 'approved' && (
+                    <span className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                      Refund approved
+                    </span>
+                  )}
+                  {booking.refundRequestStatus === 'rejected' && (
+                    <span className="mt-2 inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                      Refund request declined
+                    </span>
+                  )}
+                  {booking.status === 'canceled' && !booking.refundRequestStatus && (
+                    <span className="mt-2 inline-flex items-center rounded-full border border-black/10 bg-[#f3f2ef] px-2.5 py-0.5 text-xs font-medium text-black/50">
+                      Canceled
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  {booking.status !== 'canceled' ? (
+                  {booking.status !== 'canceled' && !booking.refundRequestStatus ? (
                     <Button
                       onClick={() => openEditBookingDialog(booking)}
                       variant="secondary"
@@ -2608,19 +2910,20 @@ export default function Dashboard() {
   const renderBilling = () => (
     <div className="space-y-6">
       <DashboardCard>
-        <p className="text-sm text-black/45">Billing</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Membership lifecycle</h1>
-        <p className="mt-3 max-w-2xl text-lg text-black/50">
-          Choose a plan to get started. Plan changes can collect extra payment or issue refunds, while recurring billing and invoice sync continue through Stripe subscriptions and webhooks.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-black/45">Billing</p>
+          <span className="text-sm text-black/20">/</span>
+          <h1 className="text-sm font-semibold">Membership lifecycle</h1>
+        </div>
       </DashboardCard>
 
       <DashboardCard>
         <div className="grid gap-4 lg:grid-cols-3">
           {plans.map((plan) => {
             const isCurrentPlan = membership?.planSlug === plan.slug;
+            const isScheduledPlan = membership?.scheduledPlanSlug === plan.slug;
             return (
-              <div key={plan.slug} className={cn('rounded-[24px] border p-5', isCurrentPlan ? 'border-black bg-[#f7f7f6]' : 'border-black/10 bg-white')}>
+              <div key={plan.slug} className={cn('rounded-[24px] border p-5', isCurrentPlan ? 'border-black bg-[#f7f7f6]' : isScheduledPlan ? 'border-blue-400 bg-blue-50/50' : 'border-black/10 bg-white')}>
                 <p className="text-sm text-black/45">{plan.slug.replace('-', ' ')}</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">{plan.name}</h2>
                 <p className="mt-2 text-sm text-black/55">{plan.description}</p>
@@ -2635,11 +2938,11 @@ export default function Dashboard() {
                 </div>
                 <div className="mt-6 flex gap-3">
                   <Button
-                    disabled={isSaving || isCurrentPlan}
+                    disabled={isSaving || isCurrentPlan || isScheduledPlan}
                     onClick={() => handleMembershipAction(plan)}
                     className="h-11 flex-1 rounded-full bg-black text-sm font-medium text-white hover:bg-black/90"
                   >
-                    {isCurrentPlan ? 'Current plan' : membership ? 'Change plan' : 'Get started'}
+                    {isCurrentPlan ? 'Current plan' : isScheduledPlan ? 'Switching soon' : membership ? 'Change plan' : 'Get started'}
                   </Button>
                 </div>
               </div>
@@ -2651,7 +2954,7 @@ export default function Dashboard() {
       <DashboardCard>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-[2rem] font-semibold tracking-tight">Active subscription</h2>
+            <h2 className="text-[1.5rem] font-semibold tracking-tight">Active subscription</h2>
             <p className="mt-2 text-sm text-black/50">
               {membership
                 ? `${membership.planName} • ${membership.status} • renews ${formatDate(membership.currentPeriodEnd)}`
@@ -2659,14 +2962,20 @@ export default function Dashboard() {
             </p>
           </div>
           {membership ? (
-            <Button
-              disabled={isSaving}
-              onClick={handleCancelMembership}
-              variant="secondary"
-              className="h-11 rounded-full border border-black/10 bg-[#f3f2ef] px-5 text-sm font-medium text-black hover:bg-[#eceae6]"
-            >
-              Cancel subscription
-            </Button>
+            membership.cancelAtPeriodEnd ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Membership cancelled — your access remains active until {formatDate(membership.currentPeriodEnd)}.
+              </div>
+            ) : (
+              <Button
+                disabled={isSaving}
+                onClick={handleCancelMembership}
+                variant="secondary"
+                className="h-11 rounded-full border border-black/10 bg-[#f3f2ef] px-5 text-sm font-medium text-black hover:bg-[#eceae6]"
+              >
+                Cancel subscription
+              </Button>
+            )
           ) : null}
         </div>
       </DashboardCard>
@@ -2676,11 +2985,11 @@ export default function Dashboard() {
   const renderInvoices = () => (
     <div className="space-y-6">
       <DashboardCard>
-        <p className="text-sm text-black/45">Invoices</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Invoice center</h1>
-        <p className="mt-3 max-w-2xl text-lg text-black/50">
-          Subscription invoices and booking charges are listed here after backend sync.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-black/45">Invoices</p>
+          <span className="text-sm text-black/20">/</span>
+          <h1 className="text-sm font-semibold">Invoice center</h1>
+        </div>
       </DashboardCard>
 
       <DashboardCard>
@@ -2726,60 +3035,116 @@ export default function Dashboard() {
   const renderProfile = () => (
     <div className="space-y-6">
       <DashboardCard>
-        <p className="text-sm text-black/45">Profile</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Member profile</h1>
-        <p className="mt-3 max-w-2xl text-lg text-black/50">
-          This account is backed by the member user service and controls dashboard access.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-black/45">Profile</p>
+          <span className="text-sm text-black/20">/</span>
+          <h1 className="text-sm font-semibold">Member profile</h1>
+        </div>
       </DashboardCard>
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <DashboardCard>
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#f2f1ee] text-xl font-semibold">
-              {user?.initials}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#f2f1ee] text-xl font-semibold">
+                {user?.initials}
+              </div>
+              <div>
+                <h2 className="text-[1.5rem] font-semibold tracking-tight">{dashboardData?.user.name || user?.name}</h2>
+                <p className="text-base capitalize text-black/45">{dashboardData?.user.accessStatus || user?.accessStatus || 'active'}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-[2rem] font-semibold tracking-tight">{user?.name}</h2>
-              <p className="text-base capitalize text-black/45">{dashboardData?.user.accessStatus || user?.accessStatus || 'active'}</p>
-            </div>
+            {!isProfileEditing && (
+              <Button
+                onClick={() => setIsProfileEditing(true)}
+                variant="outline"
+                className="h-10 rounded-full border-black/10 px-4 text-sm font-medium"
+              >
+                Edit
+              </Button>
+            )}
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center gap-3 rounded-[20px] border border-black/10 bg-[#fcfcfb] p-4">
-              <Mail size={18} className="text-black/55" />
-              <div>
-                <p className="text-sm text-black/45">Email</p>
-                <p className="text-base font-medium text-black">{user?.email}</p>
+          {isProfileEditing ? (
+            <div className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="profile-name">Name</Label>
+                <Input
+                  id="profile-name"
+                  type="text"
+                  value={profileForm.name}
+                  onChange={(e) => handleProfileFormChange('name', e.target.value)}
+                  className="h-11 rounded-2xl border-black/10 bg-white"
+                  placeholder="Your full name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-email">Email</Label>
+                <Input
+                  id="profile-email"
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => handleProfileFormChange('email', e.target.value)}
+                  className="h-11 rounded-2xl border-black/10 bg-white"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-phone">Phone</Label>
+                <Input
+                  id="profile-phone"
+                  type="tel"
+                  value={profileForm.phone}
+                  onChange={(e) => handleProfileFormChange('phone', e.target.value)}
+                  className="h-11 rounded-2xl border-black/10 bg-white"
+                  placeholder="+44 20 1234 5678"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  onClick={handleCancelProfileEdit}
+                  variant="outline"
+                  disabled={isProfileSaving}
+                  className="h-10 rounded-full border-black/10 px-5 text-sm font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveProfile}
+                  disabled={isProfileSaving}
+                  className="h-10 rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/90"
+                >
+                  {isProfileSaving ? <LoaderCircle className="mr-2 animate-spin" size={16} /> : null}
+                  Save changes
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[20px] border border-black/10 bg-[#fcfcfb] p-4">
-              <Phone size={18} className="text-black/55" />
-              <div>
-                <p className="text-sm text-black/45">Phone</p>
-                <p className="text-base font-medium text-black">+44 20 1234 5678</p>
+          ) : (
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center gap-3 rounded-[20px] border border-black/10 bg-[#fcfcfb] p-4">
+                <Mail size={18} className="text-black/55" />
+                <div>
+                  <p className="text-sm text-black/45">Email</p>
+                  <p className="text-base font-medium text-black">{user?.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-[20px] border border-black/10 bg-[#fcfcfb] p-4">
+                <Phone size={18} className="text-black/55" />
+                <div>
+                  <p className="text-sm text-black/45">Phone</p>
+                  <p className="text-base font-medium text-black">{dashboardData?.user.phone || 'Not set'}</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[20px] border border-black/10 bg-[#fcfcfb] p-4">
-              <MapPin size={18} className="text-black/55" />
-              <div>
-                <p className="text-sm text-black/45">Primary location</p>
-                <p className="text-base font-medium text-black">City Focus Hub, London</p>
-              </div>
-            </div>
-          </div>
+          )}
         </DashboardCard>
 
         <DashboardCard>
-          <h2 className="text-[2rem] font-semibold tracking-tight">Account state</h2>
+          <h2 className="text-[1.5rem] font-semibold tracking-tight">Account state</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
               <p className="text-sm text-black/45">Member access</p>
               <p className="mt-2 text-xl font-semibold tracking-tight capitalize">{dashboardData?.user.accessStatus || user?.accessStatus || 'active'}</p>
-            </div>
-            <div className="rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
-              <p className="text-sm text-black/45">Stripe publishable key</p>
-              <p className="mt-2 text-xl font-semibold tracking-tight">{dashboardData?.stripe.publishableKey ? 'Configured' : 'Missing'}</p>
             </div>
             <div className="rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
               <p className="text-sm text-black/45">Subscription status</p>
@@ -2788,6 +3153,10 @@ export default function Dashboard() {
             <div className="rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
               <p className="text-sm text-black/45">Current plan</p>
               <p className="mt-2 text-xl font-semibold tracking-tight">{membership?.planName || 'No active plan'}</p>
+            </div>
+            <div className="rounded-[24px] border border-black/10 bg-[#fcfcfb] p-5">
+              <p className="text-sm text-black/45">Member since</p>
+              <p className="mt-2 text-xl font-semibold tracking-tight">{dashboardData?.user ? formatDate(String((dashboardData.user as unknown as Record<string, unknown>).createdAt || '')) : '—'}</p>
             </div>
           </div>
         </DashboardCard>
@@ -2798,15 +3167,15 @@ export default function Dashboard() {
   const renderSettings = () => (
     <div className="space-y-6">
       <DashboardCard>
-        <p className="text-sm text-black/45">Settings</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-[3rem]">Account settings</h1>
-        <p className="mt-3 max-w-2xl text-lg text-black/50">
-          Update your password for this customer account.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-black/45">Settings</p>
+          <span className="text-sm text-black/20">/</span>
+          <h1 className="text-sm font-semibold">Account settings</h1>
+        </div>
       </DashboardCard>
 
       <DashboardCard className="max-w-3xl">
-        <h2 className="text-[2rem] font-semibold tracking-tight">Change password</h2>
+        <h2 className="text-[1.5rem] font-semibold tracking-tight">Change password</h2>
         <div className="mt-6 grid gap-4">
           <div className="space-y-2">
             <Label htmlFor="settings-current-password">Current password</Label>
@@ -2891,8 +3260,11 @@ export default function Dashboard() {
         ) : null}
 
         {successMessage ? (
-          <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {successMessage}
+          <div ref={successRef} className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-700">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <Check className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium">{successMessage}</p>
           </div>
         ) : null}
 
@@ -2905,20 +3277,20 @@ export default function Dashboard() {
           </DashboardCard>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-            <aside className="rounded-[30px] border border-black/10 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)] lg:sticky lg:top-24 lg:h-fit">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f2f1ee] text-lg font-semibold">
+            <aside className="rounded-[30px] border border-black/10 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)] lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-7rem)] lg:flex-col lg:overflow-y-auto">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f2f1ee] text-sm font-semibold">
                   {user?.initials}
                 </div>
-                <div>
-                  <h2 className="text-[1.75rem] font-semibold leading-none tracking-tight">{firstName}&apos;s Workspace</h2>
-                  <p className="mt-1 text-base text-black/45">{membership?.planName || 'No active membership'}</p>
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-semibold leading-tight tracking-tight">{firstName}&apos;s Workspace</h2>
+                  <p className="truncate text-xs text-black/45">{membership?.planName || 'No active membership'}</p>
                 </div>
               </div>
 
-              <div className="my-6 border-t border-black/10" />
+              <div className="my-4 border-t border-black/10" />
 
-              <nav className="space-y-2">
+              <nav className="space-y-1">
                 {dashboardNavItems.map(({ icon: Icon, label, path }) => {
                   const isActive = location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
 
@@ -2927,71 +3299,77 @@ export default function Dashboard() {
                       key={path}
                       to={path}
                       className={cn(
-                        'flex items-center gap-3 rounded-full px-4 py-3 text-sm font-medium transition-colors',
+                        'flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors',
                         isActive ? 'bg-black text-white' : 'text-black/70 hover:bg-[#f3f2ef] hover:text-black',
                       )}
                     >
-                      <Icon size={18} />
+                      <Icon size={16} />
                       <span>{label}</span>
                     </Link>
                   );
                 })}
               </nav>
 
-              <div className="mt-8">
+              <div className="mt-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black/45">Quick Actions</p>
-                <div className="mt-4 space-y-3">
+                <div className="mt-2 space-y-2">
                   <Button
                     onClick={openCreateBookingDialog}
                     variant="secondary"
-                    className="h-11 w-full justify-start rounded-2xl border border-black/10 bg-[#f3f2ef] px-4 text-sm font-medium text-black hover:bg-[#eceae6]"
+                    className="h-9 w-full justify-start rounded-2xl border border-black/10 bg-[#f3f2ef] px-4 text-sm font-medium text-black hover:bg-[#eceae6]"
                   >
-                    <CalendarDays className="mr-2" />
+                    <CalendarDays className="mr-2" size={15} />
                     Book meeting room
                   </Button>
                 </div>
               </div>
 
-              <div className="my-6 border-t border-black/10" />
+              <div className="mt-auto">
+                <div className="my-4 border-t border-black/10" />
 
-              <div className="space-y-2">
-                <Button
-                  onClick={() => navigate('/dashboard/settings')}
-                  variant="ghost"
-                  className="h-11 w-full justify-start rounded-2xl px-4 text-sm text-black/70 hover:bg-[#f3f2ef] hover:text-black"
-                >
-                  <Settings className="mr-2" />
-                  Settings
-                </Button>
-                <Button
-                  onClick={logoutAndLeave}
-                  variant="ghost"
-                  className="h-11 w-full justify-start rounded-2xl px-4 text-sm text-black/70 hover:bg-[#f3f2ef] hover:text-black"
-                >
-                  <LogOut className="mr-2" />
-                  Logout
-                </Button>
+                <div className="space-y-1">
+                  <Button
+                    onClick={() => navigate('/dashboard/settings')}
+                    variant="ghost"
+                    className="h-9 w-full justify-start rounded-2xl px-4 text-sm text-black/70 hover:bg-[#f3f2ef] hover:text-black"
+                  >
+                    <Settings className="mr-2" size={15} />
+                    Settings
+                  </Button>
+                  <Button
+                    onClick={logoutAndLeave}
+                    variant="ghost"
+                    className="h-9 w-full justify-start rounded-2xl px-4 text-sm text-black/70 hover:bg-[#f3f2ef] hover:text-black"
+                  >
+                    <LogOut className="mr-2" size={15} />
+                    Logout
+                  </Button>
+                </div>
               </div>
             </aside>
 
             <div className="space-y-6">
               {bookingPaymentDraft ? (
-                <BookingPaymentPanel
-                  publishableKey={dashboardData?.stripe.publishableKey || ''}
-                  paymentDraft={bookingPaymentDraft}
-                  isSubmitting={isSaving}
-                  onConfirmPayment={handleConfirmBookingPayment}
-                  onCancelPayment={handleCancelBookingPayment}
-                />
+                <div ref={paymentPanelRef}>
+                  <BookingPaymentPanel
+                    publishableKey={dashboardData?.stripe.publishableKey || ''}
+                    paymentDraft={bookingPaymentDraft}
+                    isSubmitting={isSaving}
+                    onConfirmPayment={handleConfirmBookingPayment}
+                    onCancelPayment={handleCancelBookingPayment}
+                  />
+                </div>
               ) : null}
               {membershipPaymentDraft ? (
-                <MembershipPaymentPanel
-                  publishableKey={dashboardData?.stripe.publishableKey || ''}
-                  paymentDraft={membershipPaymentDraft}
-                  isSubmitting={isSaving}
-                  onConfirmPayment={handleConfirmMembershipPayment}
-                  onCancelPayment={handleCancelMembershipPayment}
-                />
+                <div ref={paymentPanelRef}>
+                  <MembershipPaymentPanel
+                    publishableKey={dashboardData?.stripe.publishableKey || ''}
+                    paymentDraft={membershipPaymentDraft}
+                    isSubmitting={isSaving}
+                    onConfirmPayment={handleConfirmMembershipPayment}
+                    onCancelPayment={handleCancelMembershipPayment}
+                  />
+                </div>
               ) : null}
               {renderCurrentSection()}
             </div>
@@ -3024,7 +3402,10 @@ export default function Dashboard() {
         onChange={handleBookingFormChange}
         onSubmit={handleEditBooking}
         submitLabel="Save changes"
+        cancelLabel="Cancel"
         isSubmitting={isSaving}
+        booking={selectedBooking}
+        onCancelBooking={handleCancelBooking}
       />
 
       <BookingDetailsDialog
@@ -3032,6 +3413,7 @@ export default function Dashboard() {
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         onEdit={openEditBookingDialog}
+        onCancelBooking={handleCancelBooking}
       />
 
       <PlanChangeDialog

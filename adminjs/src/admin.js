@@ -38,6 +38,10 @@ const accountSettingsComponent = componentLoader.add(
   'AccountSettings',
   path.join(__dirname, 'components', 'AccountSettings.jsx'),
 );
+const refundRequestsComponent = componentLoader.add(
+  'RefundRequests',
+  path.join(__dirname, 'components', 'RefundRequests.jsx'),
+);
 
 componentLoader.override(
   'Sidebar',
@@ -117,6 +121,15 @@ const accountPages = {
   },
 };
 
+const refundRequestsPages = {
+  'refund-requests': {
+    label: 'Refund Requests',
+    icon: 'DollarSign',
+    component: refundRequestsComponent,
+    handler: async () => ({}),
+  },
+};
+
 export function createAdmin(resources) {
   return new AdminJS({
     rootPath: config.rootPath,
@@ -135,6 +148,7 @@ export function createAdmin(resources) {
       ...operationsPages,
       ...mediaPages,
       ...accountPages,
+      ...refundRequestsPages,
     },
     locale: {
       translations: {

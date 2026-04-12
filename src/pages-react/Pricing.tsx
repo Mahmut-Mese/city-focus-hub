@@ -77,9 +77,9 @@ export default function Pricing() {
                   </div>
                 )}
 
-                <h3 className="font-semibold text-[34px] font-sans mb-1 leading-none">{plan.name}</h3>
+                <h3 className="font-semibold text-2xl font-sans mb-1 leading-none">{plan.name}</h3>
                 <div className="mb-2">
-                  <span className="text-5xl font-bold leading-none">${plan.price}</span>
+                  <span className="text-3xl font-bold leading-none">£{plan.price}</span>
                   <span className="text-sm text-black/45"> /{plan.period}</span>
                 </div>
                 <p className="text-sm text-black/50 mb-4">{plan.description}</p>

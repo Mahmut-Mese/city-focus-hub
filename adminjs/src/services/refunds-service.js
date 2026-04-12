@@ -126,7 +126,9 @@ async function syncBookingRefundState(bookingId) {
   if (refundedMinor > 0 && netPaidMinor <= 0) {
     nextStatus = 'canceled';
     nextPaymentStatus = 'refunded';
-  } else if (refundedMinor > 0 && booking.status === 'canceled') {
+  } else if (refundedMinor > 0 && refundedMinor < chargedMinor) {
+    // P1-38: Detect partial refund regardless of booking status (not just 'canceled')
+    nextStatus = booking.status === 'canceled' ? 'canceled' : booking.status;
     nextPaymentStatus = 'partially_refunded';
   } else if (booking.status !== 'pending') {
     nextStatus = booking.status === 'canceled' ? 'canceled' : 'confirmed';
@@ -387,6 +389,12 @@ export async function handleChargeRefunded(charge) {
   const owner = await resolveRefundOwner(stripePaymentIntentId);
   const refunds = Array.isArray(charge?.refunds?.data) ? charge.refunds.data : [];
 
+  // P1-39: Guard for empty refunds array — Stripe may send charge.refunded with no inline refund data
+  if (refunds.length === 0) {
+    console.warn(`[handleChargeRefunded] charge ${stripeChargeId} has empty refunds.data — skipping. Payment intent: ${stripePaymentIntentId}`);
+    return;
+  }
+
   for (const refund of refunds) {
     await upsertStripeRefund({
       userId: owner.userId,
@@ -436,8 +444,15 @@ export async function refundBookingAmount({
   amountMinor,
   reason = 'requested_by_customer',
   metadata = {},
+  invoiceId = null,
 }) {
-  const refundableInvoices = await listRefundableBookingPayments(bookingId);
+  let refundableInvoices = await listRefundableBookingPayments(bookingId);
+
+  // P1-30: When a specific invoiceId is provided, scope refund to that invoice only
+  if (invoiceId) {
+    refundableInvoices = refundableInvoices.filter((inv) => Number(inv.id) === Number(invoiceId));
+  }
+
   return refundInvoicePayments({
     refundableInvoices,
     userId,
@@ -456,8 +471,14 @@ export async function refundMembershipAmount({
   amountMinor,
   reason = 'requested_by_customer',
   metadata = {},
+  invoiceId = null,
 }) {
-  const refundableInvoices = await listRefundableMembershipPayments(membershipId);
+  let refundableInvoices = await listRefundableMembershipPayments(membershipId);
+
+  // P1-30: When a specific invoiceId is provided, scope refund to that invoice only
+  if (invoiceId) {
+    refundableInvoices = refundableInvoices.filter((inv) => Number(inv.id) === Number(invoiceId));
+  }
 
   return refundInvoicePayments({
     refundableInvoices,

@@ -33,12 +33,14 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function getInitials(name: string) {
-  return name
+  const initials = name
     .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
-    .join('') || 'CF';
+    .join('');
+  // Fallback to first two letters of site name abbreviation — not hardcoded
+  return initials || 'MH';
 }
 
 function toAuthenticatedUser(account: MemberUser): AuthenticatedUser {
@@ -128,8 +130,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    void logoutMember().catch(() => undefined);
+    // Optimistically clear local state, then confirm with server.
+    // If the server call fails, re-fetch the session to restore consistent state.
     setUser(null);
+    void logoutMember().catch(() => {
+      // Server logout failed — re-check session to stay consistent
+      void getCurrentMemberSession()
+        .then((sessionUser) => setUser(toAuthenticatedUser(sessionUser)))
+        .catch(() => setUser(null));
+    });
   };
 
   return (

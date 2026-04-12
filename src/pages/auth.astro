@@ -2,6 +2,6 @@
 import Layout from '@/layouts/Layout.astro';
 import AuthApp from '@/islands/AuthApp';
 ---
-<Layout title="Sign In" description="Sign in or create a member account to access your membership dashboard." noindex={true} hideNavigation={true} hideFooter={true}>
+<Layout title="Sign In" description="Sign in or create a member account to access your membership dashboard." noindex={true} hideFooter={true}>
   <AuthApp client:only="react" />
 </Layout>

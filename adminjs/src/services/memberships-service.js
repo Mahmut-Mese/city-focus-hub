@@ -5,7 +5,6 @@ import { execute, queryAll, queryOne } from './sql.js';
 import {
   cancelStripePaymentIntent,
   cancelStripeSubscription,
-  createImmediateMockPayment,
   createMembershipAdjustmentCheckoutSession,
   createMembershipUpgradePaymentIntentDraft,
   createStripeCheckoutSession,
@@ -14,7 +13,6 @@ import {
   ensurePlanStripePrice,
   ensureStripeCustomer,
   expireStripeCheckoutSession,
-  isMockStripePaymentsEnabled,
   listStripePaymentIntents,
   previewStripeSubscriptionPlanChange,
   retrieveStripeCheckoutSession,
@@ -26,6 +24,75 @@ import { findUserById, updateUserAccessStatus } from './users-service.js';
 import { createLocalInvoice, upsertStripeInvoice } from './invoices-service.js';
 import { refundMembershipAmount } from './refunds-service.js';
 import { calculateVat, extractInvoicePaymentIntentId } from './payments-service.js';
+import {
+  sendMembershipActivationEmail,
+  sendMembershipCancellationEmail,
+  sendPaymentReceiptEmail,
+  sendPaymentFailedEmail,
+} from '../mailer.js';
+
+/**
+ * Fire-and-forget membership activation email.
+ * Errors are logged but never propagated — emails must not block API responses.
+ */
+function fireMembershipActivationEmail(user, membership) {
+  if (!user?.email) return;
+  void sendMembershipActivationEmail({
+    recipientName: user.name || 'Member',
+    recipientEmail: user.email,
+    planName: membership.planName || membership.plan_name || 'Membership',
+    monthlyPriceMinor: membership.monthlyPriceMinor ?? membership.monthly_price_minor ?? 0,
+    currency: membership.currency || 'gbp',
+    currentPeriodEnd: membership.currentPeriodEnd || membership.current_period_end || null,
+  }).catch((err) => console.error('[memberships-service] Membership activation email failed:', err?.message || err));
+}
+
+/**
+ * Fire-and-forget membership cancellation email.
+ * Errors are logged but never propagated — emails must not block API responses.
+ */
+function fireMembershipCancellationEmail(user, membership) {
+  if (!user?.email) return;
+  void sendMembershipCancellationEmail({
+    recipientName: user.name || 'Member',
+    recipientEmail: user.email,
+    planName: membership.planName || membership.plan_name || 'Membership',
+    accessUntil: membership.currentPeriodEnd || membership.current_period_end || null,
+  }).catch((err) => console.error('[memberships-service] Membership cancellation email failed:', err?.message || err));
+}
+
+/**
+ * Extracts current_period_start and current_period_end from a Stripe subscription object.
+ * Stripe API 2025-03-31.basil moved these fields from the subscription root to
+ * subscription.items.data[0]. We support both locations for forward/backward compatibility.
+ */
+function getSubscriptionPeriod(subscription) {
+  // New API (2025-03-31.basil+): period is on the first subscription item
+  const item = subscription?.items?.data?.[0];
+  const start = subscription?.current_period_start ?? item?.current_period_start ?? null;
+  const end = subscription?.current_period_end ?? item?.current_period_end ?? null;
+  return {
+    currentPeriodStart: start ? new Date(start * 1000) : null,
+    currentPeriodEnd: end ? new Date(end * 1000) : null,
+  };
+}
+
+/**
+ * Records a Stripe cleanup failure timestamp on a membership adjustment row.
+ * This is non-fatal — the local state transition still proceeds, but the
+ * failed Stripe operation is now auditable.
+ */
+async function recordStripeCleanupFailure(table, rowId, err) {
+  console.error(`[Stripe cleanup] Non-fatal error on ${table}#${rowId}:`, err.message);
+  try {
+    await execute(
+      `UPDATE ${table} SET stripe_cleanup_failed_at = :now WHERE id = :id`,
+      { now: new Date(), id: rowId },
+    );
+  } catch (dbErr) {
+    console.error(`[Stripe cleanup] Failed to record cleanup failure on ${table}#${rowId}:`, dbErr.message);
+  }
+}
 
 function toMembership(row) {
   if (!row) {
@@ -47,6 +114,10 @@ function toMembership(row) {
     currentPeriodStart: row.current_period_start || null,
     currentPeriodEnd: row.current_period_end || null,
     failedPaymentCount: Number(row.failed_payment_count || 0),
+    scheduledPlanId: row.scheduled_plan_id ? Number(row.scheduled_plan_id) : null,
+    scheduledPlanSlug: row.scheduled_plan_slug || null,
+    scheduledPlanName: row.scheduled_plan_name || null,
+    scheduledPlanMonthlyPriceMinor: row.scheduled_plan_monthly_price_minor != null ? Number(row.scheduled_plan_monthly_price_minor) : null,
   };
 }
 
@@ -130,9 +201,17 @@ export async function listPlans() {
 
 export async function getUserMembership(userId) {
   const row = await queryOne(
-    `SELECT memberships.*, membership_plans.slug AS plan_slug, membership_plans.name AS plan_name, membership_plans.monthly_price_minor, membership_plans.currency
+    `SELECT memberships.*,
+            membership_plans.slug AS plan_slug,
+            membership_plans.name AS plan_name,
+            membership_plans.monthly_price_minor,
+            membership_plans.currency,
+            scheduled_plan.slug AS scheduled_plan_slug,
+            scheduled_plan.name AS scheduled_plan_name,
+            scheduled_plan.monthly_price_minor AS scheduled_plan_monthly_price_minor
        FROM memberships
        INNER JOIN membership_plans ON membership_plans.id = memberships.plan_id
+       LEFT JOIN membership_plans AS scheduled_plan ON scheduled_plan.id = memberships.scheduled_plan_id
       WHERE memberships.user_id = :userId
       ORDER BY memberships.id DESC
       LIMIT 1`,
@@ -144,9 +223,17 @@ export async function getUserMembership(userId) {
 
 async function getMembershipByStripeSubscriptionId(subscriptionId) {
   const row = await queryOne(
-    `SELECT memberships.*, membership_plans.slug AS plan_slug, membership_plans.name AS plan_name, membership_plans.monthly_price_minor, membership_plans.currency
+    `SELECT memberships.*,
+            membership_plans.slug AS plan_slug,
+            membership_plans.name AS plan_name,
+            membership_plans.monthly_price_minor,
+            membership_plans.currency,
+            scheduled_plan.slug AS scheduled_plan_slug,
+            scheduled_plan.name AS scheduled_plan_name,
+            scheduled_plan.monthly_price_minor AS scheduled_plan_monthly_price_minor
        FROM memberships
        INNER JOIN membership_plans ON membership_plans.id = memberships.plan_id
+       LEFT JOIN membership_plans AS scheduled_plan ON scheduled_plan.id = memberships.scheduled_plan_id
       WHERE memberships.stripe_subscription_id = :subscriptionId
       LIMIT 1`,
     { subscriptionId },
@@ -266,8 +353,7 @@ async function persistMembershipSubscriptionUpdate({
       status: updatedSubscription.status,
       stripePriceId,
       cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end ? 1 : 0,
-      currentPeriodStart: updatedSubscription.current_period_start ? new Date(updatedSubscription.current_period_start * 1000) : null,
-      currentPeriodEnd: updatedSubscription.current_period_end ? new Date(updatedSubscription.current_period_end * 1000) : null,
+      ...getSubscriptionPeriod(updatedSubscription),
       updatedAt: new Date(),
     },
     txOpts,
@@ -380,7 +466,8 @@ async function hydrateMissingMembershipPaymentIntents(membershipId) {
       const description = String(paymentIntent.description || '').toLowerCase();
       const isMembershipLike = description.includes('subscription') || description.includes('membership');
       const ageDelta = Math.abs(Number(paymentIntent.created || 0) - invoiceTimestamp);
-      return isMembershipLike || ageDelta <= (24 * 60 * 60);
+      // P1-35: Require BOTH amount match AND time proximity (within 24h). Description match is optional bonus.
+      return ageDelta <= (24 * 60 * 60) && (isMembershipLike || ageDelta <= (2 * 60 * 60));
     });
 
     if (matchIndex < 0) {
@@ -418,12 +505,17 @@ async function reconcilePendingMembershipAdjustmentRow(adjustmentRow) {
       return syncMembershipAdjustmentCheckoutSession({
         userId: Number(adjustmentRow.user_id),
         sessionId: session.id,
-      }).catch(() => getMembershipAdjustmentRowById(adjustmentRow.id));
+        // #142: Log sync failures before falling back to stale DB row so callers
+        // are aware that the returned row may not reflect the latest Stripe state.
+      }).catch((err) => {
+        console.error('[memberships] syncMembershipAdjustmentCheckoutSession failed, returning stale row:', err?.message || err);
+        return getMembershipAdjustmentRowById(adjustmentRow.id);
+      });
     }
 
     if (session.status === 'expired' || isMembershipAdjustmentHoldExpired(adjustmentRow)) {
       if (session.status === 'open') {
-        await expireStripeCheckoutSession(session.id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
+        await expireStripeCheckoutSession(session.id).catch((err) => recordStripeCleanupFailure('membership_adjustments', adjustmentRow.id, err));
       }
 
       await markMembershipAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
@@ -431,7 +523,7 @@ async function reconcilePendingMembershipAdjustmentRow(adjustmentRow) {
     }
   } else if (adjustmentRow.stripe_payment_intent_id && isMembershipAdjustmentHoldExpired(adjustmentRow)) {
     // Payment intent-based adjustment that has expired — cancel the PI and expire the adjustment
-    await cancelStripePaymentIntent(adjustmentRow.stripe_payment_intent_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
+    await cancelStripePaymentIntent(adjustmentRow.stripe_payment_intent_id).catch((err) => recordStripeCleanupFailure('membership_adjustments', adjustmentRow.id, err));
     await markMembershipAdjustmentStatus(adjustmentRow.id, 'expired', { clearHold: true });
     return getMembershipAdjustmentRowById(adjustmentRow.id);
   } else if (isMembershipAdjustmentHoldExpired(adjustmentRow)) {
@@ -477,6 +569,36 @@ async function upsertMembershipFromSubscription({ userId, subscription, preferre
   const existingMembership = await getMembershipByStripeSubscriptionId(subscription.id) || await getUserMembership(userId);
   const now = new Date();
 
+  // P1-34: If falling back to getUserMembership, validate subscription ID matches (or is absent)
+  // to avoid overwriting a different membership's subscription
+  if (existingMembership && existingMembership.stripeSubscriptionId
+      && existingMembership.stripeSubscriptionId !== subscription.id) {
+    console.warn(
+      `[upsertMembershipFromSubscription] Membership #${existingMembership.id} has subscription ${existingMembership.stripeSubscriptionId} but webhook received ${subscription.id}. Skipping fallback update — creating new membership instead.`,
+    );
+    // Treat as if no existing membership was found — create a new one
+    const [insertId, metadata] = await execute(
+      `INSERT INTO memberships
+        (document_id, user_id, plan_id, status, stripe_subscription_id, stripe_price_id, cancel_at_period_end, current_period_start, current_period_end, failed_payment_count, created_at, updated_at)
+       VALUES
+        (:documentId, :userId, :planId, :status, :stripeSubscriptionId, :stripePriceId, :cancelAtPeriodEnd, :currentPeriodStart, :currentPeriodEnd, 0, :createdAt, :updatedAt)`,
+      {
+        documentId: randomUUID(),
+        userId,
+        planId: plan.id,
+        status: subscription.status,
+        stripeSubscriptionId: subscription.id,
+        stripePriceId,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end ? 1 : 0,
+        ...getSubscriptionPeriod(subscription),
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+
+    return typeof insertId === 'number' ? insertId : metadata?.insertId || 0;
+  }
+
   if (!existingMembership) {
     const [insertId, metadata] = await execute(
       `INSERT INTO memberships
@@ -491,8 +613,7 @@ async function upsertMembershipFromSubscription({ userId, subscription, preferre
         stripeSubscriptionId: subscription.id,
         stripePriceId,
         cancelAtPeriodEnd: subscription.cancel_at_period_end ? 1 : 0,
-        currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null,
-        currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+        ...getSubscriptionPeriod(subscription),
         createdAt: now,
         updatedAt: now,
       },
@@ -520,8 +641,7 @@ async function upsertMembershipFromSubscription({ userId, subscription, preferre
       stripeSubscriptionId: subscription.id,
       stripePriceId,
       cancelAtPeriodEnd: subscription.cancel_at_period_end ? 1 : 0,
-      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null,
-      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+      ...getSubscriptionPeriod(subscription),
       updatedAt: now,
     },
   );
@@ -593,8 +713,7 @@ export async function createMembership({ userId, planSlug }) {
       status: subscription.status,
       stripeSubscriptionId: subscription.id,
       stripePriceId: priceId,
-      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null,
-      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+      ...getSubscriptionPeriod(subscription),
       updatedAt: new Date(),
     },
   );
@@ -626,7 +745,14 @@ export async function createMembership({ userId, planSlug }) {
 
   await hydrateMissingMembershipPaymentIntents(membershipId);
 
-  return getUserMembership(userId);
+  const newMembership = await getUserMembership(userId);
+
+  // Fire-and-forget: send membership activation email if subscription is active
+  if (newMembership && activatableStatuses.includes(newMembership.status)) {
+    fireMembershipActivationEmail(user, newMembership);
+  }
+
+  return newMembership;
 }
 
 /**
@@ -810,6 +936,7 @@ export async function confirmMembershipPayment({ userId, paymentIntentId }) {
         SET status = :status,
             stripe_subscription_id = :stripeSubscriptionId,
             stripe_price_id = :stripePriceId,
+            cancel_at_period_end = :cancelAtPeriodEnd,
             current_period_start = :currentPeriodStart,
             current_period_end = :currentPeriodEnd,
             updated_at = :updatedAt
@@ -819,8 +946,8 @@ export async function confirmMembershipPayment({ userId, paymentIntentId }) {
       status: subscription.status,
       stripeSubscriptionId: subscription.id,
       stripePriceId: membership.stripePriceId,
-      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null,
-      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ? 1 : 0,
+      ...getSubscriptionPeriod(subscription),
       updatedAt: new Date(),
     },
   );
@@ -880,7 +1007,14 @@ export async function confirmMembershipPayment({ userId, paymentIntentId }) {
 
   await hydrateMissingMembershipPaymentIntents(membership.id);
 
-  return getUserMembership(userId);
+  const confirmedMembership = await getUserMembership(userId);
+
+  // Fire-and-forget: send membership activation email if subscription is now active
+  if (confirmedMembership && activatableStatuses.includes(confirmedMembership.status)) {
+    fireMembershipActivationEmail(user, confirmedMembership);
+  }
+
+  return confirmedMembership;
 }
 
 export async function createMembershipCheckout({ userId, planSlug, successUrl, cancelUrl }) {
@@ -971,7 +1105,18 @@ export async function syncMembershipCheckoutSession({ userId, sessionId }) {
     await hydrateMissingMembershipPaymentIntents(membershipId);
   }
 
-  return getUserMembership(userId);
+  const syncedMembership = await getUserMembership(userId);
+
+  // Fire-and-forget: send membership activation email if checkout was paid and membership is active
+  if (syncedMembership && session.payment_status === 'paid') {
+    const activatableStatuses = ['active', 'trialing'];
+    if (activatableStatuses.includes(syncedMembership.status)) {
+      const checkoutUser = await findUserById(userId);
+      fireMembershipActivationEmail(checkoutUser, syncedMembership);
+    }
+  }
+
+  return syncedMembership;
 }
 
 export async function changeMembershipPlan({ userId, planSlug, successUrl = '', cancelUrl = '' }) {
@@ -1016,6 +1161,13 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
 
   const preview = await previewMembershipPlanChange({ userId, planSlug });
   const settlement = preview.settlement || getMembershipChangeSettlement(preview.preview);
+
+  // Detect downgrade by comparing plan prices (not Stripe proration amounts,
+  // which can be positive even for a cheaper plan depending on billing cycle timing).
+  const currentPriceMinor = Number(membership.monthlyPriceMinor || 0);
+  const newPriceMinor = Number(plan.monthly_price_minor || 0);
+  const isDowngrade = newPriceMinor < currentPriceMinor;
+
   const { priceId } = await ensurePlanStripePrice({
     id: plan.id,
     slug: plan.slug,
@@ -1026,6 +1178,35 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
     stripePriceId: plan.stripe_price_id,
     stripeProductId: plan.stripe_product_id,
   });
+
+  if (isDowngrade) {
+    // Downgrade: schedule the plan change for the end of the current billing period.
+    // The user keeps their current (higher-tier) plan until the period ends.
+    // No refund, no extra charge — the new lower price kicks in at the next renewal.
+    await execute(
+      `UPDATE memberships
+          SET scheduled_plan_id = :scheduledPlanId,
+              updated_at = :updatedAt
+        WHERE id = :membershipId`,
+      {
+        membershipId: membership.id,
+        scheduledPlanId: plan.id,
+        updatedAt: new Date(),
+      },
+    );
+
+    return {
+      membership: await getUserMembership(userId),
+      sessionId: null,
+      url: null,
+      adjustmentId: null,
+      action: 'scheduled',
+      paymentDueMinor: 0,
+      refundMinor: 0,
+      scheduledPlanName: plan.name,
+      effectiveDate: membership.currentPeriodEnd,
+    };
+  }
 
   if (settlement.paymentDueMinor <= 0 && settlement.refundMinor <= 0) {
     const updatedSubscription = await updateStripeSubscriptionPlan({
@@ -1055,136 +1236,7 @@ export async function changeMembershipPlan({ userId, planSlug, successUrl = '', 
     };
   }
 
-  if (settlement.refundMinor > 0) {
-    const updatedSubscription = await updateStripeSubscriptionPlan({
-      subscriptionId: membership.stripeSubscriptionId,
-      priceId,
-      userId,
-      membershipId: membership.id,
-      prorationBehavior: 'none',
-    });
-
-    const updatedMembership = await persistMembershipSubscriptionUpdate({
-      userId,
-      membership,
-      plan,
-      stripePriceId: priceId,
-      updatedSubscription,
-      invoiceDescription: `${plan.name} subscription update`,
-      syncLatestInvoice: false,
-    });
-
-    await hydrateMissingMembershipPaymentIntents(membership.id);
-    await refundMembershipAmount({
-      membershipId: membership.id,
-      userId,
-      amountMinor: settlement.refundMinor,
-      reason: 'requested_by_customer',
-      metadata: {
-        app_user_id: String(userId),
-        membership_id: String(membership.id),
-        membership_change: 'downgrade',
-        from_plan_slug: membership.planSlug,
-        to_plan_slug: plan.slug,
-      },
-    });
-
-    return {
-      membership: updatedMembership,
-      sessionId: null,
-      url: null,
-      adjustmentId: null,
-      action: 'refunded',
-      paymentDueMinor: 0,
-      refundMinor: settlement.refundMinor,
-    };
-  }
-
-  if (isMockStripePaymentsEnabled()) {
-    const customerId = await ensureStripeCustomer(user);
-    const paymentIntent = await createImmediateMockPayment({
-      customerId,
-      amountMinor: settlement.paymentDueMinor,
-      currency: settlement.currency,
-      description: `${plan.name} membership upgrade`,
-      metadata: {
-        app_user_id: String(userId),
-        membership_id: String(membership.id),
-        membership_change: 'upgrade',
-        from_plan_slug: membership.planSlug,
-        to_plan_slug: plan.slug,
-      },
-    });
-
-    // P0-5: Wrap DB writes in transaction for mock-mode membership change
-    const mockTransaction = await sequelize.transaction();
-    try {
-      await createLocalInvoice({
-        userId,
-        membershipId: membership.id,
-        stripePaymentIntentId: paymentIntent.id,
-        invoiceNumber: `MEM-ADJ-${membership.id}-${Date.now()}`,
-        status: 'paid',
-        description: `${plan.name} membership upgrade`,
-        currency: settlement.currency,
-        subtotalMinor: settlement.subtotalMinor,
-        taxMinor: settlement.taxMinor,
-        totalMinor: settlement.paymentDueMinor,
-        paidAt: new Date(),
-        transaction: mockTransaction,
-      });
-
-      const updatedSubscription = await updateStripeSubscriptionPlan({
-        subscriptionId: membership.stripeSubscriptionId,
-        priceId,
-        userId,
-        membershipId: membership.id,
-        prorationBehavior: 'none',
-      });
-
-      const updatedMembership = await persistMembershipSubscriptionUpdate({
-        userId,
-        membership,
-        plan,
-        stripePriceId: priceId,
-        updatedSubscription,
-        invoiceDescription: `${plan.name} subscription update`,
-        syncLatestInvoice: false,
-        transaction: mockTransaction,
-      });
-
-      await mockTransaction.commit();
-
-      return {
-        membership: updatedMembership,
-        sessionId: null,
-        url: null,
-        adjustmentId: null,
-        action: 'updated',
-        paymentDueMinor: settlement.paymentDueMinor,
-        refundMinor: 0,
-      };
-    } catch (error) {
-      await mockTransaction.rollback();
-
-      await refundMembershipAmount({
-        membershipId: membership.id,
-        userId,
-        amountMinor: settlement.paymentDueMinor,
-        reason: 'requested_by_customer',
-        metadata: {
-          app_user_id: String(userId),
-          membership_id: String(membership.id),
-          membership_change: 'upgrade_failed',
-          from_plan_slug: membership.planSlug,
-          to_plan_slug: plan.slug,
-        },
-      });
-
-      throw new Error(`The membership change could not be completed. The extra payment was automatically refunded. ${String(error?.message || error)}`);
-    }
-  }
-
+  // Always use the PaymentIntent draft path for upgrades (consistent with initial purchase)
   const now = new Date();
   const [insertId, metadata] = await execute(
     `INSERT INTO membership_adjustments
@@ -1346,6 +1398,10 @@ export async function confirmMembershipUpgradePayment({ userId, paymentIntentId,
     });
 
     await dbTransaction.commit();
+
+    // Fire-and-forget: send membership activation email for the upgraded plan
+    fireMembershipActivationEmail(user, updatedMembership);
+
     return updatedMembership;
   } catch (error) {
     await dbTransaction.rollback();
@@ -1411,17 +1467,22 @@ export async function previewMembershipPlanChange({ userId, planSlug }) {
     priceId,
   });
 
+  // DEBUG: Log all invoice lines to understand Stripe's response structure
   const prorationLines = Array.isArray(upcomingInvoice.lines?.data)
-    ? upcomingInvoice.lines.data.filter((line) => Boolean(line?.parent?.subscription_item_details?.proration))
+    ? upcomingInvoice.lines.data.filter((line) => Boolean(line?.proration || line?.parent?.subscription_item_details?.proration))
     : [];
   const prorationSubtotalMinor = prorationLines.reduce(
     (sum, line) => sum + Number(line?.amount ?? line?.subtotal ?? 0),
     0,
   );
   const prorationTaxMinor = prorationLines.reduce(
-    (sum, line) => sum + (Array.isArray(line?.taxes)
-      ? line.taxes.reduce((taxSum, tax) => taxSum + Number(tax?.amount || 0), 0)
-      : 0),
+    (sum, line) => {
+      // Support both legacy line.taxes and newer line.tax_amounts
+      const taxes = Array.isArray(line?.tax_amounts) ? line.tax_amounts
+        : Array.isArray(line?.taxes) ? line.taxes
+        : [];
+      return sum + taxes.reduce((taxSum, tax) => taxSum + Number(tax?.amount || 0), 0);
+    },
     0,
   );
   const prorationTotalMinor = prorationSubtotalMinor + prorationTaxMinor;
@@ -1564,6 +1625,11 @@ export async function syncMembershipAdjustmentCheckoutSession({ userId, sessionI
     });
 
     await dbTransaction.commit();
+
+    // Fire-and-forget: send membership activation email for the upgraded plan
+    const upgradeUser = await findUserById(userId).catch(() => null);
+    fireMembershipActivationEmail(upgradeUser, updatedMembership);
+
     return updatedMembership;
   } catch (error) {
     await dbTransaction.rollback();
@@ -1618,11 +1684,11 @@ export async function cancelMembershipAdjustment({ userId, adjustmentId }) {
   }
 
   if (adjustmentRow.stripe_checkout_session_id) {
-    await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
+    await expireStripeCheckoutSession(adjustmentRow.stripe_checkout_session_id).catch((err) => recordStripeCleanupFailure('membership_adjustments', adjustmentRow.id, err));
   }
 
   if (adjustmentRow.stripe_payment_intent_id) {
-    await cancelStripePaymentIntent(adjustmentRow.stripe_payment_intent_id).catch((err) => console.error('[Stripe cleanup] Non-fatal error:', err.message));
+    await cancelStripePaymentIntent(adjustmentRow.stripe_payment_intent_id).catch((err) => recordStripeCleanupFailure('membership_adjustments', adjustmentRow.id, err));
   }
 
   await markMembershipAdjustmentStatus(adjustmentId, 'canceled', { clearHold: true });
@@ -1684,6 +1750,7 @@ export async function cancelMembership({ userId }) {
     `UPDATE memberships
         SET status = :status,
             cancel_at_period_end = :cancelAtPeriodEnd,
+            scheduled_plan_id = NULL,
             current_period_start = :currentPeriodStart,
             current_period_end = :currentPeriodEnd,
             updated_at = :updatedAt
@@ -1692,13 +1759,118 @@ export async function cancelMembership({ userId }) {
       membershipId: membership.id,
       status: updatedSubscription.status,
       cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end ? 1 : 0,
-      currentPeriodStart: updatedSubscription.current_period_start ? new Date(updatedSubscription.current_period_start * 1000) : null,
-      currentPeriodEnd: updatedSubscription.current_period_end ? new Date(updatedSubscription.current_period_end * 1000) : null,
+      ...getSubscriptionPeriod(updatedSubscription),
+      updatedAt: new Date(),
+    },
+  );
+
+  const cancelledMembership = await getUserMembership(userId);
+
+  // Fire-and-forget: send membership cancellation email
+  const cancelUser = await findUserById(userId).catch(() => null);
+  if (cancelledMembership) {
+    fireMembershipCancellationEmail(cancelUser, cancelledMembership);
+  }
+
+  return cancelledMembership;
+}
+
+/**
+ * Cancels a scheduled downgrade, keeping the user on their current plan.
+ */
+export async function cancelScheduledDowngrade({ userId }) {
+  const membership = await getUserMembership(userId);
+  if (!membership) {
+    throw new Error('Membership not found.');
+  }
+
+  if (!membership.scheduledPlanId) {
+    throw new Error('No scheduled plan change to cancel.');
+  }
+
+  await execute(
+    `UPDATE memberships
+        SET scheduled_plan_id = NULL,
+            updated_at = :updatedAt
+      WHERE id = :membershipId`,
+    {
+      membershipId: membership.id,
       updatedAt: new Date(),
     },
   );
 
   return getUserMembership(userId);
+}
+
+/**
+ * Applies a scheduled downgrade when the billing period renews.
+ * Called from the invoice.paid webhook handler when a membership has a scheduled_plan_id.
+ */
+async function applyScheduledDowngrade(membership) {
+  if (!membership.scheduledPlanId || !membership.stripeSubscriptionId) {
+    return;
+  }
+
+  const plan = await queryOne(
+    'SELECT * FROM membership_plans WHERE id = :planId AND active = 1 LIMIT 1',
+    { planId: membership.scheduledPlanId },
+  );
+
+  if (!plan) {
+    console.warn(`[applyScheduledDowngrade] Scheduled plan #${membership.scheduledPlanId} not found or inactive for membership #${membership.id}. Clearing schedule.`);
+    await execute(
+      'UPDATE memberships SET scheduled_plan_id = NULL, updated_at = :updatedAt WHERE id = :membershipId',
+      { membershipId: membership.id, updatedAt: new Date() },
+    );
+    return;
+  }
+
+  const { priceId } = await ensurePlanStripePrice({
+    id: plan.id,
+    slug: plan.slug,
+    name: plan.name,
+    description: plan.description,
+    currency: plan.currency,
+    monthlyPriceMinor: Number(plan.monthly_price_minor),
+    stripePriceId: plan.stripe_price_id,
+    stripeProductId: plan.stripe_product_id,
+  });
+
+  try {
+    const updatedSubscription = await updateStripeSubscriptionPlan({
+      subscriptionId: membership.stripeSubscriptionId,
+      priceId,
+      userId: membership.userId,
+      membershipId: membership.id,
+      prorationBehavior: 'none',
+    });
+
+    await execute(
+      `UPDATE memberships
+          SET plan_id = :planId,
+              stripe_price_id = :stripePriceId,
+              scheduled_plan_id = NULL,
+              status = :status,
+              cancel_at_period_end = :cancelAtPeriodEnd,
+              current_period_start = :currentPeriodStart,
+              current_period_end = :currentPeriodEnd,
+              updated_at = :updatedAt
+        WHERE id = :membershipId`,
+      {
+        membershipId: membership.id,
+        planId: plan.id,
+        stripePriceId: priceId,
+        status: updatedSubscription.status,
+        cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end ? 1 : 0,
+        ...getSubscriptionPeriod(updatedSubscription),
+        updatedAt: new Date(),
+      },
+    );
+
+    console.log(`[applyScheduledDowngrade] Membership #${membership.id} downgraded to plan ${plan.slug} (${plan.name}).`);
+  } catch (err) {
+    console.error(`[applyScheduledDowngrade] Failed to apply scheduled downgrade for membership #${membership.id}:`, err.message);
+  }
 }
 
 export async function handleInvoicePaid(invoice) {
@@ -1727,6 +1899,14 @@ export async function handleInvoicePaid(invoice) {
         updatedAt: new Date(),
       },
     );
+
+    // If a scheduled downgrade is pending, apply it now that the new period has started
+    const membership = membershipId
+      ? await getUserMembership(userId)
+      : null;
+    if (membership && membership.scheduledPlanId) {
+      await applyScheduledDowngrade(membership);
+    }
   }
 
   await upsertStripeInvoice({
@@ -1745,6 +1925,29 @@ export async function handleInvoicePaid(invoice) {
     invoicePdf: invoice.invoice_pdf || null,
     paidAt: new Date(),
   });
+
+  // Fire-and-forget: send monthly renewal receipt to the member
+  if (userId) {
+    void (async () => {
+      try {
+        const user = await findUserById(userId);
+        if (user) {
+          await sendPaymentReceiptEmail({
+            recipientName: user.name,
+            recipientEmail: user.email,
+            description: invoice.description || 'Monthly membership renewal',
+            amountMinor: Number(invoice.total || 0),
+            taxMinor: Number(invoice.tax || 0) || null,
+            currency: invoice.currency || 'gbp',
+            invoiceId: invoice.number || invoice.id || '-',
+            paidAt: new Date(),
+          });
+        }
+      } catch (err) {
+        console.error('[handleInvoicePaid] Failed to send renewal receipt email:', err?.message || err);
+      }
+    })();
+  }
 }
 
 export async function handleInvoicePaymentFailed(invoice) {
@@ -1795,6 +1998,38 @@ export async function handleInvoicePaymentFailed(invoice) {
     invoicePdf: invoice.invoice_pdf || null,
     paidAt: null,
   });
+
+  // Fire-and-forget: notify member that their payment failed and account is suspended
+  if (userId) {
+    void (async () => {
+      try {
+        const user = await findUserById(userId);
+        if (!user?.email) return;
+
+        let planName = 'your membership plan';
+        if (membershipId) {
+          const planRow = await queryOne(
+            `SELECT membership_plans.name AS plan_name
+               FROM memberships
+               INNER JOIN membership_plans ON membership_plans.id = memberships.plan_id
+              WHERE memberships.id = :membershipId
+              LIMIT 1`,
+            { membershipId },
+          );
+          if (planRow?.plan_name) planName = planRow.plan_name;
+        }
+
+        await sendPaymentFailedEmail({
+          recipientName: user.name,
+          recipientEmail: user.email,
+          planName,
+          hostedInvoiceUrl: invoice.hosted_invoice_url || null,
+        });
+      } catch (err) {
+        console.error('[handleInvoicePaymentFailed] Failed to send payment failure email:', err?.message || err);
+      }
+    })();
+  }
 }
 
 export async function handleSubscriptionUpdated(subscription) {
@@ -1825,11 +2060,21 @@ export async function handleSubscriptionUpdated(subscription) {
       membershipId,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end ? 1 : 0,
-      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null,
-      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+      ...getSubscriptionPeriod(subscription),
       updatedAt: new Date(),
     },
   );
+
+  // P1-33: Sync user access status when subscription status changes
+  if (userId) {
+    const activatableStatuses = ['active', 'trialing'];
+    const suspendStatuses = ['canceled', 'unpaid'];
+    if (activatableStatuses.includes(subscription.status)) {
+      await updateUserAccessStatus(userId, 'active');
+    } else if (suspendStatuses.includes(subscription.status)) {
+      await updateUserAccessStatus(userId, 'suspended');
+    }
+  }
 }
 
 export async function handleSubscriptionDeleted(subscription) {
@@ -1851,7 +2096,7 @@ export async function handleSubscriptionDeleted(subscription) {
       {
         membershipId,
         suspendedAt: new Date(),
-        currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+        currentPeriodEnd: getSubscriptionPeriod(subscription).currentPeriodEnd,
         updatedAt: new Date(),
       },
     );

@@ -7,16 +7,26 @@ export async function getStaticPaths() {
   const path = await import('node:path');
   const filePath = path.join(process.cwd(), 'public', 'cms', 'pricing-plans.json');
 
+  const slugs = new Set<string>();
+
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const cms = JSON.parse(raw);
     const plans = cms.data || [];
-    return plans.map((plan: any) => ({
-      params: { planSlug: plan.slug || String(plan.id) },
-    }));
+    for (const plan of plans) {
+      slugs.add(plan.slug || String(plan.id));
+    }
   } catch {
-    return [{ params: { planSlug: 'default' } }];
+    // CMS file missing — continue with extra slugs only
   }
+
+  // Backend membership plan slugs that may not exist in CMS (e.g. virtual-office)
+  const extraSlugs = ['virtual-office', 'hot-desk', 'dedicated-desk'];
+  for (const slug of extraSlugs) {
+    slugs.add(slug);
+  }
+
+  return [...slugs].map((slug) => ({ params: { planSlug: slug } }));
 }
 ---
 <Layout title="Checkout" description="Complete your membership purchase at City Focus Hub." hideNavigation={true} hideFooter={true}>

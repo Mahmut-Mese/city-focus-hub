@@ -1,11 +1,11 @@
 ---
 description: Bulk code reader and analyst for the tech-debt audit. Reads files, searches for patterns, and returns structured findings. Used by tech-debt-architect to do all the heavy file reading and analysis work cheaply. Returns findings in a structured format for the architect to review and route to the PR reviewer.
 mode: subagent
-model: opencode/qwen3.6-plus-free
+model: opencode/minimax-m2.5-free
 temperature: 0.1
 permission:
-  edit: deny
-  bash: deny
+  edit: allow
+  bash: allow
   webfetch: deny
 ---
 

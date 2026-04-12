@@ -6,7 +6,9 @@
     "dev": "node src/start.js",
     "start": "NODE_ENV=production npm run bundle:components && node src/start.js",
     "export:cms": "node src/export-static-cms-cli.js",
-    "bundle:components": "NODE_ENV=production node src/prebundle-admin.js"
+    "bundle:components": "NODE_ENV=production ADMINJS_PREBUNDLE=1 node src/prebundle-admin.js",
+    "migrate": "node src/migrate.js",
+    "migrate:rollback": "node src/migrate.js --rollback"
   },
   "dependencies": {
     "@adminjs/express": "^6.1.1",

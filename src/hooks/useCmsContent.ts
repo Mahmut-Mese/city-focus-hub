@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import type { CmsBlogPost, CmsFaqItem, CmsMeetingRoom, CmsPricingPlan, PlanType } from '@/types/cms';
 import { fetchApi, getMediaUrl, getMediaUrls, unwrapCollection, unwrapSingle } from '@/lib/content-api';
 import {
@@ -39,7 +40,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function cloneData<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return structuredClone(value);
 }
 
 function mergeContent<T>(base: T, override: unknown): T {
@@ -79,6 +80,12 @@ function normalizeExternalUrl(value: string): string {
   }
 
   if (/^(https?:|mailto:|tel:|#)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Only prepend https:// for values that look like external hostnames (contain a dot).
+  // Relative paths like /about must not be modified.
+  if (trimmed.startsWith('/') || trimmed.startsWith('.')) {
     return trimmed;
   }
 
@@ -146,12 +153,38 @@ function formatReadTime(value: unknown): string {
   return `${raw} read`;
 }
 
+// #132: usePreviewStatus as a proper hook that reacts to SPA navigation.
+// Listens to popstate and a custom 'locationchange' event so the preview
+// query key updates whenever the URL changes (e.g. react-router navigation).
 function usePreviewStatus(): PreviewStatus | undefined {
+  const [search, setSearch] = useState(() =>
+    typeof window !== 'undefined' ? window.location.search : '',
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function sync() {
+      setSearch(window.location.search);
+    }
+
+    window.addEventListener('popstate', sync);
+    // React Router v6 fires history events that don't trigger popstate — patch pushState/replaceState once.
+    const orig = window.history.pushState.bind(window.history);
+    window.history.pushState = (...args) => { orig(...args); sync(); };
+    const origReplace = window.history.replaceState.bind(window.history);
+    window.history.replaceState = (...args) => { origReplace(...args); sync(); };
+
+    return () => {
+      window.removeEventListener('popstate', sync);
+    };
+  }, []);
+
   if (typeof window === 'undefined') {
     return undefined;
   }
 
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams = new URLSearchParams(search);
   const isPreview = searchParams.get('preview') === '1';
   const status = searchParams.get('status');
 
@@ -170,6 +203,9 @@ function toIconTextItems(
     return fallback;
   }
 
+  // #134: If CMS returns more items than the fallback array contains, fallback[index]
+  // will be undefined for the extra items. The ?. optional chaining and ?? hardcoded
+  // defaults below ensure those extra items still render with safe empty/default values.
   return value.map((item, index) => {
     const source = isRecord(item) ? item : {};
     return {
@@ -1086,14 +1122,15 @@ export function useSiteSettings() {
         socialLinks: toSocialLinks(raw.socialLinks, defaultSiteSettingsContent.socialLinks),
         navigation: mapNavigationContent(raw.navigation, defaultSiteSettingsContent.navigation),
         footer: mapFooterContent(raw.footer, defaultSiteSettingsContent.footer),
-        homePage: isRecord(raw.homePage) ? raw.homePage : undefined,
-        aboutPage: isRecord(raw.aboutPage) ? raw.aboutPage : undefined,
-        blogPage: isRecord(raw.blogPage) ? raw.blogPage : undefined,
-        pricingPage: isRecord(raw.pricingPage) ? raw.pricingPage : undefined,
-        faqPage: isRecord(raw.faqPage) ? raw.faqPage : undefined,
-        meetingRoomsPage: isRecord(raw.meetingRoomsPage) ? raw.meetingRoomsPage : undefined,
-        virtualOfficePage: isRecord(raw.virtualOfficePage) ? raw.virtualOfficePage : undefined,
-        contactPage: isRecord(raw.contactPage) ? raw.contactPage : undefined,
+        // #133: Use mapper functions instead of passing raw CMS objects directly
+        homePage: isRecord(raw.homePage) ? mapHomepageContent(raw.homePage) : undefined,
+        aboutPage: isRecord(raw.aboutPage) ? mapAboutPageContent(raw.aboutPage) : undefined,
+        blogPage: isRecord(raw.blogPage) ? mapBlogPageContent(raw.blogPage) : undefined,
+        pricingPage: isRecord(raw.pricingPage) ? mapPricingPageContent(raw.pricingPage) : undefined,
+        faqPage: isRecord(raw.faqPage) ? mapFaqPageContent(raw.faqPage) : undefined,
+        meetingRoomsPage: isRecord(raw.meetingRoomsPage) ? mapMeetingRoomsPageContent(raw.meetingRoomsPage) : undefined,
+        virtualOfficePage: isRecord(raw.virtualOfficePage) ? mapVirtualOfficePageContent(raw.virtualOfficePage) : undefined,
+        contactPage: isRecord(raw.contactPage) ? mapContactPageContent(raw.contactPage) : undefined,
       });
 
       const logoUrl = getMediaUrl(raw.logo);

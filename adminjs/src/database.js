@@ -9,11 +9,18 @@ export const sequelize = new Sequelize(
     host: config.database.host,
     port: config.database.port,
     dialect: 'mysql',
-    logging: false,
+    // Set SQL_LOGGING=true in .env to enable query logging for debugging
+    logging: process.env.SQL_LOGGING === 'true' ? console.log : false,
     timezone: '+00:00',
     define: {
       freezeTableName: true,
       timestamps: false,
+    },
+    pool: {
+      max: 10,
+      min: 2,
+      acquire: 30_000,
+      idle: 10_000,
     },
   },
 );

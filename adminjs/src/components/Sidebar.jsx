@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { useSelector } from 'react-redux';
 import { ADMIN_RESOURCE_DEFINITIONS, buildAdminResourceHref } from '../resource-definitions.js';
 
+const REFUND_REQUESTS_HREF = '/admin/pages/refund-requests';
+
 const CONTENT_PAGE_ORDER = [
   'site-settings',
   'homepage',
@@ -374,6 +376,7 @@ export default function Sidebar({ isVisible }) {
   const session = useSelector((state) => state.session);
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pendingRefundCount, setPendingRefundCount] = useState(0);
   const avatarRef = useRef(null);
 
   const pageItems = useMemo(
@@ -404,6 +407,34 @@ export default function Sidebar({ isVisible }) {
     () => buildSidebarResourceItems('customers', location.pathname, search),
     [location.pathname, search],
   );
+
+  const refundRequestsVisible = useMemo(
+    () => itemMatchesSearch('Refund Requests', search),
+    [search],
+  );
+
+  const isRefundRequestsSelected = location.pathname.startsWith(REFUND_REQUESTS_HREF);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadCount = async () => {
+      try {
+        const response = await fetch('/admin/api/admin/bookings/refund-requests', { credentials: 'same-origin' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (isActive && Array.isArray(payload?.data)) {
+          setPendingRefundCount(payload.data.length);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    loadCount();
+    const interval = setInterval(loadCount, 30_000);
+    return () => { isActive = false; clearInterval(interval); };
+  }, []);
 
   const initial = (session?.email?.[0] ?? 'C').toUpperCase();
   const isDashboard = location.pathname === '/admin' || location.pathname === '/admin/';
@@ -540,7 +571,7 @@ export default function Sidebar({ isVisible }) {
             <div className="admin-group">
               <div className="admin-group__head">
                 <span className="admin-group__label">Orders</span>
-                <span className="admin-group__count">{operationItems.length}</span>
+                <span className="admin-group__count">{operationItems.length + (refundRequestsVisible ? 1 : 0)}</span>
               </div>
               {operationItems.map((item) => (
                 <button
@@ -552,6 +583,20 @@ export default function Sidebar({ isVisible }) {
                   <span className="admin-nav-link__text">{item.label}</span>
                 </button>
               ))}
+              {refundRequestsVisible && (
+                <button
+                  className={`admin-nav-link${isRefundRequestsSelected ? ' admin-nav-link--selected' : ''}`}
+                  type="button"
+                  onClick={() => navigate(REFUND_REQUESTS_HREF)}
+                >
+                  <span className="admin-nav-link__text">Refund Requests</span>
+                  {pendingRefundCount > 0 && (
+                    <span className="admin-nav-link__icon" style={{ width: 'auto', fontSize: '0.6875rem', fontWeight: 700, color: '#c72e3a' }}>
+                      {pendingRefundCount}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="admin-group">

@@ -127,9 +127,15 @@ export async function upsertStripeInvoice({
     );
   }
 
+  // P1-37: Only use bookingId fallback for locating an existing invoice if it has no stripe_invoice_id
+  // or stripe_payment_intent_id set yet (i.e., it's a placeholder row). This prevents overwriting
+  // a different invoice that happens to share the same bookingId.
   if (!existingInvoice && bookingId) {
     existingInvoice = await queryOne(
-      'SELECT id FROM invoices WHERE booking_id = :bookingId ORDER BY id DESC LIMIT 1',
+      `SELECT id FROM invoices WHERE booking_id = :bookingId
+        AND stripe_invoice_id IS NULL
+        AND stripe_payment_intent_id IS NULL
+        ORDER BY id DESC LIMIT 1`,
       { bookingId },
       txOpts,
     );

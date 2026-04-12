@@ -123,9 +123,13 @@ export const config = {
       ? process.env.STRIPE_ALLOW_MOCK_PAYMENTS === 'true'
       : isLocalLikeEnv,
   },
+  commerce: {
+    defaultCurrency: (process.env.DEFAULT_CURRENCY || 'gbp').toLowerCase(),
+  },
 };
 
-if (runtimeEnv === 'production') {
+// Skip production validation during prebundle — only DB access is needed.
+if (runtimeEnv === 'production' && !process.env.ADMINJS_PREBUNDLE) {
   const productionErrors = [];
 
   if (config.sessionSecret === DEFAULT_SESSION_SECRET) {
@@ -148,8 +152,22 @@ if (runtimeEnv === 'production') {
     productionErrors.push('STRIPE_WEBHOOK_SECRET must be set to a real value in production.');
   }
 
+  // P1-62: Validate Stripe key consistency — ensure publishable and secret keys are both test or both live
+  if (config.stripe.publishableKey && config.stripe.secretKey) {
+    const pkIsLive = config.stripe.publishableKey.startsWith('pk_live_');
+    const skIsLive = config.stripe.secretKey.startsWith('sk_live_') || config.stripe.secretKey.startsWith('rk_live_');
+    if (pkIsLive !== skIsLive) {
+      productionErrors.push('STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY must both be test or both be live keys.');
+    }
+  }
+
   if (config.stripe.allowMockPayments) {
     productionErrors.push('STRIPE_ALLOW_MOCK_PAYMENTS must not be enabled in production.');
+  }
+
+  // P1-47: Ensure member session secret is separate from admin session secret
+  if (!process.env.MEMBER_SESSION_SECRET || config.memberSession.secret === config.sessionSecret) {
+    productionErrors.push('MEMBER_SESSION_SECRET must be set to a value different from SESSION_SECRET in production.');
   }
 
   if (!config.database.password) {

@@ -8,10 +8,12 @@ import {
   findUserById,
   registerUser,
   updateUserAccessStatus,
+  updateUserProfile,
 } from './services/users-service.js';
 import {
   cancelMembershipAdjustment,
   cancelMembership,
+  cancelScheduledDowngrade,
   changeMembershipPlan,
   confirmMembershipPayment,
   confirmMembershipUpgradePayment,
@@ -32,6 +34,7 @@ import {
 } from './services/memberships-service.js';
 import {
   cancelPendingBooking,
+  cancelConfirmedBooking,
   cancelBookingAdjustment,
   cancelGuestMeetingRoomBookingPayment,
   createBooking,
@@ -66,10 +69,46 @@ import {
   isStripeEnabled,
 } from './services/stripe-service.js';
 import { createRateLimitMiddleware } from './security.js';
+import { randomUUID } from 'node:crypto';
+import {
+  validate,
+  validateQuery,
+  registerSchema,
+  loginSchema,
+  changePasswordSchema,
+  guestBookingPaymentIntentSchema,
+  guestBookingCheckoutSessionSchema,
+  guestBookingSyncCheckoutSchema,
+  guestBookingConfirmSchema,
+  guestBookingCancelSchema,
+  createBookingSchema,
+  bookingPaymentIntentSchema,
+  bookingCheckoutSessionSchema,
+  updateBookingSchema,
+  planSlugSchema,
+  membershipCheckoutSessionSchema,
+  changePlanSchema,
+  confirmPaymentSchema,
+  confirmUpgradePaymentSchema,
+  syncSessionSchema,
+  confirmBookingAdjustmentPaymentSchema,
+  resourceQuerySchema,
+  updateProfileSchema,
+} from './services/validation.js';
 
+// Returns a positive integer ID or 0 (falsy) for missing/invalid input.
+// All callers MUST guard: if (!id) { return 400; }
+// Never passes 0 to DB queries — service layer uses WHERE id = :id which would match nothing for 0.
 function parseUserId(value) {
   const parsed = Number.parseInt(String(value || ''), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+// P1-52: Safe numeric parser to prevent NaN propagation from request body fields.
+// Returns 0 for undefined, null, empty strings, or non-numeric values instead of NaN.
+function safeParseNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 const authRateLimiter = createRateLimitMiddleware({
@@ -145,11 +184,28 @@ async function establishMemberSession(request, userId) {
   }
 
   request.session.memberUserId = Number(userId);
+  // P0-3: Generate CSRF token on session creation
+  request.session.csrfToken = randomUUID();
 }
 
 async function clearMemberSession(request, response) {
   await destroySession(request);
   response.clearCookie(config.memberSession.cookieName, buildMemberSessionCookieOptions(false));
+}
+
+// P1-49: Express middleware version of authentication check.
+// Populates req.authenticatedUser so route handlers don't need to call the function manually.
+// Legacy function version is kept below for backward compatibility with existing handlers.
+function memberAuthMiddleware(request, response, next) {
+  requireAuthenticatedMember(request, response).then((user) => {
+    if (user) {
+      request.authenticatedUser = user;
+      next();
+    }
+    // If user is null, requireAuthenticatedMember already sent the 401 response
+  }).catch((error) => {
+    response.status(500).json({ error: String(error?.message ?? error) });
+  });
 }
 
 async function requireAuthenticatedMember(request, response) {
@@ -324,6 +380,9 @@ async function handleStripeEvent(event) {
           userId,
           sessionId: event.data.object.id,
         });
+      } else {
+        // P1-40: Log when checkout.session.completed doesn't match any handler due to missing metadata
+        console.warn(`[webhook] checkout.session.completed with unrecognized metadata — no handler matched. session=${event.data.object.id} metadata=${JSON.stringify(event.data.object?.metadata)}`);
       }
       return;
     }
@@ -420,6 +479,19 @@ export function registerStripeWebhook(app) {
 }
 
 export function registerMemberPortalApi(app) {
+  // P0-3: CSRF token endpoint — frontend fetches this token and sends it in X-CSRF-Token header
+  app.get('/api/member-auth/csrf-token', (request, response) => {
+    if (!request.session) {
+      return response.status(401).json({ error: 'No active session.' });
+    }
+
+    if (!request.session.csrfToken) {
+      request.session.csrfToken = randomUUID();
+    }
+
+    response.json({ csrfToken: request.session.csrfToken });
+  });
+
   app.get('/api/member-auth/session', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
@@ -434,9 +506,9 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/register', authRateLimiter, async (request, response) => {
+  app.post('/api/member-auth/register', authRateLimiter, validate(registerSchema), async (request, response) => {
     try {
-      const user = await registerUser(request.body || {});
+      const user = await registerUser(request.body);
       await establishMemberSession(request, user.id);
       response.status(201).json({ data: user });
     } catch (error) {
@@ -444,9 +516,9 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/login', authRateLimiter, async (request, response) => {
+  app.post('/api/member-auth/login', authRateLimiter, validate(loginSchema), async (request, response) => {
     try {
-      const user = await authenticateUser(request.body || {});
+      const user = await authenticateUser(request.body);
       await establishMemberSession(request, user.id);
       response.json({ data: user });
     } catch (error) {
@@ -463,18 +535,14 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/change-password', async (request, response) => {
+  app.post('/api/member-auth/change-password', memberAuthMiddleware, validate(changePasswordSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
-
-      if (!user) {
-        return;
-      }
+      const user = request.authenticatedUser;
 
       await changeUserPassword({
         userId: user.id,
-        currentPassword: String(request.body?.currentPassword || ''),
-        newPassword: String(request.body?.newPassword || ''),
+        currentPassword: request.body.currentPassword,
+        newPassword: request.body.newPassword,
       });
 
       response.json({ ok: true });
@@ -483,12 +551,28 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.get('/api/public/meeting-rooms/resources', async (request, response) => {
+  app.put('/api/member-portal/profile', memberAuthMiddleware, validate(updateProfileSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+
+      const updatedUser = await updateUserProfile(user.id, {
+        name: request.body.name,
+        email: request.body.email,
+        phone: request.body.phone,
+      });
+
+      response.json({ data: updatedUser });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.get('/api/public/meeting-rooms/resources', validateQuery(resourceQuerySchema), async (request, response) => {
     try {
       const resources = await listAvailableResources({
-        type: 'meeting_room',
-        startAt: String(request.query.startAt || ''),
-        endAt: String(request.query.endAt || ''),
+        type: request.query.type,
+        startAt: request.query.startAt,
+        endAt: request.query.endAt,
       });
 
       response.json({
@@ -505,24 +589,16 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/payment-intent', guestBookingRateLimiter, async (request, response) => {
+  app.post('/api/public/meeting-rooms/bookings/payment-intent', guestBookingRateLimiter, validate(guestBookingPaymentIntentSchema), async (request, response) => {
     try {
-      const guestName = String(request.body?.guestName || '').trim();
-      const guestEmail = String(request.body?.guestEmail || '').trim();
-
-      if (!guestName || !guestEmail) {
-        response.status(400).json({ error: 'Guest name and email are required.' });
-        return;
-      }
-
       const draft = await initiateGuestMeetingRoomBookingPayment({
-        guestName,
-        guestEmail,
-        resourceId: Number(request.body?.resourceId),
-        startAt: String(request.body?.startAt || ''),
-        endAt: String(request.body?.endAt || ''),
-        purpose: String(request.body?.purpose || ''),
-        notes: String(request.body?.notes || ''),
+        guestName: request.body.guestName,
+        guestEmail: request.body.guestEmail,
+        resourceId: request.body.resourceId,
+        startAt: request.body.startAt,
+        endAt: request.body.endAt,
+        purpose: request.body.purpose,
+        notes: request.body.notes,
       });
 
       response.status(201).json({ data: draft });
@@ -531,26 +607,19 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/checkout-session', guestBookingRateLimiter, async (request, response) => {
+  app.post('/api/public/meeting-rooms/bookings/checkout-session', guestBookingRateLimiter, validate(guestBookingCheckoutSessionSchema), async (request, response) => {
     try {
-      const guestName = String(request.body?.guestName || '').trim();
-      const guestEmail = String(request.body?.guestEmail || '').trim();
-      const successUrl = validateReturnUrl(request.body?.successUrl, 'Success URL');
-      const cancelUrl = validateReturnUrl(request.body?.cancelUrl, 'Cancel URL');
-
-      if (!guestName || !guestEmail) {
-        response.status(400).json({ error: 'Guest name and email are required.' });
-        return;
-      }
+      const successUrl = validateReturnUrl(request.body.successUrl, 'Success URL');
+      const cancelUrl = validateReturnUrl(request.body.cancelUrl, 'Cancel URL');
 
       const result = await initiateGuestMeetingRoomBookingCheckout({
-        guestName,
-        guestEmail,
-        resourceId: Number(request.body?.resourceId),
-        startAt: String(request.body?.startAt || ''),
-        endAt: String(request.body?.endAt || ''),
-        purpose: String(request.body?.purpose || ''),
-        notes: String(request.body?.notes || ''),
+        guestName: request.body.guestName,
+        guestEmail: request.body.guestEmail,
+        resourceId: request.body.resourceId,
+        startAt: request.body.startAt,
+        endAt: request.body.endAt,
+        purpose: request.body.purpose,
+        notes: request.body.notes,
         successUrl,
         cancelUrl,
       });
@@ -561,19 +630,11 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/sync-checkout-session', guestBookingRateLimiter, async (request, response) => {
+  app.post('/api/public/meeting-rooms/bookings/sync-checkout-session', guestBookingRateLimiter, validate(guestBookingSyncCheckoutSchema), async (request, response) => {
     try {
-      const guestEmail = String(request.body?.guestEmail || '').trim();
-      const sessionId = String(request.body?.sessionId || '').trim();
-
-      if (!guestEmail || !sessionId) {
-        response.status(400).json({ error: 'Guest email and session ID are required.' });
-        return;
-      }
-
       const booking = await syncGuestMeetingRoomBookingCheckout({
-        guestEmail,
-        sessionId,
+        guestEmail: request.body.guestEmail,
+        sessionId: request.body.sessionId,
       });
 
       response.json({ data: booking });
@@ -582,21 +643,19 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/:bookingId/confirm', guestBookingRateLimiter, async (request, response) => {
+  app.post('/api/public/meeting-rooms/bookings/:bookingId/confirm', guestBookingRateLimiter, validate(guestBookingConfirmSchema), async (request, response) => {
     try {
       const bookingId = parseUserId(request.params.bookingId);
-      const guestEmail = String(request.body?.guestEmail || '').trim();
-      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
 
-      if (!bookingId || !guestEmail || !paymentIntentId) {
-        response.status(400).json({ error: 'Booking ID, guest email, and payment intent are required.' });
+      if (!bookingId) {
+        response.status(400).json({ error: 'Booking ID is required.' });
         return;
       }
 
       const booking = await confirmGuestMeetingRoomBookingPayment({
-        guestEmail,
+        guestEmail: request.body.guestEmail,
         bookingId,
-        paymentIntentId,
+        paymentIntentId: request.body.paymentIntentId,
       });
 
       response.json({ data: booking });
@@ -605,21 +664,19 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/:bookingId/cancel', guestBookingRateLimiter, async (request, response) => {
+  app.post('/api/public/meeting-rooms/bookings/:bookingId/cancel', guestBookingRateLimiter, validate(guestBookingCancelSchema), async (request, response) => {
     try {
       const bookingId = parseUserId(request.params.bookingId);
-      const guestEmail = String(request.body?.guestEmail || '').trim();
-      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
 
-      if (!bookingId || !guestEmail) {
-        response.status(400).json({ error: 'Booking ID and guest email are required.' });
+      if (!bookingId) {
+        response.status(400).json({ error: 'Booking ID is required.' });
         return;
       }
 
       const booking = await cancelGuestMeetingRoomBookingPayment({
-        guestEmail,
+        guestEmail: request.body.guestEmail,
         bookingId,
-        paymentIntentId,
+        paymentIntentId: request.body.paymentIntentId,
       });
 
       response.json({ data: booking });
@@ -642,12 +699,15 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.get('/api/member-portal/resources', async (request, response) => {
+  // P1-50: This endpoint is intentionally unauthenticated.
+  // Resource listing (types, names, pricing, availability) is semi-public data needed by both
+  // guest booking pages and authenticated member dashboards. No sensitive user data is exposed.
+  app.get('/api/member-portal/resources', validateQuery(resourceQuerySchema), async (request, response) => {
     try {
       const resources = await listAvailableResources({
-        type: String(request.query.type || ''),
-        startAt: String(request.query.startAt || ''),
-        endAt: String(request.query.endAt || ''),
+        type: request.query.type,
+        startAt: request.query.startAt,
+        endAt: request.query.endAt,
       });
       response.json({ data: resources });
     } catch (error) {
@@ -655,115 +715,60 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships', async (request, response) => {
+  app.post('/api/member-portal/memberships', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const planSlug = String(request.body?.planSlug || '').trim();
-
-      if (!planSlug) {
-        response.status(400).json({ error: 'Plan slug is required.' });
-        return;
-      }
-
-      const membership = await createMembership({ userId: user.id, planSlug });
+      const membership = await createMembership({ userId: user.id, planSlug: request.body.planSlug });
       response.status(201).json({ data: membership });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
-  app.post('/api/member-portal/memberships/payment-draft', async (request, response) => {
+  app.post('/api/member-portal/memberships/payment-draft', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const planSlug = String(request.body?.planSlug || '').trim();
-
-      if (!planSlug) {
-        response.status(400).json({ error: 'Plan slug is required.' });
-        return;
-      }
-
-      const draft = await createMembershipPaymentDraft({ userId: user.id, planSlug });
+      const draft = await createMembershipPaymentDraft({ userId: user.id, planSlug: request.body.planSlug });
       response.status(201).json({ data: draft });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
-  app.post('/api/member-portal/memberships/confirm-payment', async (request, response) => {
+  app.post('/api/member-portal/memberships/confirm-payment', memberAuthMiddleware, validate(confirmPaymentSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
-
-      if (!paymentIntentId) {
-        response.status(400).json({ error: 'Payment intent ID is required.' });
-        return;
-      }
-
-      const membership = await confirmMembershipPayment({ userId: user.id, paymentIntentId });
+      const membership = await confirmMembershipPayment({ userId: user.id, paymentIntentId: request.body.paymentIntentId });
       response.json({ data: membership });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
-  app.post('/api/member-portal/memberships/confirm-upgrade-payment', async (request, response) => {
+  app.post('/api/member-portal/memberships/confirm-upgrade-payment', memberAuthMiddleware, validate(confirmUpgradePaymentSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
-      const adjustmentId = Number(request.body?.adjustmentId || 0);
-
-      if (!paymentIntentId || !adjustmentId) {
-        response.status(400).json({ error: 'Payment intent ID and adjustment ID are required.' });
-        return;
-      }
-
-      const membership = await confirmMembershipUpgradePayment({ userId: user.id, paymentIntentId, adjustmentId });
+      const membership = await confirmMembershipUpgradePayment({ userId: user.id, paymentIntentId: request.body.paymentIntentId, adjustmentId: request.body.adjustmentId });
       response.json({ data: membership });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
-  app.post('/api/member-portal/memberships/checkout-session', async (request, response) => {
+  app.post('/api/member-portal/memberships/checkout-session', memberAuthMiddleware, validate(membershipCheckoutSessionSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const planSlug = String(request.body?.planSlug || '').trim();
-      const successUrl = validateReturnUrl(request.body?.successUrl, 'Success URL');
-      const cancelUrl = validateReturnUrl(request.body?.cancelUrl, 'Cancel URL');
-
-      if (!planSlug || !successUrl || !cancelUrl) {
-        response.status(400).json({ error: 'Plan slug, success URL, and cancel URL are required.' });
-        return;
-      }
+      const successUrl = validateReturnUrl(request.body.successUrl, 'Success URL');
+      const cancelUrl = validateReturnUrl(request.body.cancelUrl, 'Cancel URL');
 
       const session = await createMembershipCheckout({
         userId: user.id,
-        planSlug,
+        planSlug: request.body.planSlug,
         successUrl,
         cancelUrl,
       });
@@ -779,48 +784,27 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/sync-checkout-session', async (request, response) => {
+  app.post('/api/member-portal/memberships/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const sessionId = String(request.body?.sessionId || '').trim();
-
-      if (!sessionId) {
-        response.status(400).json({ error: 'Session ID is required.' });
-        return;
-      }
-
-      const membership = await syncMembershipCheckoutSession({ userId: user.id, sessionId });
+      const membership = await syncMembershipCheckoutSession({ userId: user.id, sessionId: request.body.sessionId });
       response.json({ data: membership });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
-  app.post('/api/member-portal/memberships/change-plan', async (request, response) => {
+  app.post('/api/member-portal/memberships/change-plan', memberAuthMiddleware, validate(changePlanSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const planSlug = String(request.body?.planSlug || '').trim();
-      const successUrl = validateReturnUrl(request.body?.successUrl, 'Success URL');
-      const cancelUrl = validateReturnUrl(request.body?.cancelUrl, 'Cancel URL');
-
-      if (!planSlug) {
-        response.status(400).json({ error: 'Plan slug is required.' });
-        return;
-      }
+      const successUrl = request.body.successUrl ? validateReturnUrl(request.body.successUrl, 'Success URL') : '';
+      const cancelUrl = request.body.cancelUrl ? validateReturnUrl(request.body.cancelUrl, 'Cancel URL') : '';
 
       const result = await changeMembershipPlan({
         userId: user.id,
-        planSlug,
+        planSlug: request.body.planSlug,
         successUrl,
         cancelUrl,
       });
@@ -830,22 +814,11 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/adjustments/sync-checkout-session', async (request, response) => {
+  app.post('/api/member-portal/memberships/adjustments/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const sessionId = String(request.body?.sessionId || '').trim();
-
-      if (!sessionId) {
-        response.status(400).json({ error: 'Session ID is required.' });
-        return;
-      }
-
-      const membership = await syncMembershipAdjustmentCheckoutSession({ userId: user.id, sessionId });
+      const membership = await syncMembershipAdjustmentCheckoutSession({ userId: user.id, sessionId: request.body.sessionId });
       response.json({ data: membership });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
@@ -874,22 +847,11 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/change-plan/preview', async (request, response) => {
+  app.post('/api/member-portal/memberships/change-plan/preview', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const planSlug = String(request.body?.planSlug || '').trim();
-
-      if (!planSlug) {
-        response.status(400).json({ error: 'Plan slug is required.' });
-        return;
-      }
-
-      const preview = await previewMembershipPlanChange({ userId: user.id, planSlug });
+      const preview = await previewMembershipPlanChange({ userId: user.id, planSlug: request.body.planSlug });
       response.json({ data: preview });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
@@ -911,7 +873,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings', async (request, response) => {
+  app.post('/api/member-portal/memberships/cancel-scheduled-downgrade', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -919,14 +881,25 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
+      const membership = await cancelScheduledDowngrade({ userId: user.id });
+      response.json({ data: membership });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post('/api/member-portal/bookings', memberAuthMiddleware, validate(createBookingSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+
       const booking = await createBooking({
         userId: user.id,
-        resourceId: Number(request.body?.resourceId),
-        bookingType: String(request.body?.bookingType || 'meeting_room'),
-        startAt: String(request.body?.startAt || ''),
-        endAt: String(request.body?.endAt || ''),
-        purpose: String(request.body?.purpose || ''),
-        notes: String(request.body?.notes || ''),
+        resourceId: request.body.resourceId,
+        bookingType: request.body.bookingType,
+        startAt: request.body.startAt,
+        endAt: request.body.endAt,
+        purpose: request.body.purpose,
+        notes: request.body.notes,
       });
 
       response.status(201).json({ data: booking });
@@ -935,22 +908,18 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/payment-intent', async (request, response) => {
+  app.post('/api/member-portal/bookings/payment-intent', memberAuthMiddleware, validate(bookingPaymentIntentSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
-
-      if (!user) {
-        return;
-      }
+      const user = request.authenticatedUser;
 
       const result = await initiateBookingPayment({
         userId: user.id,
-        resourceId: Number(request.body?.resourceId),
-        bookingType: String(request.body?.bookingType || 'meeting_room'),
-        startAt: String(request.body?.startAt || ''),
-        endAt: String(request.body?.endAt || ''),
-        purpose: String(request.body?.purpose || ''),
-        notes: String(request.body?.notes || ''),
+        resourceId: request.body.resourceId,
+        bookingType: request.body.bookingType,
+        startAt: request.body.startAt,
+        endAt: request.body.endAt,
+        purpose: request.body.purpose,
+        notes: request.body.notes,
       });
 
       response.status(201).json({ data: result });
@@ -959,30 +928,21 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/checkout-session', async (request, response) => {
+  app.post('/api/member-portal/bookings/checkout-session', memberAuthMiddleware, validate(bookingCheckoutSessionSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const successUrl = validateReturnUrl(request.body?.successUrl, 'Success URL');
-      const cancelUrl = validateReturnUrl(request.body?.cancelUrl, 'Cancel URL');
-
-      if (!successUrl || !cancelUrl) {
-        response.status(400).json({ error: 'Success URL and cancel URL are required.' });
-        return;
-      }
+      const successUrl = validateReturnUrl(request.body.successUrl, 'Success URL');
+      const cancelUrl = validateReturnUrl(request.body.cancelUrl, 'Cancel URL');
 
       const result = await initiateBookingCheckout({
         userId: user.id,
-        resourceId: Number(request.body?.resourceId),
-        bookingType: String(request.body?.bookingType || 'meeting_room'),
-        startAt: String(request.body?.startAt || ''),
-        endAt: String(request.body?.endAt || ''),
-        purpose: String(request.body?.purpose || ''),
-        notes: String(request.body?.notes || ''),
+        resourceId: request.body.resourceId,
+        bookingType: request.body.bookingType,
+        startAt: request.body.startAt,
+        endAt: request.body.endAt,
+        purpose: request.body.purpose,
+        notes: request.body.notes,
         successUrl,
         cancelUrl,
       });
@@ -993,44 +953,22 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/sync-checkout-session', async (request, response) => {
+  app.post('/api/member-portal/bookings/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const sessionId = String(request.body?.sessionId || '').trim();
-
-      if (!sessionId) {
-        response.status(400).json({ error: 'Session ID is required.' });
-        return;
-      }
-
-      const booking = await syncBookingCheckoutSession({ userId: user.id, sessionId });
+      const booking = await syncBookingCheckoutSession({ userId: user.id, sessionId: request.body.sessionId });
       response.json({ data: booking });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
-  app.post('/api/member-portal/bookings/adjustments/sync-checkout-session', async (request, response) => {
+  app.post('/api/member-portal/bookings/adjustments/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const sessionId = String(request.body?.sessionId || '').trim();
-
-      if (!sessionId) {
-        response.status(400).json({ error: 'Session ID is required.' });
-        return;
-      }
-
-      const booking = await syncBookingAdjustmentCheckoutSession({ userId: user.id, sessionId });
+      const booking = await syncBookingAdjustmentCheckoutSession({ userId: user.id, sessionId: request.body.sessionId });
       response.json({ data: booking });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
@@ -1063,23 +1001,11 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/adjustments/confirm-payment', async (request, response) => {
+  app.post('/api/member-portal/bookings/adjustments/confirm-payment', memberAuthMiddleware, validate(confirmBookingAdjustmentPaymentSchema), async (request, response) => {
     try {
-      const user = await requireAuthenticatedMember(request, response);
+      const user = request.authenticatedUser;
 
-      if (!user) {
-        return;
-      }
-
-      const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
-      const adjustmentId = Number(request.body?.adjustmentId || 0);
-
-      if (!paymentIntentId || !adjustmentId) {
-        response.status(400).json({ error: 'Payment intent ID and adjustment ID are required.' });
-        return;
-      }
-
-      const booking = await confirmBookingAdjustmentPayment({ userId: user.id, paymentIntentId, adjustmentId });
+      const booking = await confirmBookingAdjustmentPayment({ userId: user.id, paymentIntentId: request.body.paymentIntentId, adjustmentId: request.body.adjustmentId });
       response.json({ data: booking });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
@@ -1140,7 +1066,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.put('/api/member-portal/bookings/:bookingId', async (request, response) => {
+  app.post('/api/member-portal/bookings/:bookingId/cancel-and-refund', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -1155,16 +1081,38 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
+      const booking = await cancelConfirmedBooking({
+        userId: user.id,
+        bookingId,
+      });
+
+      response.json({ data: booking });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.put('/api/member-portal/bookings/:bookingId', memberAuthMiddleware, validate(updateBookingSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+
+      const bookingId = parseUserId(request.params.bookingId);
+
+      if (!bookingId) {
+        response.status(400).json({ error: 'Booking ID is required.' });
+        return;
+      }
+
       const booking = await updateBooking({
         userId: user.id,
         bookingId,
-        resourceId: Number(request.body?.resourceId),
-        startAt: String(request.body?.startAt || ''),
-        endAt: String(request.body?.endAt || ''),
-        purpose: String(request.body?.purpose || ''),
-        notes: String(request.body?.notes || ''),
-        successUrl: request.body?.successUrl ? validateReturnUrl(request.body?.successUrl, 'Success URL') : '',
-        cancelUrl: request.body?.cancelUrl ? validateReturnUrl(request.body?.cancelUrl, 'Cancel URL') : '',
+        resourceId: request.body.resourceId,
+        startAt: request.body.startAt,
+        endAt: request.body.endAt,
+        purpose: request.body.purpose,
+        notes: request.body.notes,
+        successUrl: request.body.successUrl ? validateReturnUrl(request.body.successUrl, 'Success URL') : '',
+        cancelUrl: request.body.cancelUrl ? validateReturnUrl(request.body.cancelUrl, 'Cancel URL') : '',
       });
 
       response.json({ data: booking });

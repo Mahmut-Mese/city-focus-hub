@@ -4,8 +4,8 @@ mode: primary
 model: github-copilot/claude-opus-4.6
 temperature: 0.1
 permission:
-  edit: deny
-  bash: deny
+  edit: allow
+  bash: allow
   task:
     "*": deny
     tech-debt-worker: allow

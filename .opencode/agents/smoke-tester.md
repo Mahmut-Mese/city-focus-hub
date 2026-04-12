@@ -1,7 +1,7 @@
 ---
 description: Starts the dev/preview server and smoke-tests every implemented route — checks HTTP 200, no browser console errors, no server errors. Run after each Phase implementation batch. FREE model — use liberally.
 mode: subagent
-model: opencode/qwen3.6-plus-free
+model: opencode/minimax-m2.5-free
 temperature: 0.1
 permission:
   edit: deny
@@ -44,26 +44,26 @@ npx astro preview &
 sleep 3
 ```
 
-Note the port (default: 4321).
+Note the port (default: 8080).
 
 ### Step 3 — HTTP 200 Checks
 
 For each implemented route, run a curl check:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/about
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/pricing
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/meeting-rooms
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/virtual-office
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/contact
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/faq
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/blog
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/privacy
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/terms
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/auth
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/dashboard
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/404
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/about
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/pricing
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/meeting-rooms
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/virtual-office
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/contact
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/faq
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/blog
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/privacy
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/terms
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/auth
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/dashboard
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/404
 ```
 
 Only test routes that have already been implemented. Skip routes not yet converted.
@@ -76,8 +76,8 @@ Check that the main CSS and JS bundles are not 404:
 # Find generated asset filenames from the build output
 ls dist/client/_astro/
 # Then spot-check one CSS and one JS file:
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/_astro/<bundle>.css
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/_astro/<bundle>.js
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/_astro/<bundle>.css
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/_astro/<bundle>.js
 ```
 
 ### Step 5 — Server Error Check
@@ -86,8 +86,8 @@ Check the preview server output for any error lines:
 
 ```bash
 # Send a few requests and grep the server log for errors
-curl -s http://localhost:4321/ > /dev/null
-curl -s http://localhost:4321/about > /dev/null
+curl -s http://localhost:8080/ > /dev/null
+curl -s http://localhost:8080/about > /dev/null
 # If the server was started with output redirected to a file, check it:
 # grep -i "error\|exception\|500\|cannot" server.log
 ```

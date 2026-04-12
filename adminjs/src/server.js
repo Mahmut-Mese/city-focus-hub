@@ -10,7 +10,8 @@ import { mkdir, readFile, rename, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRateLimitMiddleware } from './security.js';
+import { createRateLimitMiddleware, createCsrfMiddleware } from './security.js';
+import { expressErrorHandler, logger } from './services/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,7 +84,9 @@ async function normalizeUploadedImage(file) {
   const detectedFormat = detectImageFormat(buffer);
 
   if (!detectedFormat) {
-    await unlink(file.path).catch(() => {});
+    await unlink(file.path).catch((err) => {
+      console.error('[server] Failed to clean up invalid upload file:', file.path, String(err?.message ?? err));
+    });
     throw new Error('Uploaded file must be a valid PNG, JPEG, GIF, or WebP image.');
   }
 
@@ -114,6 +117,7 @@ const start = async () => {
     { buildResources },
     { registerPublicApi },
     { registerMemberPortalApi, registerStripeWebhook },
+    { approveBookingRefund, listPendingRefundRequests, listProcessedRefundRequests, rejectBookingRefund },
   ] = await Promise.all([
     import('./admin.js'),
     import('./admin-account.js'),
@@ -126,6 +130,7 @@ const start = async () => {
     import('./models.js'),
     import('./public-api.js'),
     import('./member-portal-api.js'),
+    import('./services/bookings-service.js'),
   ]);
 
   await sequelize.authenticate();
@@ -259,6 +264,12 @@ const start = async () => {
   app.use('/api', express.json({ limit: '2mb' }));
   app.use('/api/member-auth', memberSessionMiddleware);
   app.use('/api/member-portal', memberSessionMiddleware);
+
+  // P0-3: CSRF protection for member portal state-mutating endpoints
+  const csrfProtect = createCsrfMiddleware();
+  app.use('/api/member-portal', csrfProtect);
+  app.use('/api/member-auth', csrfProtect);
+
   app.use('/admin-assets', express.static(path.join(__dirname, '..', 'public')));
   app.use(config.uploads.publicPath, express.static(config.uploads.directory));
   app.use('/cms', express.static(config.staticSnapshots.directory));
@@ -331,6 +342,49 @@ const start = async () => {
       response.json({ ok: true, deleted: true, id: Number(request.params.id) });
     } catch (error) {
       response.status(500).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  // Admin: list all bookings with a pending refund request (or processed if ?status=processed)
+  adminRouter.get('/api/admin/bookings/refund-requests', async (request, response) => {
+    try {
+      const status = request.query.status;
+      const requests = status === 'processed'
+        ? await listProcessedRefundRequests()
+        : await listPendingRefundRequests();
+      response.json({ data: requests });
+    } catch (error) {
+      response.status(500).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  // Admin: approve a pending refund request → fires Stripe refund
+  adminRouter.post('/api/admin/bookings/:bookingId/approve-refund', async (request, response) => {
+    try {
+      const bookingId = Number(request.params.bookingId);
+      if (!bookingId || !Number.isFinite(bookingId)) {
+        response.status(400).json({ error: 'Invalid booking ID.' });
+        return;
+      }
+      const result = await approveBookingRefund({ bookingId });
+      response.json(result);
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  // Admin: reject a pending refund request — no Stripe refund, booking stays confirmed
+  adminRouter.post('/api/admin/bookings/:bookingId/reject-refund', async (request, response) => {
+    try {
+      const bookingId = Number(request.params.bookingId);
+      if (!bookingId || !Number.isFinite(bookingId)) {
+        response.status(400).json({ error: 'Invalid booking ID.' });
+        return;
+      }
+      const result = await rejectBookingRefund({ bookingId });
+      response.json(result);
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
 
@@ -438,11 +492,17 @@ const start = async () => {
     });
   });
 
+  // P1-66: Structured error handler — catches all unhandled Express errors,
+  // logs them as structured JSON, and returns a safe response to the client.
+  app.use(expressErrorHandler);
+
   app.listen(config.port, config.host, () => {
-    console.log(
-      `AdminJS started on http://${config.host}:${config.port}${admin.options.rootPath} `
-      + `(public: ${config.publicOrigin}${admin.options.rootPath})`,
-    );
+    logger.info('server.started', {
+      host: config.host,
+      port: config.port,
+      adminPath: admin.options.rootPath,
+      publicOrigin: config.publicOrigin,
+    });
   });
 };
 

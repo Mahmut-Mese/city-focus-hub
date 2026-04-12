@@ -1,6 +1,5 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import type { Location } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,8 +16,23 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll to error when it appears
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [error]);
 
   const redirectTarget = ((location.state as { from?: Location } | null)?.from?.pathname || '/dashboard');
+
+  // #125: Move redirect out of render body — side effects must run in useEffect
+  useEffect(() => {
+    if (isReady && user) {
+      window.location.href = redirectTarget;
+    }
+  }, [isReady, user, redirectTarget]);
 
   if (!isReady) {
     return (
@@ -29,7 +43,6 @@ export default function Auth() {
   }
 
   if (user) {
-    window.location.href = redirectTarget;
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f6f5f2]">
         <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
@@ -68,6 +81,11 @@ export default function Auth() {
         return;
       }
 
+      // #130: Clear sensitive form state before redirect
+      setName('');
+      setEmail('');
+      setPassword('');
+      setError('');
       window.location.href = redirectTarget;
     } finally {
       setIsSubmitting(false);
@@ -80,7 +98,7 @@ export default function Auth() {
         <div className="mx-auto grid max-w-5xl gap-8 rounded-[36px] border border-black/10 bg-white p-6 shadow-[0_16px_48px_rgba(15,23,42,0.06)] lg:grid-cols-[1.05fr_0.95fr] lg:p-8">
           <div className="rounded-[30px] bg-black p-8 text-white">
             <p className="text-sm uppercase tracking-[0.16em] text-white/60">Member access</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
               Access your coworking dashboard
             </h1>
             <p className="mt-4 max-w-md text-base leading-7 text-white/70">
@@ -102,9 +120,14 @@ export default function Auth() {
           </div>
 
           <div className="rounded-[30px] bg-[#fbfaf8] p-6 sm:p-8">
-            <div className="inline-flex rounded-full border border-black/10 bg-white p-1">
+            {/* P1-69: ARIA tab semantics for login/register switcher */}
+            <div role="tablist" aria-label="Authentication mode" className="inline-flex rounded-full border border-black/10 bg-white p-1">
               <button
                 type="button"
+                role="tab"
+                aria-selected={mode === 'login'}
+                aria-controls="auth-form-panel"
+                id="tab-login"
                 onClick={() => {
                   setMode('login');
                   setError('');
@@ -117,6 +140,10 @@ export default function Auth() {
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={mode === 'register'}
+                aria-controls="auth-form-panel"
+                id="tab-register"
                 onClick={() => {
                   setMode('register');
                   setError('');
@@ -129,7 +156,7 @@ export default function Auth() {
               </button>
             </div>
 
-            <div className="mt-6">
+            <div id="auth-form-panel" role="tabpanel" aria-labelledby={mode === 'login' ? 'tab-login' : 'tab-register'} className="mt-6">
               <h2 className="text-3xl font-semibold tracking-tight text-black">
                 {mode === 'login' ? 'Welcome back' : 'Create your account'}
               </h2>
@@ -179,7 +206,7 @@ export default function Auth() {
               </div>
 
               {error ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div ref={errorRef} role="alert" aria-live="assertive" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
                 </div>
               ) : null}

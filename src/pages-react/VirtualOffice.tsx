@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Link } from 'react-router-dom';
-import { Calendar, Tag, Globe, Phone, Check } from 'lucide-react';
+import { Calendar, Tag, Globe, Phone, Check, CreditCard } from 'lucide-react';
 import { useSiteSettings, useVirtualOfficePageContent } from '@/hooks/useCmsContent';
 import { postApi } from '@/lib/content-api';
 
@@ -119,12 +119,12 @@ export default function VirtualOffice() {
               </div>
 
               <div>
-                <h2 className="font-sans text-5xl leading-none mb-4">{content.overviewTitle}</h2>
+                <h2 className="font-sans text-3xl leading-none mb-4">{content.overviewTitle}</h2>
                 <p className="text-black/60 leading-relaxed text-lg">{content.overviewText}</p>
               </div>
 
               <div>
-                <h2 className="font-sans text-5xl leading-none mb-4">{content.challengeTitle}</h2>
+                <h2 className="font-sans text-3xl leading-none mb-4">{content.challengeTitle}</h2>
                 <p className="text-black/60 mb-4 text-lg">{content.challengeIntro}</p>
                 <ul className="space-y-2">
                   {content.challengeItems.map((item) => (
@@ -139,7 +139,7 @@ export default function VirtualOffice() {
               </div>
 
               <div>
-                <h2 className="font-sans text-5xl leading-none mb-4">{content.resultTitle}</h2>
+                <h2 className="font-sans text-3xl leading-none mb-4">{content.resultTitle}</h2>
                 <p className="text-black/60 leading-relaxed text-lg">{content.resultText}</p>
               </div>
 
@@ -154,7 +154,7 @@ export default function VirtualOffice() {
 
             <div className="space-y-6">
               <div className="rounded-2xl border border-black/10 bg-white p-6">
-                <h3 className="font-sans text-4xl leading-none mb-5">{content.projectInfoTitle}</h3>
+                <h3 className="font-sans text-2xl leading-none mb-5">{content.projectInfoTitle}</h3>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <Calendar size={18} className="text-black/45" />
@@ -180,8 +180,39 @@ export default function VirtualOffice() {
                 </div>
               </div>
 
+              <div className="rounded-2xl border-2 border-black bg-white p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black">
+                    <CreditCard size={18} className="text-white" />
+                  </div>
+                  <h3 className="font-sans text-2xl leading-none">Get started</h3>
+                </div>
+                <p className="text-black/60 text-base mb-4">
+                  Choose a membership plan that includes virtual office services and start today.
+                </p>
+                <div className="space-y-2 mb-5">
+                  <div className="flex items-start gap-2">
+                    <Check size={16} className="text-black mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-black/70">Professional business address</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check size={16} className="text-black mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-black/70">Mail handling &amp; forwarding</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check size={16} className="text-black mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-black/70">Meeting room access included</span>
+                  </div>
+                </div>
+                <Link to="/pricing">
+                  <Button className="h-11 rounded-lg px-5 text-sm w-full bg-black text-white hover:bg-black/90">
+                    View plans &amp; pricing
+                  </Button>
+                </Link>
+              </div>
+
               <div className="bg-[#0f1015] text-white p-6 rounded-2xl">
-                <h3 className="font-sans text-4xl leading-tight mb-2">{content.ctaTitle}</h3>
+                <h3 className="font-sans text-2xl leading-tight mb-2">{content.ctaTitle}</h3>
                 <p className="text-white/75 text-base mb-4">{content.ctaDescription}</p>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
@@ -198,7 +229,7 @@ export default function VirtualOffice() {
               </div>
 
               <div className="rounded-2xl border border-black/10 bg-white p-6">
-                <h3 className="font-sans text-4xl leading-none mb-4">{content.contactForm.title}</h3>
+                <h3 className="font-sans text-2xl leading-none mb-4">{content.contactForm.title}</h3>
                 <form className="space-y-4" onSubmit={handleSubmit}>
                   <Input
                     value={formState.name}

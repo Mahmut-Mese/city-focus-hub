@@ -132,7 +132,7 @@ export function registerPublicApi(app) {
         return;
       }
 
-      if (submission.name.length > 120 || submission.phone.length > 40 || submission.email.length > 254 || submission.message.length > 5000) {
+      if (submission.name.length > 120 || submission.phone.length > 40 || submission.email.length > 254 || submission.message.length > 5000 || submission.sourcePage.length > 120) {
         response.status(400).json({ error: 'Submission is too large.' });
         return;
       }

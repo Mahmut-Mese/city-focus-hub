@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CmsNoData } from '@/components/shared/CmsNoData';
-import { Calendar, Tag, Globe, Phone, Check } from 'lucide-react';
+import { Calendar, Tag, Globe, Phone, Check, ArrowRight } from 'lucide-react';
 import { useSiteSettings, useVirtualOfficePageContent } from '@/hooks/useCmsContent';
 import { postApi } from '@/lib/content-api';
 
@@ -166,6 +166,28 @@ export default function VirtualOfficeContent() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border-2 border-black bg-white p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black/45">Private Office</p>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-5xl font-bold leading-none">£150</span>
+                  <span className="text-sm text-black/45">/month</span>
+                </div>
+                <p className="mt-3 text-sm text-black/55">Premium private office with all amenities included.</p>
+                <ul className="mt-4 space-y-2.5">
+                  {['Prestigious business address', 'Mail forwarding', 'Member community access', 'Discounted day passes', 'Dedicated private space'].map((feature) => (
+                    <li key={feature} className="flex items-center gap-2.5 text-sm">
+                      <Check className="h-4 w-4 shrink-0 text-black/80" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <a href="/pricing/virtual-office/checkout" className="mt-5 block">
+                  <Button className="h-11 w-full rounded-xl bg-black text-sm font-semibold uppercase tracking-[0.02em] text-white hover:bg-black/90">
+                    Get Started <ArrowRight size={16} className="ml-1.5" />
+                  </Button>
+                </a>
               </div>
 
               <div className="bg-[#0f1015] text-white p-6 rounded-2xl">

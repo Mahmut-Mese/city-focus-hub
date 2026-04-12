@@ -84,7 +84,7 @@ export default function Blog() {
       >
         <div className="hero-overlay" />
         <div className="container-custom relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-sans font-bold text-white mb-4">{content.heroTitle}</h1>
+          <h1 className="text-3xl md:text-4xl font-sans font-bold text-white mb-4">{content.heroTitle}</h1>
           <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">{content.heroSubtitle}</p>
 
           <div className="max-w-md mx-auto relative mb-6">

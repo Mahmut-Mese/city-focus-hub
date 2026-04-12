@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Wifi } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
@@ -6,6 +6,7 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Button } from '@/components/ui/button';
 import { useMeetingRooms, useMeetingRoomsPageContent, usePricingPlans } from '@/hooks/useCmsContent';
+import { listPublicMeetingRoomResources, type MemberResource } from '@/lib/member-api';
 import { contentIconMap } from '@/lib/site-icons';
 
 function truncateDescription(value: string, maxLength = 180) {
@@ -18,11 +19,54 @@ function truncateDescription(value: string, maxLength = 180) {
   return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
 }
 
+function normalizeRoomKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
+function formatCurrency(amountMinor: number, currency = 'gbp') {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  }).format(Number(amountMinor || 0) / 100);
+}
+
+function matchRoomToResource(
+  room: { id: string; name: string; capacity?: number },
+  resources: MemberResource[],
+): MemberResource | null {
+  const exactMatch = resources.find(
+    (r) =>
+      normalizeRoomKey(r.slug) === normalizeRoomKey(room.id) ||
+      normalizeRoomKey(r.name) === normalizeRoomKey(room.name),
+  );
+  if (exactMatch) return exactMatch;
+  if (!resources.length) return null;
+
+  const capacity = Number(room.capacity || 0);
+  if (!capacity) return resources[0] || null;
+
+  return (
+    [...resources].sort((left, right) => {
+      const leftDiff = Math.abs(Number(left.capacity || 0) - capacity);
+      const rightDiff = Math.abs(Number(right.capacity || 0) - capacity);
+      if (leftDiff !== rightDiff) return leftDiff - rightDiff;
+      return Number(right.capacity || 0) - Number(left.capacity || 0);
+    })[0] || null
+  );
+}
+
 export default function MeetingRooms() {
   const meetingRoomsQuery = useMeetingRooms();
   const meetingPlansQuery = usePricingPlans('meeting-room');
   const meetingRoomsPageQuery = useMeetingRoomsPageContent();
   const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null);
+  const [resources, setResources] = useState<MemberResource[]>([]);
+
+  useEffect(() => {
+    listPublicMeetingRoomResources()
+      .then((result) => setResources(result.resources || []))
+      .catch(() => setResources([]));
+  }, []);
 
   if (meetingRoomsQuery.isLoading || meetingPlansQuery.isLoading || meetingRoomsPageQuery.isLoading) {
     return null;
@@ -53,6 +97,7 @@ export default function MeetingRooms() {
     features: room.features,
     image: room.image || '',
     badges: room.badges,
+    capacity: room.capacity || 0,
   }));
   const roomPlans = meetingPlansQuery.data.map((plan) => ({
     id: plan.slug || plan.id,
@@ -80,7 +125,7 @@ export default function MeetingRooms() {
       <section className="section-padding bg-white">
         <div className="container-custom">
           <div className="mb-12 text-center md:mb-14">
-            <h2 className="mb-4 font-sans text-5xl leading-tight md:text-6xl">{content.roomsTitle}</h2>
+            <h2 className="mb-4 font-sans text-3xl leading-tight md:text-4xl">{content.roomsTitle}</h2>
             <p className="text-lg text-black/55">{content.roomsSubtitle}</p>
           </div>
 
@@ -88,6 +133,7 @@ export default function MeetingRooms() {
             {rooms.map((room) => {
               const isExpanded = expandedRoomId === room.id;
               const visibleFeatures = isExpanded ? room.features : room.features.slice(0, 3);
+              const matchedResource = matchRoomToResource(room, resources);
 
               return (
                 <div key={room.id} className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
@@ -105,7 +151,12 @@ export default function MeetingRooms() {
                   </div>
 
                   <div className="rounded-2xl border border-black/10 bg-white p-7 transition-all duration-300 md:p-9 lg:order-2">
-                    <h3 className="mb-4 font-sans text-5xl leading-none">{room.name}</h3>
+                    <h3 className="mb-1 font-sans text-3xl leading-none md:text-4xl">{room.name}</h3>
+                    <p className="mb-4 text-xl font-bold text-black">
+                      {matchedResource?.hourlyRateMinor
+                        ? <>{formatCurrency(matchedResource.hourlyRateMinor)}<span className="text-sm font-normal text-black/50"> / hour</span></>
+                        : <span className="text-sm font-normal text-black/40">Loading price...</span>}
+                    </p>
                     <p className="mb-6 leading-relaxed text-black/60">
                       {isExpanded ? room.description : truncateDescription(room.description)}
                     </p>
@@ -151,7 +202,7 @@ export default function MeetingRooms() {
       <section className="section-padding bg-[#efefef]">
         <div className="container-custom">
           <div className="mb-12 text-center md:mb-14">
-            <h2 className="mb-4 font-sans text-5xl leading-tight md:text-6xl">{content.amenitiesTitle}</h2>
+            <h2 className="mb-4 font-sans text-3xl leading-tight md:text-4xl">{content.amenitiesTitle}</h2>
             <p className="text-lg text-black/55">{content.amenitiesSubtitle}</p>
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -162,7 +213,7 @@ export default function MeetingRooms() {
                   <div className="mx-auto mb-5 flex h-10 w-10 items-center justify-center rounded-full border border-black/15">
                     <Icon size={18} className="text-black/70" />
                   </div>
-                  <h3 className="mb-3 font-sans text-4xl leading-none">{amenity.title}</h3>
+                  <h3 className="mb-3 font-sans text-2xl leading-none">{amenity.title}</h3>
                   <p className="text-black/55">{amenity.description}</p>
                 </article>
               );
@@ -174,7 +225,7 @@ export default function MeetingRooms() {
       <section className="section-padding bg-white">
         <div className="container-custom">
           <div className="mb-12 text-center md:mb-14">
-            <h2 className="mb-4 font-sans text-5xl leading-tight md:text-6xl">{content.plansTitle}</h2>
+            <h2 className="mb-4 font-sans text-3xl leading-tight md:text-4xl">{content.plansTitle}</h2>
             <p className="text-lg text-black/55">{content.plansSubtitle}</p>
           </div>
           <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-3">
@@ -192,9 +243,9 @@ export default function MeetingRooms() {
                     </span>
                   </div>
                 ) : null}
-                <h3 className="mb-3 font-sans text-4xl leading-none">{plan.name}</h3>
+                <h3 className="mb-3 font-sans text-2xl leading-none">{plan.name}</h3>
                 <div className="mb-5">
-                  <span className="text-5xl font-bold leading-none">£{plan.price}</span>
+                  <span className="text-3xl font-bold leading-none">£{plan.price}</span>
                   <span className="text-black/45">/{plan.period}</span>
                 </div>
                 <Button asChild className="h-10 w-full rounded-lg bg-black px-5 text-sm text-white hover:bg-black/90">

@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Expects:
  *   - MySQL running on localhost:3306
  *   - Backend running on localhost:3001  (cd adminjs && node src/start.js)
- *   - Frontend running on localhost:4321 (npx astro dev --port 4321)
+ *   - Frontend running on localhost:8080 (npm run dev)
  *
  * Run: npm run test:e2e
  */
@@ -20,7 +20,7 @@ export default defineConfig({
   timeout: 30_000,
 
   use: {
-    baseURL: 'http://localhost:4321',
+    baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

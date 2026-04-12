@@ -1,6 +1,7 @@
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { AuthProvider } from '@/context/AuthContext';
 import { BrowserRouter } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Auth from '@/pages-react/Auth';
 
 const queryClient = new QueryClient({
@@ -9,12 +10,14 @@ const queryClient = new QueryClient({
 
 export default function AuthApp() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <Auth />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <BrowserRouter>
+            <Auth />
+          </BrowserRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

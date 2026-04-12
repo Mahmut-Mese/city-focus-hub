@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sequelize } from './database.js';
+import { config } from './config.js';
 
 const TABLE_DEFINITIONS = [
   `CREATE TABLE IF NOT EXISTS member_users (
@@ -194,6 +195,23 @@ const TABLE_DEFINITIONS = [
     created_at DATETIME(6) NULL,
     UNIQUE KEY stripe_webhook_events_event_unique (stripe_event_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  // P1-64: Audit log table — records immutable state-change events for compliance and debugging.
+  // actor_id / actor_type identify who triggered the action (member user, admin, or system).
+  // subject_id / subject_type identify the affected record (booking, membership, invoice, etc.).
+  `CREATE TABLE IF NOT EXISTS audit_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    action VARCHAR(128) NOT NULL,
+    actor_id INT UNSIGNED NULL,
+    actor_type VARCHAR(32) NULL,
+    subject_id INT UNSIGNED NULL,
+    subject_type VARCHAR(32) NULL,
+    metadata JSON NULL,
+    created_at DATETIME(6) NOT NULL,
+    KEY audit_log_action_idx (action),
+    KEY audit_log_actor_idx (actor_id, actor_type),
+    KEY audit_log_subject_idx (subject_id, subject_type),
+    KEY audit_log_created_idx (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 ];
 
 const DEFAULT_PLANS = [
@@ -280,9 +298,21 @@ async function ensureSchema() {
   }
 }
 
+// P1-63: Allowlist of valid identifiers to prevent SQL injection via ensureColumn/hasColumn.
+// These functions accept raw table/column names — only allow known safe identifiers.
+const VALID_IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function assertSafeIdentifier(value, label) {
+  if (!VALID_IDENTIFIER_RE.test(value)) {
+    throw new Error(`Invalid ${label}: "${value}". Only alphanumeric characters and underscores are allowed.`);
+  }
+}
+
 async function hasColumn(tableName, columnName) {
+  assertSafeIdentifier(tableName, 'table name');
+  assertSafeIdentifier(columnName, 'column name');
   const [rows] = await sequelize.query(
-    `SHOW COLUMNS FROM ${tableName} LIKE :columnName`,
+    `SHOW COLUMNS FROM \`${tableName}\` LIKE :columnName`,
     {
       replacements: { columnName },
     },
@@ -292,11 +322,29 @@ async function hasColumn(tableName, columnName) {
 }
 
 async function ensureColumn(tableName, columnName, definition) {
+  assertSafeIdentifier(tableName, 'table name');
+  assertSafeIdentifier(columnName, 'column name');
   if (await hasColumn(tableName, columnName)) {
     return;
   }
 
-  await sequelize.query(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`);
+  await sequelize.query(`ALTER TABLE \`${tableName}\` ADD COLUMN ${definition}`);
+}
+
+async function ensureIndex(tableName, indexName, columnDefs) {
+  assertSafeIdentifier(tableName, 'table name');
+  assertSafeIdentifier(indexName, 'index name');
+  const [rows] = await sequelize.query(
+    `SELECT INDEX_NAME FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tableName AND INDEX_NAME = :indexName LIMIT 1`,
+    { replacements: { tableName, indexName } },
+  );
+
+  if (Array.isArray(rows) && rows.length > 0) {
+    return;
+  }
+
+  await sequelize.query(`ALTER TABLE \`${tableName}\` ADD INDEX \`${indexName}\` (${columnDefs})`);
 }
 
 async function ensureForeignKey(tableName, constraintName, columnName, refTable, refColumn) {
@@ -324,6 +372,15 @@ async function runCommerceMigrations() {
   await ensureColumn('bookings', 'stripe_checkout_session_id', 'stripe_checkout_session_id VARCHAR(255) NULL AFTER stripe_payment_intent_id');
   await ensureColumn('bookings', 'payment_hold_expires_at', 'payment_hold_expires_at DATETIME(6) NULL AFTER stripe_payment_status');
 
+  // P0-10: Track Stripe cleanup failures so they can be retried
+  await ensureColumn('bookings', 'stripe_cleanup_failed_at', 'stripe_cleanup_failed_at DATETIME(6) NULL');
+
+  // Refund request workflow: customer requests → admin approves → Stripe refund fires
+  await ensureColumn('bookings', 'refund_requested_at', 'refund_requested_at DATETIME(6) NULL');
+  await ensureColumn('bookings', 'refund_request_status', "refund_request_status VARCHAR(32) NULL DEFAULT NULL COMMENT 'pending | approved | rejected'");
+  await ensureColumn('booking_adjustments', 'stripe_cleanup_failed_at', 'stripe_cleanup_failed_at DATETIME(6) NULL');
+  await ensureColumn('membership_adjustments', 'stripe_cleanup_failed_at', 'stripe_cleanup_failed_at DATETIME(6) NULL');
+
   // P0-22: Add foreign key constraints to prevent orphaned records
   await ensureForeignKey('memberships', 'fk_memberships_user', 'user_id', 'member_users', 'id');
   await ensureForeignKey('memberships', 'fk_memberships_plan', 'plan_id', 'membership_plans', 'id');
@@ -336,6 +393,17 @@ async function runCommerceMigrations() {
   await ensureForeignKey('booking_adjustments', 'fk_booking_adj_user', 'user_id', 'member_users', 'id');
   await ensureForeignKey('booking_adjustments', 'fk_booking_adj_resource', 'resource_id', 'resources', 'id');
   await ensureForeignKey('invoices', 'fk_invoices_user', 'user_id', 'member_users', 'id');
+
+  // #109: Add indexes on stripe_webhook_events for common filter/scan queries
+  await ensureIndex('stripe_webhook_events', 'stripe_webhook_events_event_type_idx', '`event_type`');
+  await ensureIndex('stripe_webhook_events', 'stripe_webhook_events_processed_at_idx', '`processed_at`');
+
+  // Add phone and location columns to member_users for editable profiles
+  await ensureColumn('member_users', 'phone', "phone VARCHAR(32) NULL AFTER email");
+  await ensureColumn('member_users', 'location', "location VARCHAR(255) NULL AFTER phone");
+
+  // Scheduled downgrade: store the target plan so the switch happens at period end
+  await ensureColumn('memberships', 'scheduled_plan_id', 'scheduled_plan_id INT UNSIGNED NULL AFTER cancel_at_period_end');
 }
 
 async function seedPlans() {
@@ -369,7 +437,7 @@ async function seedPlans() {
         `INSERT INTO membership_plans
           (document_id, slug, name, description, monthly_price_minor, currency, interval_name, features, active, created_at, updated_at)
          VALUES
-          (:documentId, :slug, :name, :description, :monthlyPriceMinor, 'gbp', 'month', :features, 1, :createdAt, :updatedAt)`,
+          (:documentId, :slug, :name, :description, :monthlyPriceMinor, :currency, 'month', :features, 1, :createdAt, :updatedAt)`,
         {
           replacements: {
             documentId: randomUUID(),
@@ -377,6 +445,7 @@ async function seedPlans() {
             name: plan.name,
             description: plan.description,
             monthlyPriceMinor: plan.monthlyPriceMinor,
+            currency: config.commerce.defaultCurrency,
             features: JSON.stringify(plan.features),
             createdAt: now,
             updatedAt: now,

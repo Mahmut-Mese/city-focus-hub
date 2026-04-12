@@ -111,7 +111,7 @@ export default function BlogDetail() {
             <ArrowLeft size={18} />
             {content.detailBackLabel}
           </Link>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-sans font-bold text-white mb-4 max-w-3xl">{post.title}</h1>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-sans font-bold text-white mb-4 max-w-3xl">{post.title}</h1>
           <div className="flex flex-wrap items-center gap-4 text-white/80">
             <div className="flex items-center gap-2">
               <Calendar size={16} />

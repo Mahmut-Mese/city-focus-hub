@@ -1,10 +1,16 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
+import sitemap from '@astrojs/sitemap';
 import path from 'node:path';
 
+// P1-70: Set the production site URL for sitemap and canonical URL generation
+const SITE_URL = process.env.SITE_URL || 'https://cityfocushub.com';
+
 export default defineConfig({
+  site: SITE_URL,
   output: 'static',
-  integrations: [react()],
+  integrations: [react(), sitemap()],
+  server: { port: 8080 },
   vite: {
     resolve: {
       alias: {

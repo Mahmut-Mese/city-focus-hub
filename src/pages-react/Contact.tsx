@@ -162,7 +162,7 @@ export default function Contact() {
               <span className="inline-flex items-center h-8 px-4 rounded-full border border-black/15 text-[12px] font-semibold tracking-[0.08em] uppercase mb-6">
                 {content.introEyebrow}
               </span>
-              <h2 className="font-sans text-6xl leading-none mb-6">{content.introTitle}</h2>
+              <h2 className="font-sans text-3xl leading-none mb-6 md:text-4xl">{content.introTitle}</h2>
               <div className="flex gap-4">
                 {siteSettings.socialLinks.map(({ icon, href, label }) => {
                   const Icon = socialIconMap[icon];
@@ -193,8 +193,8 @@ export default function Contact() {
                     <MapPin size={20} className="text-black/70" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-3xl leading-none mb-2">{content.addressCardTitle}</h3>
-                    <p className="text-black/60 text-lg whitespace-pre-line">{siteSettings.address}</p>
+                    <h3 className="font-semibold text-xl leading-none mb-2">{content.addressCardTitle}</h3>
+                    <p className="text-black/60 text-base whitespace-pre-line">{siteSettings.address}</p>
                   </div>
                 </div>
               </div>
@@ -205,8 +205,8 @@ export default function Contact() {
                     <Mail size={20} className="text-black/70" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-3xl leading-none mb-2">{content.emailCardTitle}</h3>
-                    <p className="text-black/60 text-lg">{siteSettings.contactEmail}</p>
+                    <h3 className="font-semibold text-xl leading-none mb-2">{content.emailCardTitle}</h3>
+                    <p className="text-black/60 text-base">{siteSettings.contactEmail}</p>
                   </div>
                 </div>
               </div>
@@ -217,8 +217,8 @@ export default function Contact() {
                     <Phone size={20} className="text-black/70" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-3xl leading-none mb-2">{content.phoneCardTitle}</h3>
-                    <p className="text-black/60 text-lg">{siteSettings.contactPhone}</p>
+                    <h3 className="font-semibold text-xl leading-none mb-2">{content.phoneCardTitle}</h3>
+                    <p className="text-black/60 text-base">{siteSettings.contactPhone}</p>
                   </div>
                 </div>
               </div>
@@ -227,7 +227,7 @@ export default function Contact() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="rounded-3xl border border-black/10 bg-white p-8 md:p-10">
-              <h3 className="font-sans text-5xl leading-none mb-6">{content.form.title}</h3>
+              <h3 className="font-sans text-3xl leading-none mb-6">{content.form.title}</h3>
               {enquiryBanner ? (
                 <div className="mb-5 rounded-2xl border border-black/10 bg-[#f7f3ee] px-4 py-3 text-sm font-medium text-black/75">
                   {enquiryBanner}

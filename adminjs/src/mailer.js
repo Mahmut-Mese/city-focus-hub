@@ -146,6 +146,8 @@ export async function sendContactSubmissionEmail(submission) {
       }),
     );
   } catch (error) {
+    // P1-54: Log email send failures instead of silently returning
+    console.error('[mailer] sendContactSubmissionEmail failed:', error?.message || error);
     return {
       ok: false,
       reason: String(error?.message ?? error),
@@ -200,11 +202,683 @@ export async function sendContactReplyEmail({ recipientName, recipientEmail, sub
       }),
     );
   } catch (error) {
+    // P1-54: Log email send failures instead of silently returning
+    console.error('[mailer] sendContactReplyEmail failed:', error?.message || error);
     return {
       ok: false,
       reason: String(error?.message ?? error),
     };
   }
 
+  return { ok: true };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// P1-53: Transactional email templates
+// These cover booking confirmation, payment receipt, membership activation,
+// membership cancellation, and refund notification. All functions follow the
+// same pattern: return { ok: true } on success, { ok: false, reason } on error.
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Formats a minor-unit currency amount (e.g. 1500 → £15.00).
+ */
+function formatCurrencyAmount(amountMinor, currency = 'gbp') {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: String(currency || 'gbp').toUpperCase(),
+  }).format((Number(amountMinor) || 0) / 100);
+}
+
+/**
+ * Sends an admin notification copy of a transactional email.
+ * Fire-and-forget — failures are logged but never propagated.
+ */
+async function sendAdminNotificationCopy(subject, textBody) {
+  if (!config.mail.to) return;
+
+  try {
+    const transporter = await getTransporter();
+    if (!transporter) return;
+
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: config.mail.to,
+        subject: `[Admin Copy] ${subject}`,
+        text: textBody,
+      }),
+    );
+  } catch (error) {
+    console.error('[mailer] sendAdminNotificationCopy failed:', error?.message || error);
+  }
+}
+
+/**
+ * Sends a booking confirmation email to the member after a booking is confirmed.
+ * @param {{ recipientName: string, recipientEmail: string, bookingId: number|string,
+ *   resourceName: string, startAt: string|Date, endAt: string|Date,
+ *   totalMinor: number, currency?: string }} booking
+ */
+export async function sendBookingConfirmationEmail(booking) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(booking.recipientName ?? '').trim() || 'Member';
+  const resourceName = String(booking.resourceName ?? 'Room');
+  const startAt = booking.startAt ? new Date(booking.startAt).toLocaleString('en-GB', { timeZone: 'UTC' }) : '-';
+  const endAt = booking.endAt ? new Date(booking.endAt).toLocaleString('en-GB', { timeZone: 'UTC' }) : '-';
+  const total = formatCurrencyAmount(booking.totalMinor, booking.currency);
+  const ref = String(booking.bookingId ?? '-');
+
+  const subject = `Booking Confirmed — ${resourceName}`;
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    'Your booking has been confirmed.',
+    '',
+    `Reference: #${ref}`,
+    `Resource: ${resourceName}`,
+    `From: ${startAt} UTC`,
+    `To:   ${endAt} UTC`,
+    `Total paid: ${total}`,
+    '',
+    'If you need to make changes, please log in to your member dashboard.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Booking Confirmed — ${escapeHtml(resourceName)}</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your booking has been confirmed.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Reference</td><td>#${escapeHtml(ref)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Resource</td><td>${escapeHtml(resourceName)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">From</td><td>${escapeHtml(startAt)} UTC</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">To</td><td>${escapeHtml(endAt)} UTC</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Total paid</td><td>${escapeHtml(total)}</td></tr>
+      </table>
+      <p>If you need to make changes, please log in to your <a href="${escapeHtml(SIGNATURE_WEBSITE_URL)}">member dashboard</a>.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: booking.recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    );
+
+    // Send admin notification copy
+    void sendAdminNotificationCopy(subject, `Booking confirmed for ${name} (${booking.recipientEmail}).\n\nRef: #${ref}\nResource: ${resourceName}\nFrom: ${startAt} UTC\nTo: ${endAt} UTC\nTotal: ${total}`);
+  } catch (error) {
+    console.error('[mailer] sendBookingConfirmationEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Sends a payment receipt email to the member after a successful payment.
+ * @param {{ recipientName: string, recipientEmail: string, invoiceId: string,
+ *   description: string, amountMinor: number, taxMinor?: number, currency?: string,
+ *   paidAt?: string|Date }} receipt
+ */
+export async function sendPaymentReceiptEmail(receipt) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(receipt.recipientName ?? '').trim() || 'Member';
+  const description = String(receipt.description ?? 'Payment');
+  const amount = formatCurrencyAmount(receipt.amountMinor, receipt.currency);
+  const tax = receipt.taxMinor != null ? formatCurrencyAmount(receipt.taxMinor, receipt.currency) : null;
+  const paidAt = receipt.paidAt ? new Date(receipt.paidAt).toLocaleString('en-GB', { timeZone: 'UTC' }) : '-';
+  const ref = String(receipt.invoiceId ?? '-');
+
+  const subject = `Payment Receipt — ${description}`;
+  const signature = buildEmailSignature();
+
+  const taxLine = tax ? `VAT: ${tax}` : '';
+  const textLines = [
+    `Hi ${name},`,
+    '',
+    'Thank you — your payment has been received.',
+    '',
+    `Invoice: ${ref}`,
+    `Description: ${description}`,
+    `Amount: ${amount}`,
+  ];
+  if (taxLine) textLines.push(taxLine);
+  textLines.push(`Date: ${paidAt} UTC`, '', 'Best regards,', '', signature.text);
+  const text = textLines.join('\n');
+
+  const taxRow = tax
+    ? `<tr><td style="padding:4px 12px 4px 0; font-weight:bold;">VAT</td><td>${escapeHtml(tax)}</td></tr>`
+    : '';
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Payment Receipt</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Thank you — your payment has been received.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Invoice</td><td>${escapeHtml(ref)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Description</td><td>${escapeHtml(description)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Amount</td><td>${escapeHtml(amount)}</td></tr>
+        ${taxRow}
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Date</td><td>${escapeHtml(paidAt)} UTC</td></tr>
+      </table>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: receipt.recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    );
+  } catch (error) {
+    console.error('[mailer] sendPaymentReceiptEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Sends a membership activation email to the member.
+ * @param {{ recipientName: string, recipientEmail: string,
+ *   planName: string, monthlyPriceMinor: number, currency?: string,
+ *   currentPeriodEnd?: string|Date }} membership
+ */
+export async function sendMembershipActivationEmail(membership) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(membership.recipientName ?? '').trim() || 'Member';
+  const planName = String(membership.planName ?? 'Membership');
+  const price = formatCurrencyAmount(membership.monthlyPriceMinor, membership.currency);
+  const renewsAt = membership.currentPeriodEnd
+    ? new Date(membership.currentPeriodEnd).toLocaleDateString('en-GB', { timeZone: 'UTC' })
+    : '-';
+
+  const subject = `Welcome — Your ${planName} is now active`;
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `Your ${planName} membership is now active.`,
+    '',
+    `Plan: ${planName}`,
+    `Monthly price: ${price}/month`,
+    `Next renewal: ${renewsAt}`,
+    '',
+    'You can manage your membership at any time from your member dashboard.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Welcome — Your ${escapeHtml(planName)} is now active</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your <strong>${escapeHtml(planName)}</strong> membership is now active.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Plan</td><td>${escapeHtml(planName)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Monthly price</td><td>${escapeHtml(price)}/month</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Next renewal</td><td>${escapeHtml(renewsAt)}</td></tr>
+      </table>
+      <p>You can manage your membership at any time from your <a href="${escapeHtml(SIGNATURE_WEBSITE_URL)}">member dashboard</a>.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: membership.recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    );
+
+    // Send admin notification copy
+    void sendAdminNotificationCopy(subject, `New membership activated for ${name} (${membership.recipientEmail}).\n\nPlan: ${planName}\nMonthly price: ${price}/month\nNext renewal: ${renewsAt}`);
+  } catch (error) {
+    console.error('[mailer] sendMembershipActivationEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Sends a membership cancellation notice to the member.
+ * @param {{ recipientName: string, recipientEmail: string,
+ *   planName: string, accessUntil?: string|Date }} cancellation
+ */
+export async function sendMembershipCancellationEmail(cancellation) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(cancellation.recipientName ?? '').trim() || 'Member';
+  const planName = String(cancellation.planName ?? 'Membership');
+  const accessUntil = cancellation.accessUntil
+    ? new Date(cancellation.accessUntil).toLocaleDateString('en-GB', { timeZone: 'UTC' })
+    : null;
+
+  const subject = `Your ${planName} has been cancelled`;
+  const signature = buildEmailSignature();
+
+  const accessLine = accessUntil
+    ? `Your access will remain active until ${accessUntil}.`
+    : 'Your access has been deactivated.';
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `Your ${planName} membership has been cancelled.`,
+    '',
+    accessLine,
+    '',
+    "If this was a mistake, please contact us and we'll be happy to help.",
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Your ${escapeHtml(planName)} has been cancelled</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your <strong>${escapeHtml(planName)}</strong> membership has been cancelled.</p>
+      <p>${escapeHtml(accessLine)}</p>
+      <p>If this was a mistake, please <a href="mailto:${escapeHtml(SIGNATURE_EMAIL)}">contact us</a> and we'll be happy to help.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: cancellation.recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    );
+  } catch (error) {
+    console.error('[mailer] sendMembershipCancellationEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Sends a refund notification email to the member.
+ * @param {{ recipientName: string, recipientEmail: string,
+ *   amountMinor: number, currency?: string, description: string,
+ *   refundedAt?: string|Date }} refund
+ */
+export async function sendRefundNotificationEmail(refund) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(refund.recipientName ?? '').trim() || 'Member';
+  const description = String(refund.description ?? 'Payment');
+  const amount = formatCurrencyAmount(refund.amountMinor, refund.currency);
+  const refundedAt = refund.refundedAt
+    ? new Date(refund.refundedAt).toLocaleDateString('en-GB', { timeZone: 'UTC' })
+    : '-';
+
+  const subject = `Refund Processed — ${description}`;
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `A refund of ${amount} has been processed for: ${description}.`,
+    '',
+    `Amount: ${amount}`,
+    `Date: ${refundedAt}`,
+    '',
+    'Refunds typically appear on your statement within 5-10 business days.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Refund Processed</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>A refund of <strong>${escapeHtml(amount)}</strong> has been processed for: <em>${escapeHtml(description)}</em>.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Amount</td><td>${escapeHtml(amount)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Date</td><td>${escapeHtml(refundedAt)}</td></tr>
+      </table>
+      <p>Refunds typically appear on your statement within 5-10 business days.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: refund.recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    );
+  } catch (error) {
+    console.error('[mailer] sendRefundNotificationEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  void sendAdminNotificationCopy(subject, text);
+
+  return { ok: true };
+}
+
+/**
+ * Sends a payment failure / account suspended email to the member.
+ * @param {{ recipientName: string, recipientEmail: string,
+ *   planName: string, currency?: string, hostedInvoiceUrl?: string }} failure
+ */
+export async function sendPaymentFailedEmail(failure) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(failure.recipientName ?? '').trim() || 'Member';
+  const planName = String(failure.planName ?? 'your membership plan');
+  const invoiceUrl = failure.hostedInvoiceUrl || null;
+  const subject = `Action Required — Payment failed for ${planName}`;
+  const signature = buildEmailSignature();
+
+  const invoiceLine = invoiceUrl
+    ? `You can view and pay your invoice here: ${invoiceUrl}`
+    : 'Please update your payment method to restore access.';
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `We were unable to process your payment for ${planName}.`,
+    '',
+    'Your account has been temporarily suspended until payment is resolved.',
+    '',
+    invoiceLine,
+    '',
+    'If you have any questions, please reply to this email and we will be happy to help.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const invoiceHtml = invoiceUrl
+    ? `<p><a href="${escapeHtml(invoiceUrl)}" style="color:#1a73e8;">View &amp; Pay Invoice</a></p>`
+    : `<p>Please update your payment method to restore access.</p>`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px; color:#c0392b;">Payment Failed</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We were unable to process your payment for <strong>${escapeHtml(planName)}</strong>.</p>
+      <p>Your account has been <strong>temporarily suspended</strong> until payment is resolved.</p>
+      ${invoiceHtml}
+      <p>If you have any questions, please reply to this email and we will be happy to help.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: failure.recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    );
+  } catch (error) {
+    console.error('[mailer] sendPaymentFailedEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  void sendAdminNotificationCopy(subject, text);
+
+  return { ok: true };
+}
+
+/**
+ * Sent to member (+ admin copy) when they submit a refund request for a booking.
+ * @param {{ recipientName: string, recipientEmail: string, resourceName: string,
+ *   startAt: string|Date, amountMinor: number, currency?: string, bookingId: number }} req
+ */
+export async function sendRefundRequestedEmail(req) {
+  const transporter = await getTransporter();
+  if (!transporter) return { ok: false, reason: 'Email notifications are not configured.' };
+
+  const name = String(req.recipientName ?? '').trim() || 'Member';
+  const resource = String(req.resourceName ?? 'Room');
+  const amount = formatCurrencyAmount(req.amountMinor, req.currency);
+  const dateStr = req.startAt
+    ? new Date(req.startAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    : '-';
+  const subject = `Refund request received — ${resource}`;
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `We have received your refund request for your booking of ${resource} on ${dateStr}.`,
+    '',
+    `Requested amount: ${amount}`,
+    `Booking ID: #${req.bookingId}`,
+    '',
+    'Our team will review your request and process the refund shortly. You will receive a confirmation email once it has been approved.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Refund Request Received</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We have received your refund request for your booking of <strong>${escapeHtml(resource)}</strong> on <strong>${escapeHtml(dateStr)}</strong>.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Requested amount</td><td>${escapeHtml(amount)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Booking ID</td><td>#${req.bookingId}</td></tr>
+      </table>
+      <p>Our team will review your request and process the refund shortly. You will receive a confirmation email once it has been approved.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments }));
+  } catch (error) {
+    console.error('[mailer] sendRefundRequestedEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  void sendAdminNotificationCopy(subject, text);
+  return { ok: true };
+}
+
+/**
+ * Sent to member (+ admin copy) when an admin approves and processes the refund.
+ * @param {{ recipientName: string, recipientEmail: string, resourceName: string,
+ *   startAt: string|Date, amountMinor: number, currency?: string, bookingId: number }} req
+ */
+export async function sendRefundApprovedEmail(req) {
+  const transporter = await getTransporter();
+  if (!transporter) return { ok: false, reason: 'Email notifications are not configured.' };
+
+  const name = String(req.recipientName ?? '').trim() || 'Member';
+  const resource = String(req.resourceName ?? 'Room');
+  const amount = formatCurrencyAmount(req.amountMinor, req.currency);
+  const dateStr = req.startAt
+    ? new Date(req.startAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    : '-';
+  const subject = `Refund approved — ${resource}`;
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `Your refund of ${amount} for the booking of ${resource} on ${dateStr} has been approved and processed.`,
+    '',
+    `Amount: ${amount}`,
+    `Booking ID: #${req.bookingId}`,
+    '',
+    'Refunds typically appear on your statement within 5–10 business days.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Refund Approved</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your refund of <strong>${escapeHtml(amount)}</strong> for the booking of <strong>${escapeHtml(resource)}</strong> on <strong>${escapeHtml(dateStr)}</strong> has been <strong>approved and processed</strong>.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Amount</td><td>${escapeHtml(amount)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Booking ID</td><td>#${req.bookingId}</td></tr>
+      </table>
+      <p>Refunds typically appear on your statement within 5–10 business days.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments }));
+  } catch (error) {
+    console.error('[mailer] sendRefundApprovedEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  void sendAdminNotificationCopy(subject, text);
+  return { ok: true };
+}
+
+export async function sendRefundRejectedEmail(req) {
+  const transporter = await getTransporter();
+  if (!transporter) return { ok: false, reason: 'Email notifications are not configured.' };
+
+  const name = String(req.recipientName ?? '').trim() || 'Member';
+  const resource = String(req.resourceName ?? 'Room');
+  const amount = formatCurrencyAmount(req.amountMinor, req.currency);
+  const dateStr = req.startAt
+    ? new Date(req.startAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    : '-';
+  const subject = `Refund request update — ${resource}`;
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    `We have reviewed your refund request of ${amount} for the booking of ${resource} on ${dateStr}.`,
+    '',
+    'After careful review, we are unable to process this refund at this time. Your booking remains confirmed.',
+    '',
+    `Amount requested: ${amount}`,
+    `Booking ID: #${req.bookingId}`,
+    '',
+    'If you have any questions, please do not hesitate to contact us.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Refund Request Update</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We have reviewed your refund request of <strong>${escapeHtml(amount)}</strong> for the booking of <strong>${escapeHtml(resource)}</strong> on <strong>${escapeHtml(dateStr)}</strong>.</p>
+      <p>After careful review, we are <strong>unable to process this refund</strong> at this time. Your booking remains confirmed.</p>
+      <table style="border-collapse:collapse; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Amount requested</td><td>${escapeHtml(amount)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Booking ID</td><td>#${req.bookingId}</td></tr>
+      </table>
+      <p>If you have any questions, please do not hesitate to contact us.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments }));
+  } catch (error) {
+    console.error('[mailer] sendRefundRejectedEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  void sendAdminNotificationCopy(subject, text);
   return { ok: true };
 }

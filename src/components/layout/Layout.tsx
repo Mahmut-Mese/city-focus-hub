@@ -18,7 +18,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, seo, hideNavigation = false, hideFooter = false }: LayoutProps) {
-  const { data: siteSettings } = useSiteSettings();
+  const { data: siteSettings, isLoading } = useSiteSettings();
 
   useSeo({
     siteName: siteSettings?.siteName || 'CMS',
@@ -31,9 +31,14 @@ export function Layout({ children, seo, hideNavigation = false, hideFooter = fal
 
   return (
     <div className="min-h-screen flex flex-col">
-      {siteSettings && !hideNavigation ? <Navbar /> : null}
+      {/* #128: Render a placeholder bar during loading to prevent layout shift (CLS). */}
+      {!hideNavigation ? (
+        siteSettings ? <Navbar /> : isLoading ? <div className="h-16 w-full bg-white/80" aria-hidden="true" /> : null
+      ) : null}
       <main className="flex-1">{children}</main>
-      {siteSettings && !hideFooter ? <Footer /> : null}
+      {!hideFooter ? (
+        siteSettings ? <Footer /> : isLoading ? <div className="h-32 w-full bg-[#10153f]/5" aria-hidden="true" /> : null
+      ) : null}
     </div>
   );
 }

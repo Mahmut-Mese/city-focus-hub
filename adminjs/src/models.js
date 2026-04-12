@@ -52,11 +52,12 @@ const PREFERRED_TITLE_COLUMNS = [
 ];
 
 function toPascalCase(value) {
-  return value
+  const parts = value
     .split(/[_-]+/)
     .filter(Boolean)
-    .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
-    .join('');
+    .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`);
+
+  return parts.length > 0 ? parts.join('') : 'UnknownModel';
 }
 
 function toClientLabel(fieldName) {
@@ -106,8 +107,20 @@ function mapColumnType(columnType) {
     return DataTypes.INTEGER.UNSIGNED;
   }
 
+  if (normalized.startsWith('bigint')) {
+    return DataTypes.BIGINT;
+  }
+
+  if (normalized.startsWith('mediumint') || normalized.startsWith('smallint')) {
+    return DataTypes.INTEGER;
+  }
+
   if (normalized.startsWith('int')) {
     return DataTypes.INTEGER;
+  }
+
+  if (normalized.startsWith('float')) {
+    return DataTypes.FLOAT;
   }
 
   if (normalized.startsWith('double')) {
@@ -118,12 +131,16 @@ function mapColumnType(columnType) {
     return DataTypes.DECIMAL;
   }
 
-  if (normalized.startsWith('datetime')) {
+  if (normalized.startsWith('timestamp') || normalized.startsWith('datetime')) {
     return DataTypes.DATE(6);
   }
 
   if (normalized === 'date') {
     return DataTypes.DATEONLY;
+  }
+
+  if (normalized === 'time') {
+    return DataTypes.TIME;
   }
 
   if (normalized === 'json') {
@@ -243,12 +260,24 @@ async function defineModelForTable(definition) {
 }
 
 export async function buildResources() {
-  const resources = await Promise.all(
+  const results = await Promise.allSettled(
     ADMIN_RESOURCE_DEFINITIONS.map((definition) => defineModelForTable(definition)),
   );
 
-  return {
-    resourceDefinitions: ADMIN_RESOURCE_DEFINITIONS,
-    resources,
-  };
+  const resources = [];
+  const resourceDefinitions = [];
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      resources.push(result.value);
+      resourceDefinitions.push(ADMIN_RESOURCE_DEFINITIONS[index]);
+    } else {
+      console.error(
+        `[models] Failed to load AdminJS resource for table "${ADMIN_RESOURCE_DEFINITIONS[index].table}":`,
+        String(result.reason?.message ?? result.reason),
+      );
+    }
+  });
+
+  return { resourceDefinitions, resources };
 }

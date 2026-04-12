@@ -1,33 +1,98 @@
 import { API_URL } from './api-config';
 export const MEMBER_AUTH_EXPIRED_EVENT = 'city-focus-hub.member-auth-expired';
 
+// P0-3: CSRF token cache — fetched once per session, sent on every state-mutating request
+let csrfToken: string | null = null;
+
+async function fetchCsrfToken(): Promise<string | null> {
+  if (csrfToken) return csrfToken;
+
+  try {
+    const response = await fetch(`${API_URL}/member-auth/csrf-token`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      csrfToken = data?.csrfToken || null;
+    }
+  } catch {
+    // Token fetch failed — will be retried on next mutating request
+  }
+
+  return csrfToken;
+}
+
+export function clearCsrfToken() {
+  csrfToken = null;
+}
+
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: unknown;
+  /** Request timeout in milliseconds. Defaults to 30 000 ms. */
+  timeoutMs?: number;
 };
+
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 async function requestApi<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const hasBody = options.body !== undefined;
-  const response = await fetch(`${API_URL}${path.startsWith('/') ? path : `/${path}`}`, {
-    method: options.method || 'GET',
-    credentials: 'include',
-    headers: hasBody
-      ? {
-          'Content-Type': 'application/json',
-        }
-      : undefined,
-    body: hasBody ? JSON.stringify(options.body) : undefined,
-  });
+  const method = options.method || 'GET';
+  const isMutating = method !== 'GET' && method !== 'HEAD';
 
-  const payload = await response.json().catch(() => null);
+  // P0-3: Attach CSRF token to state-mutating requests
+  const headers: Record<string, string> = {};
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (isMutating) {
+    const token = await fetchCsrfToken();
+    if (token) {
+      headers['X-CSRF-Token'] = token;
+    }
+  }
+
+  // #90: Enforce request timeout so hung requests don't block the UI indefinitely
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path.startsWith('/') ? path : `/${path}`}`, {
+      method,
+      credentials: 'include',
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      body: hasBody ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  // #113: Surface non-JSON responses (e.g. 502 HTML error pages) instead of returning null
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} (non-JSON response)`);
+    }
+  }
 
   if (!response.ok) {
     if (response.status === 401 && typeof window !== 'undefined') {
       window.dispatchEvent(new Event(MEMBER_AUTH_EXPIRED_EVENT));
     }
 
+    // P0-3: If CSRF token was rejected, clear cache so it gets re-fetched
+    if (response.status === 403 && typeof payload === 'object' && payload !== null && 'error' in payload && String((payload as Record<string, unknown>).error).includes('CSRF')) {
+      clearCsrfToken();
+    }
+
     const errorMessage = payload && typeof payload === 'object' && 'error' in payload
-      ? String(payload.error)
+      ? String((payload as Record<string, unknown>).error)
       : `API request failed: ${response.status}`;
     throw new Error(errorMessage);
   }
@@ -39,6 +104,8 @@ export type MemberUser = {
   id: number;
   name: string;
   email: string;
+  phone: string;
+  location: string;
   initials: string;
   accessStatus: string;
 };
@@ -64,6 +131,10 @@ export type MemberMembership = {
   cancelAtPeriodEnd: boolean;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
+  scheduledPlanId: number | null;
+  scheduledPlanSlug: string | null;
+  scheduledPlanName: string | null;
+  scheduledPlanMonthlyPriceMinor: number | null;
 };
 
 export type MemberBooking = {
@@ -84,6 +155,8 @@ export type MemberBooking = {
   currency: string;
   capacity: string;
   attendees: string;
+  refundRequestStatus: string | null;
+  refundRequestedAt: string | null;
 };
 
 export type MemberInvoice = {
@@ -218,6 +291,8 @@ export type MemberMembershipChangeResult = {
   subtotalMinor?: number;
   taxMinor?: number;
   currency?: string;
+  scheduledPlanName?: string;
+  effectiveDate?: string | null;
 };
 
 export type MembershipPaymentDraft = {
@@ -262,6 +337,8 @@ export async function logoutMember() {
   const response = await requestApi<{ ok: boolean }>('/member-auth/logout', {
     method: 'POST',
   });
+  // P0-3: Clear cached CSRF token on logout
+  clearCsrfToken();
   return response.ok;
 }
 
@@ -274,6 +351,18 @@ export async function changeMemberPassword(payload: {
     body: payload,
   });
   return response.ok;
+}
+
+export async function updateMemberProfile(payload: {
+  name: string;
+  email: string;
+  phone: string;
+}) {
+  const response = await requestApi<{ data: MemberUser }>('/member-portal/profile', {
+    method: 'PUT',
+    body: payload,
+  });
+  return response.data;
 }
 
 export async function getMemberDashboard() {
@@ -358,6 +447,13 @@ export async function previewMemberPlanChange(planSlug: string) {
 
 export async function cancelMemberMembership() {
   const response = await requestApi<{ data: MemberMembership }>('/member-portal/memberships/cancel', {
+    method: 'POST',
+  });
+  return response.data;
+}
+
+export async function cancelMemberScheduledDowngrade() {
+  const response = await requestApi<{ data: MemberMembership }>('/member-portal/memberships/cancel-scheduled-downgrade', {
     method: 'POST',
   });
   return response.data;
@@ -490,6 +586,16 @@ export async function cancelMemberBookingPayment(payload: {
   bookingId: number;
 }) {
   const response = await requestApi<{ data: MemberBooking | null }>(`/member-portal/bookings/${payload.bookingId}/cancel`, {
+    method: 'POST',
+    body: payload,
+  });
+  return response.data;
+}
+
+export async function cancelMemberBooking(payload: {
+  bookingId: number;
+}) {
+  const response = await requestApi<{ data: MemberBooking | null }>(`/member-portal/bookings/${payload.bookingId}/cancel-and-refund`, {
     method: 'POST',
     body: payload,
   });

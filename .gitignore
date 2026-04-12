@@ -19,6 +19,9 @@ adminjs/.env
 !/.env.example
 !/adminjs/.env.example
 
+# AdminJS build cache
+adminjs/.adminjs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

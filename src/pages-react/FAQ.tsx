@@ -73,7 +73,7 @@ export default function FAQ() {
               <span className="inline-flex items-center h-7 px-3 rounded-full border border-black/15 text-[10px] tracking-[0.1em] uppercase font-semibold mb-6">
                 {content.eyebrow}
               </span>
-              <h2 className="font-sans text-6xl leading-none mb-5">{content.title}</h2>
+              <h2 className="font-sans text-3xl leading-none mb-5 md:text-4xl">{content.title}</h2>
               <p className="text-black/55 text-lg mb-6">{content.description}</p>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40" size={18} />
@@ -126,7 +126,7 @@ export default function FAQ() {
             <div className="w-12 h-12 rounded-full border border-black/15 flex items-center justify-center mx-auto mb-6">
               <CircleHelp size={22} className="text-black/60" />
             </div>
-            <h2 className="font-sans text-6xl leading-none mb-4">{content.ctaTitle}</h2>
+            <h2 className="font-sans text-3xl leading-none mb-4 md:text-4xl">{content.ctaTitle}</h2>
             <p className="text-black/55 text-lg mb-8 max-w-xl mx-auto">{content.ctaDescription}</p>
             <Link to="/contact">
               <Button className="h-11 rounded-xl px-6 text-base bg-black text-white hover:bg-black/90">

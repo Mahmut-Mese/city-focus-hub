@@ -195,7 +195,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/60" />
         <div className="container-custom relative z-10 py-16 md:py-20">
           <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-6xl font-sans font-semibold text-white mb-5 leading-[0.96]">
+            <h1 className="text-3xl md:text-5xl font-sans font-semibold text-white mb-5 leading-[0.96]">
               {content.hero.title}
             </h1>
             <p className="text-sm md:text-base text-white/80 max-w-xl mb-7 leading-relaxed">{content.hero.subtitle}</p>
@@ -313,7 +313,7 @@ export default function Home() {
               <span className="inline-flex items-center h-5 px-2.5 rounded-full border border-black/20 text-[9px] tracking-[0.18em] uppercase text-black/60">
                 {content.aboutHighlight.eyebrow}
               </span>
-              <h2 className="font-sans text-4xl md:text-5xl leading-[1.02] mt-3 mb-5 max-w-xl">{content.aboutHighlight.title}</h2>
+              <h2 className="font-sans text-3xl md:text-4xl leading-[1.02] mt-3 mb-5 max-w-xl">{content.aboutHighlight.title}</h2>
               <p className="text-sm text-black/60 leading-relaxed mb-6 max-w-lg">{content.aboutHighlight.description}</p>
               <ul className="space-y-2.5 mb-7 text-sm text-black/80">
                 {content.aboutHighlight.benefits.map((item) => (
@@ -352,7 +352,7 @@ export default function Home() {
               </span>
               <span className="text-[11px] text-black/45 uppercase tracking-[0.08em]">{content.whyChooseKicker}</span>
             </div>
-            <h2 className="font-sans text-4xl md:text-5xl text-center mb-8">{content.whyChooseTitle}</h2>
+            <h2 className="font-sans text-3xl md:text-4xl text-center mb-8">{content.whyChooseTitle}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {content.whyChooseItems.map((item) => {
                 const Icon = contentIconMap[item.icon] || Clock;
@@ -378,7 +378,7 @@ export default function Home() {
               </span>
               <span className="text-[11px] text-black/45 uppercase tracking-[0.08em]">{content.testimonialsKicker}</span>
             </div>
-            <h2 className="font-sans text-4xl md:text-5xl text-center mb-8">{content.testimonialsTitle}</h2>
+            <h2 className="font-sans text-3xl md:text-4xl text-center mb-8">{content.testimonialsTitle}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {content.testimonials.map((testimonial) => (
                 <article key={testimonial.name} className="rounded-xl border border-black/10 bg-white p-4 md:p-5">
@@ -404,7 +404,7 @@ export default function Home() {
               </span>
               <span className="text-[11px] text-black/45 uppercase tracking-[0.08em]">{content.galleryKicker}</span>
             </div>
-            <h2 className="font-sans text-4xl md:text-5xl text-center mb-8">{content.galleryTitle}</h2>
+            <h2 className="font-sans text-3xl md:text-4xl text-center mb-8">{content.galleryTitle}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-4 md:h-[360px]">
               <div className="rounded-xl overflow-hidden h-[260px] md:h-full md:row-span-2">
                 <img src={content.galleryImages[0]?.image} alt={content.galleryImages[0]?.alt} className="w-full h-full object-cover" />

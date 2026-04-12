@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
 import { usePricingPlans } from '@/hooks/useCmsContent';
 import {
+  changeMemberPlan,
   confirmMemberMembershipPayment,
+  confirmMemberMembershipUpgradePayment,
   createMemberMembershipPaymentDraft,
   getMemberDashboard,
   type MemberDashboardPayload,
@@ -257,6 +259,7 @@ export default function MembershipCheckout() {
 
   const [dashboardData, setDashboardData] = useState<MemberDashboardPayload | null>(null);
   const [paymentDraft, setPaymentDraft] = useState<MembershipPaymentDraft | null>(null);
+  const [pendingUpgradeAdjustmentId, setPendingUpgradeAdjustmentId] = useState<number | null>(null);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -296,10 +299,33 @@ export default function MembershipCheckout() {
     return () => { active = false; };
   }, [isReady, isAuthenticated]);
 
-  // Find plan from CMS data (works without auth)
-  const cmsPlan = pricingPlansQuery.data?.find(
+  // Find plan from CMS data (works without auth), or fall back to backend plan from dashboard
+  const cmsPlanRaw = pricingPlansQuery.data?.find(
     (plan) => plan.slug === planSlug,
   ) || null;
+
+  // If the plan doesn't exist in CMS (e.g. virtual-office), build a compatible object from backend plans
+  const backendPlan = !cmsPlanRaw && dashboardData
+    ? dashboardData.plans.find((p) => p.slug === planSlug) || null
+    : null;
+
+  const cmsPlan: { slug: string; name: string; price: number; period: string; description: string; features: string[]; isPopular: boolean } | null =
+    cmsPlanRaw
+      ? cmsPlanRaw
+      : backendPlan
+        ? {
+            slug: backendPlan.slug,
+            name: backendPlan.name,
+            price: backendPlan.monthlyPriceMinor / 100,
+            period: 'month',
+            description: backendPlan.description,
+            features: backendPlan.features,
+            isPopular: false,
+          }
+        : null;
+
+  // Still loading if CMS query is pending, or if CMS has no match and dashboard hasn't loaded yet
+  const isPlanLoading = pricingPlansQuery.isLoading || (!cmsPlanRaw && !dashboardData && isAuthenticated && !error);
 
   const stripePublishableKey = dashboardData?.stripe.publishableKey || '';
   const existingMembership = dashboardData?.membership;
@@ -311,8 +337,45 @@ export default function MembershipCheckout() {
     setError('');
 
     try {
-      const draft = await createMemberMembershipPaymentDraft(cmsPlan.slug);
-      setPaymentDraft(draft);
+      if (existingMembership && existingMembership.status === 'active') {
+        // Plan change flow — use changeMemberPlan which handles upgrade/downgrade
+        const result = await changeMemberPlan(planSlug);
+
+        if (result.action === 'payment_required' && result.clientSecret && result.paymentIntentId) {
+          // Upgrade: show card form
+          setPendingUpgradeAdjustmentId(result.adjustmentId);
+          setPaymentDraft({
+            clientSecret: result.clientSecret,
+            paymentIntentId: result.paymentIntentId,
+            subscriptionId: '',
+            membershipId: existingMembership.id,
+            plan: {
+              slug: cmsPlan.slug,
+              name: cmsPlan.name,
+              monthlyPriceMinor: cmsPlan.price * 100,
+              currency: result.currency || 'gbp',
+            },
+            subtotalMinor: result.subtotalMinor || 0,
+            taxMinor: result.taxMinor || 0,
+            totalMinor: result.paymentDueMinor,
+            currency: result.currency || 'gbp',
+          });
+        } else if (result.action === 'scheduled') {
+          // Downgrade scheduled
+          setSuccess(
+            `Your plan will change to ${cmsPlan.name} at the end of your billing period. Redirecting to dashboard...`,
+          );
+          setTimeout(() => { window.location.href = '/dashboard/billing'; }, 2500);
+        } else {
+          // Immediate no-cost switch
+          setSuccess('Plan changed successfully! Redirecting to your dashboard...');
+          setTimeout(() => { window.location.href = '/dashboard/billing'; }, 2000);
+        }
+      } else {
+        // New membership — create payment draft
+        const draft = await createMemberMembershipPaymentDraft(planSlug);
+        setPaymentDraft(draft);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initialize payment.');
     } finally {
@@ -325,11 +388,18 @@ export default function MembershipCheckout() {
     setError('');
 
     try {
-      await confirmMemberMembershipPayment(paymentIntentId);
-      setSuccess('Membership activated successfully! Redirecting to your dashboard...');
+      if (pendingUpgradeAdjustmentId) {
+        // Upgrade confirmation
+        await confirmMemberMembershipUpgradePayment(paymentIntentId, pendingUpgradeAdjustmentId);
+        setSuccess('Plan upgraded successfully! Redirecting to your dashboard...');
+      } else {
+        // New membership confirmation
+        await confirmMemberMembershipPayment(paymentIntentId);
+        setSuccess('Membership activated successfully! Redirecting to your dashboard...');
+      }
       setPaymentDraft(null);
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/dashboard/billing';
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to confirm payment.');
@@ -344,7 +414,7 @@ export default function MembershipCheckout() {
   };
 
   // Loading states
-  if (!isReady || pricingPlansQuery.isLoading) {
+  if (!isReady || isPlanLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fbfaf8]">
         <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
@@ -514,6 +584,8 @@ export default function MembershipCheckout() {
                           <LoaderCircle className="animate-spin mr-2" />
                           Setting up payment...
                         </>
+                      ) : existingMembership && existingMembership.status === 'active' ? (
+                        `Change to ${cmsPlan.name}`
                       ) : (
                         `Pay ${formatCurrencyWhole(cmsPlan.price)} / ${cmsPlan.period}`
                       )}

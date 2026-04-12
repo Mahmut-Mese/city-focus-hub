@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { Clock, Calendar } from 'lucide-react';
 
 interface BlogCardProps {
@@ -23,7 +22,7 @@ export function BlogCard({
   tags,
 }: BlogCardProps) {
   return (
-    <Link to={`/blog/${id}`} className="group">
+    <a href={`/blog/${id}`} className="group">
       <article className="rounded-2xl border border-black/10 bg-white overflow-hidden h-full shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="aspect-[16/10] overflow-hidden">
           <img
@@ -66,6 +65,6 @@ export function BlogCard({
           </div>
         </div>
       </article>
-    </Link>
+    </a>
   );
 }

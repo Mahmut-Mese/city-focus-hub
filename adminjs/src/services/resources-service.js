@@ -1,6 +1,19 @@
 import { queryAll, queryOne } from './sql.js';
 
 function toResource(row) {
+  let metadata = {};
+  if (row.metadata) {
+    if (typeof row.metadata === 'string') {
+      try {
+        metadata = JSON.parse(row.metadata);
+      } catch {
+        console.error('[resources-service] Failed to parse metadata JSON for resource id:', row.id);
+      }
+    } else {
+      metadata = row.metadata;
+    }
+  }
+
   return {
     id: Number(row.id),
     slug: String(row.slug),
@@ -10,7 +23,7 @@ function toResource(row) {
     capacity: Number(row.capacity || 1),
     hourlyRateMinor: Number(row.hourly_rate_minor || 0),
     active: Boolean(row.active),
-    metadata: row.metadata && typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {}),
+    metadata,
   };
 }
 

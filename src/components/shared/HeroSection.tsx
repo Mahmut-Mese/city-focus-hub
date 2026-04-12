@@ -46,7 +46,7 @@ export function HeroSection({
       {backgroundImage && overlay && <div className="hero-overlay" />}
       <div className="container-custom relative z-10">
         <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-sans font-bold mb-4 leading-tight">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-sans font-bold mb-4 leading-tight">
             {title}
           </h1>
           {subtitle && (

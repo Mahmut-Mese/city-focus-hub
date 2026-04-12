@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@stripe/stripe-js';
 import { AlertCircle, ArrowLeft, Check, Clock3, LoaderCircle, X } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -278,13 +278,13 @@ function GuestBookingPaymentCard({
   };
 
   return (
-    <div className="rounded-[2rem] border border-[#10153f]/15 bg-white p-5 sm:p-6">
+    <div className="rounded-[1.5rem] border border-[#10153f]/15 bg-white p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-[#10153f]/60">Payment</p>
-          <h2 className="mt-1 text-[1.7rem] font-semibold tracking-tight text-[#10153f] sm:text-[2rem]">Complete payment on this page</h2>
-          <p className="mt-2 max-w-2xl text-sm text-[#10153f]/65 sm:text-base">
-            Enter your card details below to finish the booking without leaving this page.
+          <p className="text-xs font-medium text-[#10153f]/60">Payment</p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#10153f] sm:text-xl">Complete your payment</h2>
+          <p className="mt-1 max-w-2xl text-sm text-[#10153f]/65">
+            Enter your card details below to finish the booking.
           </p>
         </div>
         <div className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
@@ -383,7 +383,6 @@ function GuestBookingPaymentCard({
 
 export default function MeetingRoomBooking() {
   const { roomSlug = '' } = useParams();
-  const navigate = useNavigate();
   const meetingRoomsQuery = useMeetingRooms();
   const [availabilityResources, setAvailabilityResources] = useState<MemberResource[]>([]);
   const [stripePublishableKey, setStripePublishableKey] = useState('');
@@ -393,6 +392,8 @@ export default function MeetingRoomBooking() {
   const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState<BookingPaymentDraft | null>(null);
+  const paymentCardRef = useRef<HTMLDivElement | null>(null);
+  const bookingErrorRef = useRef<HTMLDivElement | null>(null);
 
   // Day slot availability
   const [daySlotAvailability, setDaySlotAvailability] = useState<Map<string, boolean>>(new Map());
@@ -493,6 +494,12 @@ export default function MeetingRoomBooking() {
     return Math.round(selectedResource.hourlyRateMinor * selectedHours.length);
   }, [selectedHours.length, selectedResource?.hourlyRateMinor]);
 
+  // P1-27: Estimate VAT for pre-checkout display so users see the VAT-inclusive price
+  // before being redirected to Stripe Checkout (which applies automatic_tax).
+  // This is a local estimate; the actual tax is computed by Stripe on the checkout page.
+  const estimatedVatMinor = useMemo(() => Math.round(totalMinor * 0.2), [totalMinor]);
+  const estimatedTotalWithVatMinor = useMemo(() => totalMinor + estimatedVatMinor, [totalMinor, estimatedVatMinor]);
+
   // Fetch availability for the selected booking window (for submit validation)
   useEffect(() => {
     if (!bookingStartAt || !bookingEndAt) {
@@ -550,7 +557,7 @@ export default function MeetingRoomBooking() {
 
           newAvailability.set(time, resource ? resource.available !== false : false);
         } catch {
-          newAvailability.set(time, true);
+          newAvailability.set(time, false);
         }
       });
 
@@ -667,6 +674,20 @@ export default function MeetingRoomBooking() {
     handleFieldChange('date', formatDateInputValue(date));
   };
 
+  // Auto-scroll to payment card when draft is created
+  useEffect(() => {
+    if (paymentDraft && paymentCardRef.current) {
+      paymentCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [paymentDraft]);
+
+  // Auto-scroll to error when bookingError is set
+  useEffect(() => {
+    if (bookingError && bookingErrorRef.current) {
+      bookingErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [bookingError]);
+
   const handleSubmit = async () => {
     if (!selectedRoom || !selectedResource) {
       setBookingError('This meeting room is not available for the selected time.');
@@ -733,7 +754,7 @@ export default function MeetingRoomBooking() {
       });
       setPaymentDraft(null);
       setSelectedHours([]);
-      navigate('/');
+      window.location.href = '/';
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : 'Failed to finalize booking payment.');
     } finally {
@@ -763,8 +784,24 @@ export default function MeetingRoomBooking() {
     }
   };
 
+  // #112: Show a loading skeleton instead of a blank screen while CMS data fetches.
   if (meetingRoomsQuery.isLoading) {
-    return null;
+    return (
+      <Layout hideNavigation hideFooter>
+        <section className="min-h-screen bg-[#fbfaf8] py-6 sm:py-8">
+          <div className="container-custom">
+            <div className="h-6 w-32 animate-pulse rounded-full bg-[#10153f]/10" />
+            <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(400px,0.84fr)] xl:items-start">
+              <div>
+                <div className="h-16 w-3/4 animate-pulse rounded-2xl bg-[#10153f]/10" />
+                <div className="mt-6 h-96 animate-pulse rounded-2xl bg-[#10153f]/8" />
+              </div>
+              <div className="h-64 animate-pulse rounded-2xl bg-[#10153f]/8" />
+            </div>
+          </div>
+        </section>
+      </Layout>
+    );
   }
 
   if (meetingRoomsQuery.isError || !meetingRoomsQuery.data || meetingRoomsQuery.data.length === 0 || !selectedRoom) {
@@ -796,21 +833,21 @@ export default function MeetingRoomBooking() {
         <div className="container-custom">
           <a
             href="/meeting-rooms"
-            className="inline-flex items-center gap-3 text-base font-semibold text-[#10153f] transition-opacity hover:opacity-70"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#10153f] transition-opacity hover:opacity-70"
           >
-            <ArrowLeft size={22} />
+            <ArrowLeft size={18} />
             <span>Back to listing</span>
           </a>
 
           <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(400px,0.84fr)] xl:items-start">
             <div>
-              <h1 className="font-sans text-[3.25rem] font-semibold tracking-tight leading-[0.94] text-[#10153f] sm:text-[4.5rem]">
+              <h1 className="font-sans text-2xl font-semibold tracking-tight leading-[0.94] text-[#10153f] sm:text-[2.5rem]">
                 Book a meeting room
               </h1>
 
               <div className="mt-5 space-y-5">
                 {bookingError ? (
-                  <Alert variant="destructive" className="border-red-200 bg-red-50 px-4 py-3 text-red-700 [&>svg]:text-red-700">
+                  <Alert ref={bookingErrorRef} variant="destructive" className="border-red-200 bg-red-50 px-4 py-3 text-red-700 [&>svg]:text-red-700">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{bookingError}</AlertDescription>
                   </Alert>
@@ -832,7 +869,7 @@ export default function MeetingRoomBooking() {
 
                 {/* Calendar Section */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold text-[#10153f] sm:text-[1.05rem]">
+                  <Label className="text-sm font-medium text-[#10153f]">
                     Select a date
                   </Label>
                   <div className="rounded-2xl border border-[#10153f]/15 bg-white p-2 sm:p-4">
@@ -851,22 +888,22 @@ export default function MeetingRoomBooking() {
                 {/* Time Slots - Vertical list, multi-select consecutive hours */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold text-[#10153f] sm:text-[1.05rem]">
+                    <Label className="text-sm font-medium text-[#10153f]">
                       Select your hours
                     </Label>
                     {isDaySlotsLoading ? (
-                      <span className="flex items-center gap-2 text-sm text-[#10153f]/60">
-                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      <span className="flex items-center gap-2 text-xs text-[#10153f]/60">
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
                         Checking availability...
                       </span>
                     ) : (
-                      <div className="flex items-center gap-4 text-sm text-[#10153f]/70">
+                      <div className="flex items-center gap-3 text-xs text-[#10153f]/70">
                         <span className="flex items-center gap-1.5">
-                          <span className="inline-block h-3 w-3 rounded-full bg-emerald-100 border border-emerald-300" />
+                          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-100 border border-emerald-300" />
                           Available
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="inline-block h-3 w-3 rounded-full bg-red-100 border border-red-300" />
+                          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-100 border border-red-300" />
                           Booked
                         </span>
                       </div>
@@ -877,7 +914,7 @@ export default function MeetingRoomBooking() {
                     Click hours to select them. You can pick multiple consecutive hours.
                   </p>
 
-                  <div className="flex flex-col gap-1.5 rounded-2xl border border-[#10153f]/15 bg-white p-3 sm:p-4">
+                  <div className="flex flex-col gap-1 rounded-2xl border border-[#10153f]/15 bg-white p-2.5 sm:p-3">
                     {hourSlots.map((slot, index) => {
                       const isSelected = selectedHours.includes(slot.time);
                       const isUnavailable = !slot.available;
@@ -909,22 +946,21 @@ export default function MeetingRoomBooking() {
                           onClick={() => handleHourClick(slot.time, slot.available)}
                           disabled={isUnavailable}
                           className={[
-                            'group flex items-center justify-between px-4 py-3.5 text-left transition-all',
+                            'group flex items-center justify-between px-3 py-2.5 text-left transition-all',
                             roundedClass,
                             isSelected
                               ? 'bg-[#10153f] text-white shadow-sm'
                               : isUnavailable
                                 ? 'cursor-not-allowed bg-red-50/60 text-red-300'
                                 : 'bg-[#fbfaf8] text-[#10153f] hover:bg-[#10153f]/[0.06]',
-                            // Remove gap between consecutive selected slots
-                            isSelected && !isOnly && !isLast ? '-mb-1.5' : '',
+                            isSelected && !isOnly && !isLast ? '-mb-1' : '',
                           ].join(' ')}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5">
                             {/* Selection indicator */}
                             <div
                               className={[
-                                'flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all',
+                                'flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all',
                                 isSelected
                                   ? 'border-white bg-white/20'
                                   : isUnavailable
@@ -933,18 +969,18 @@ export default function MeetingRoomBooking() {
                               ].join(' ')}
                             >
                               {isSelected ? (
-                                <Check className="h-4 w-4 text-white" />
+                                <Check className="h-3.5 w-3.5 text-white" />
                               ) : isUnavailable ? (
-                                <X className="h-3.5 w-3.5 text-red-300" />
+                                <X className="h-3 w-3 text-red-300" />
                               ) : null}
                             </div>
 
                             <div>
-                              <span className="text-[0.95rem] font-semibold sm:text-base">
+                              <span className="text-sm font-semibold">
                                 {slot.label}
                               </span>
                               <span className={[
-                                'ml-2 text-sm',
+                                'ml-1.5 text-xs',
                                 isSelected ? 'text-white/60' : isUnavailable ? 'text-red-200' : 'text-[#10153f]/40',
                               ].join(' ')}>
                                 - {endDisplay}:00 {endPeriod}
@@ -954,19 +990,19 @@ export default function MeetingRoomBooking() {
 
                           <div>
                             {isUnavailable && !slot.isPast ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-500">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-500">
                                 Booked
                               </span>
                             ) : isUnavailable && slot.isPast ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-300">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-300">
                                 Past
                               </span>
                             ) : isSelected ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white/80">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium text-white/80">
                                 Selected
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
                                 Available
                               </span>
                             )}
@@ -993,20 +1029,20 @@ export default function MeetingRoomBooking() {
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2.5">
-                    <Label htmlFor="booking-name" className="text-base font-semibold text-[#10153f] sm:text-[1.05rem]">
+                  <div className="space-y-2">
+                    <Label htmlFor="booking-name" className="text-sm font-medium text-[#10153f]">
                       Full name
                     </Label>
                     <Input
                       id="booking-name"
                       value={formState.guestName}
                       onChange={(event) => handleFieldChange('guestName', event.target.value)}
-                      className="h-12 rounded-2xl border-[#10153f]/30 bg-white px-4 text-base text-[#10153f] sm:text-lg"
+                      className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
                     />
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label htmlFor="booking-email" className="text-base font-semibold text-[#10153f] sm:text-[1.05rem]">
+                  <div className="space-y-2">
+                    <Label htmlFor="booking-email" className="text-sm font-medium text-[#10153f]">
                       Email
                     </Label>
                     <Input
@@ -1014,13 +1050,13 @@ export default function MeetingRoomBooking() {
                       type="email"
                       value={formState.guestEmail}
                       onChange={(event) => handleFieldChange('guestEmail', event.target.value)}
-                      className="h-12 rounded-2xl border-[#10153f]/30 bg-white px-4 text-base text-[#10153f] sm:text-lg"
+                      className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2.5">
-                  <Label htmlFor="booking-purpose" className="text-base font-semibold text-[#10153f] sm:text-[1.05rem]">
+                <div className="space-y-2">
+                  <Label htmlFor="booking-purpose" className="text-sm font-medium text-[#10153f]">
                     Meeting purpose
                   </Label>
                   <Input
@@ -1028,12 +1064,12 @@ export default function MeetingRoomBooking() {
                     value={formState.purpose}
                     onChange={(event) => handleFieldChange('purpose', event.target.value)}
                     placeholder="Client presentation, workshop, team sync..."
-                    className="h-12 rounded-2xl border-[#10153f]/30 bg-white px-4 text-base text-[#10153f] sm:text-lg"
+                    className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
                   />
                 </div>
 
-                <div className="space-y-2.5">
-                  <Label htmlFor="booking-notes" className="text-base font-semibold text-[#10153f] sm:text-[1.05rem]">
+                <div className="space-y-2">
+                  <Label htmlFor="booking-notes" className="text-sm font-medium text-[#10153f]">
                     Required facilities / requests
                   </Label>
                   <Textarea
@@ -1041,13 +1077,24 @@ export default function MeetingRoomBooking() {
                     value={formState.notes}
                     onChange={(event) => handleFieldChange('notes', event.target.value)}
                     placeholder="E.g. We need a whiteboard and TV"
-                    className="min-h-[96px] rounded-2xl border-[#10153f]/30 bg-white px-4 py-3 text-base text-[#10153f] sm:text-lg"
+                    className="min-h-[80px] rounded-2xl border-[#10153f]/15 bg-white px-3 py-2.5 text-sm text-[#10153f]"
                   />
                 </div>
 
                 <div className="space-y-2 pt-1 text-[#10153f]">
-                  <p className="text-[1.7rem] font-semibold leading-none sm:text-[1.95rem]">{formatCurrency(totalMinor || 0)} total</p>
-                  <p className="text-base text-[#10153f]/80 sm:text-lg">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-[#10153f]/70">Subtotal</span>
+                    <span className="text-sm font-medium">{formatCurrency(totalMinor || 0)}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-[#10153f]/70">VAT (estimated)</span>
+                    <span className="text-sm font-medium">{formatCurrency(estimatedVatMinor || 0)}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between border-t border-[#10153f]/10 pt-2">
+                    <span className="text-lg font-semibold">Total</span>
+                    <span className="text-lg font-semibold">{formatCurrency(estimatedTotalWithVatMinor || 0)}</span>
+                  </div>
+                  <p className="text-sm text-[#10153f]/80">
                     Please read our{' '}
                     <a href="/terms" className="text-primary underline-offset-4 hover:underline">
                       cancellation and refund policy
@@ -1060,20 +1107,22 @@ export default function MeetingRoomBooking() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting || isAvailabilityLoading || isRoomUnavailable || !hasSelection || !!paymentDraft}
-                  className="h-14 rounded-full bg-primary px-10 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-primary/45 disabled:text-primary-foreground sm:text-lg"
+                  className="h-11 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-primary/45 disabled:text-primary-foreground"
                 >
                   {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
-                  Pay on this page
+                  Pay
                 </Button>
 
                 {paymentDraft && stripePublishableKey ? (
-                  <GuestBookingPaymentCard
-                    publishableKey={stripePublishableKey}
-                    paymentDraft={paymentDraft}
-                    isSubmitting={isSubmitting}
-                    onConfirmPayment={handleConfirmPayment}
-                    onCancelPayment={handleCancelPayment}
-                  />
+                  <div ref={paymentCardRef}>
+                    <GuestBookingPaymentCard
+                      publishableKey={stripePublishableKey}
+                      paymentDraft={paymentDraft}
+                      isSubmitting={isSubmitting}
+                      onConfirmPayment={handleConfirmPayment}
+                      onCancelPayment={handleCancelPayment}
+                    />
+                  </div>
                 ) : null}
 
                 {!hasSelection && !isAvailabilityLoading ? (
@@ -1092,12 +1141,12 @@ export default function MeetingRoomBooking() {
               </div>
             </div>
 
-            <aside className="rounded-[2rem] border border-[#10153f]/30 bg-white p-5 sm:p-6 xl:sticky xl:top-6">
-              <h2 className="font-sans text-[2.6rem] font-semibold tracking-tight leading-none text-[#10153f]">
+            <aside className="rounded-[2rem] border border-[#10153f]/15 bg-white p-5 sm:p-6 xl:sticky xl:top-6">
+              <h2 className="font-sans text-xl font-semibold tracking-tight leading-none text-[#10153f] sm:text-2xl">
                 {selectedRoom.name}
               </h2>
 
-              <div className="mt-5 overflow-hidden rounded-[1.75rem]">
+              <div className="mt-4 overflow-hidden rounded-[1.25rem]">
                 <img
                   src={summaryImageSrc}
                   alt={selectedRoom.name}
@@ -1108,16 +1157,16 @@ export default function MeetingRoomBooking() {
                 />
               </div>
 
-              <div className="mt-6 space-y-4 text-[#10153f]">
+              <div className="mt-5 space-y-3 text-[#10153f]">
                 <div className="flex items-start justify-between gap-6">
                   <div>
-                    <p className="text-[1.2rem] font-semibold sm:text-[1.35rem]">Workspace</p>
+                    <p className="text-sm font-semibold">Workspace</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[1.2rem] font-medium sm:text-[1.35rem]">
+                    <p className="text-sm font-medium">
                       {selectedResource?.capacity || selectedRoom.capacity || 0} person meeting room
                     </p>
-                    <p className="mt-1 text-[1.2rem] sm:text-[1.35rem]">
+                    <p className="mt-1 text-sm">
                       {selectedResource?.hourlyRateMinor ? `${formatCurrency(selectedResource.hourlyRateMinor)} per hour` : 'Rate on request'}
                     </p>
                   </div>
@@ -1126,15 +1175,15 @@ export default function MeetingRoomBooking() {
                 <Separator className="bg-[#10153f]/15" />
 
                 <div className="flex items-center justify-between gap-6">
-                  <p className="text-[1.2rem] font-semibold sm:text-[1.35rem]">Date</p>
-                  <p className="text-[1.2rem] sm:text-[1.35rem]">{formState.date ? formatLongDate(`${formState.date}T00:00`) : '-'}</p>
+                  <p className="text-sm font-semibold">Date</p>
+                  <p className="text-sm">{formState.date ? formatLongDate(`${formState.date}T00:00`) : '-'}</p>
                 </div>
 
                 <Separator className="bg-[#10153f]/15" />
 
                 <div className="flex items-center justify-between gap-6">
-                  <p className="text-[1.2rem] font-semibold sm:text-[1.35rem]">Time</p>
-                  <p className="text-[1.2rem] sm:text-[1.35rem]">
+                  <p className="text-sm font-semibold">Time</p>
+                  <p className="text-sm">
                     {hasSelection
                       ? formatTimeRange(sortedSelection[0], lastSelectedHour)
                       : '-'}
@@ -1144,9 +1193,9 @@ export default function MeetingRoomBooking() {
                 <Separator className="bg-[#10153f]/15" />
 
                 <div className="flex items-center justify-between gap-6">
-                  <p className="text-[1.2rem] font-semibold sm:text-[1.35rem]">Duration</p>
-                  <p className="inline-flex items-center gap-2 text-[1.2rem] sm:text-[1.35rem]">
-                    <Clock3 size={18} />
+                  <p className="text-sm font-semibold">Duration</p>
+                  <p className="inline-flex items-center gap-2 text-sm">
+                    <Clock3 size={16} />
                     {durationLabel}
                   </p>
                 </div>
@@ -1154,8 +1203,18 @@ export default function MeetingRoomBooking() {
                 <Separator className="bg-[#10153f]/15" />
 
                 <div className="flex items-center justify-between gap-6">
-                  <p className="text-[1.2rem] font-semibold sm:text-[1.35rem]">Total cost</p>
-                  <p className="text-[1.4rem] font-semibold sm:text-[1.6rem]">{formatCurrency(totalMinor || 0)}</p>
+                  <p className="text-sm font-semibold">Subtotal</p>
+                  <p className="text-sm">{formatCurrency(totalMinor || 0)}</p>
+                </div>
+
+                <div className="flex items-center justify-between gap-6">
+                  <p className="text-xs text-[#10153f]/60">VAT (est.)</p>
+                  <p className="text-xs text-[#10153f]/60">{formatCurrency(estimatedVatMinor || 0)}</p>
+                </div>
+
+                <div className="flex items-center justify-between gap-6">
+                  <p className="text-base font-semibold">Total (inc. VAT)</p>
+                  <p className="text-lg font-semibold">{formatCurrency(estimatedTotalWithVatMinor || 0)}</p>
                 </div>
 
                 <div className="rounded-2xl bg-[#10153f]/[0.04] p-3 text-sm text-[#10153f]/75">

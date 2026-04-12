@@ -9,6 +9,8 @@ import MediaLibrary from '../src/components/MediaLibrary'
 AdminJS.UserComponents.MediaLibrary = MediaLibrary
 import AccountSettings from '../src/components/AccountSettings'
 AdminJS.UserComponents.AccountSettings = AccountSettings
+import RefundRequests from '../src/components/RefundRequests'
+AdminJS.UserComponents.RefundRequests = RefundRequests
 import Sidebar from '../src/components/Sidebar'
 AdminJS.UserComponents.Sidebar = Sidebar
 import Login from '../src/components/Login'

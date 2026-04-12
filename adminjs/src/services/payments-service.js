@@ -1,8 +1,42 @@
 import { createBookingPaymentIntent, ensureStripeCustomer, isStripeEnabled } from './stripe-service.js';
 import { findUserById } from './users-service.js';
 
+/**
+ * VAT SYSTEM ARCHITECTURE (P1 #26, #28, #56)
+ *
+ * This codebase has TWO parallel VAT calculation paths:
+ *
+ * 1. LOCAL ESTIMATION (`calculateVat` below):
+ *    - Applied to PaymentIntent-based flows (embedded card payments, mock payments)
+ *    - Uses a flat rate from the `VAT_RATE` env var (default: 20%)
+ *    - Stored in DB: `bookings.tax_minor`, `bookings.total_minor`
+ *    - LIMITATION: PaymentIntents do not support Stripe's `automatic_tax`,
+ *      so this local estimate is the best available for that payment path.
+ *
+ * 2. STRIPE AUTOMATIC TAX (`automatic_tax: { enabled: true }`):
+ *    - Applied to Checkout Session flows (guest booking, membership, adjustments)
+ *    - Stripe calculates tax based on customer address and tax registration
+ *    - After checkout completes, sync functions (`getCheckoutSessionFinancials`,
+ *      `getInvoiceFinancials`) update the DB with Stripe's actual figures
+ *    - This path produces the authoritative tax record for Stripe Tax reporting
+ *
+ * RECONCILIATION: The two paths may produce different tax amounts for the same
+ * price. The DB always stores the most recent sync result. For Checkout Sessions,
+ * the Stripe-computed amount overwrites the local estimate after sync.
+ * For PaymentIntents, the local estimate is the only available figure.
+ *
+ * MOCK MODE: Mock payments use the local `calculateVat` estimate. No Stripe Tax
+ * record is created. This is an accepted limitation of mock mode — mock payments
+ * are not suitable for tax reporting accuracy testing.
+ */
+
+const DEFAULT_VAT_RATE = Number(process.env.VAT_RATE ?? 0.2);
+const vatRate = Number.isFinite(DEFAULT_VAT_RATE) ? DEFAULT_VAT_RATE : 0.2;
+
 export function calculateVat(subtotalMinor) {
-  return Math.round(Number(subtotalMinor || 0) * 0.2);
+  const amount = Number(subtotalMinor || 0);
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * vatRate);
 }
 
 /**

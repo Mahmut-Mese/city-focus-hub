@@ -38,53 +38,53 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 
 | # | Finding | Section |
 |---|---------|---------|
-| 24 | Cross-page navigation blank pages — React Router `<Link>` doesn't work across Astro boundaries (15 files) | Cross-Page Navigation |
-| 25 | Dashboard `[...path].astro` only generates `path: ''` — sub-routes 404 in production static build | Static Build — getStaticPaths |
-| 26 | Two separate VAT systems (local 20% vs Stripe automatic_tax) with no reconciliation | VAT Calculations |
-| 27 | Guest booking page shows subtotal as "total" — VAT not shown before Stripe Checkout | VAT Calculations |
-| 28 | `createBookingPaymentIntentDraft` charges local 20% VAT with no Stripe Tax — inconsistent with Checkout flow | VAT Calculations |
-| 29 | `calculateVat` hardcoded to 20% with no config or zero-rate support | VAT Calculations |
-| 30 | Refunds allocated across any historical invoice, not the specific charge being adjusted | Payments / Memberships / Invoices / Refunds |
-| 31 | Guest checkout cancel leaves pending booking hold — cancel endpoint never called | Payments / Memberships / Invoices / Refunds |
-| 32 | Availability API failures make all slots appear available (Dashboard + MeetingRoomBooking) | Frontend Error Handling / Payments |
-| 33 | `handleSubscriptionUpdated` does not sync user access status — active access during `past_due` window | Membership Lifecycle |
-| 34 | `upsertMembershipFromSubscription` can overwrite wrong membership row via fallback lookup | Membership Lifecycle |
-| 35 | Payment-intent-to-invoice hydration uses fragile heuristics — can cross-match wrong invoices | Membership Lifecycle |
-| 36 | Mock-mode upgrade refund can consume wrong historical invoice | Membership Lifecycle |
-| 37 | `upsertStripeInvoice` booking fallback can overwrite existing invoice — destroys billing history | Refund / Invoice Reconciliation |
-| 38 | `syncBookingRefundState` resets payment status to `succeeded` for partially-refunded bookings | Refund / Invoice Reconciliation |
-| 39 | `handleChargeRefunded` relies on `charge.refunds.data` — empty array causes silent miss | Refund / Invoice Reconciliation |
-| 40 | `checkout.session.completed` routing silently drops events with missing metadata | Stripe Webhook Handler |
-| 41 | Webhook event handlers have no explicit idempotency guards | Stripe Webhook Handler |
-| 42 | `syncBookingAdjustmentCheckoutSession` applies update without DB lock — race condition | Booking / Payment Lifecycle |
-| 43 | Stale-booking expiry runs synchronously in list/availability hot paths — latency + Stripe rate-limit risk | Booking / Payment Lifecycle |
-| 44 | `expireStalePendingBookings` has no mutex — concurrent double-processing | Resource / Availability Concurrency |
-| 45 | `listAvailableResources` treats all resources as capacity=1 | Resource / Availability Concurrency |
-| 46 | Pending booking hold relies on app-level time check, not DB constraint | Resource / Availability Concurrency |
-| 47 | Single shared session secret for admin and member portals | Authentication & Session Security |
-| 48 | Rate limiter is in-memory — useless under cluster/Docker replicas | Security |
-| 49 | `requireAuthenticatedMember` is a plain function, not Express middleware — easy to forget | Architecture |
-| 50 | `/api/member-portal/resources` has no authentication check | API Input Validation |
-| 51 | No schema validation library — all request validation is manual and inconsistent | API Input Validation |
-| 52 | NaN propagation from `Number()` casts on request body fields | API Input Validation |
-| 53 | No transactional emails (booking confirmation, payment receipt, etc.) | Email Notifications |
-| 54 | Email send failures silently swallowed — no logging, retry, or alert | Email Notifications |
-| 55 | `previewMembershipPlanChange` extracts tax only from proration lines — can show £0 VAT | VAT Calculations |
-| 56 | Mock-mode membership upgrade invoice stores local tax, not Stripe-computed tax | VAT Calculations |
-| 57 | `NaN` propagation in `calculateVat` — invalid values break downstream logic | VAT Calculations |
-| 58 | Missing `tax_behavior` on membership adjustment checkout session | Stripe Webhook Handler |
-| 59 | Single-item subscription assumption in plan update — multi-item subscriptions partially migrated | Stripe Webhook Handler |
-| 60 | Production startup check does not validate `STRIPE_SECRET_KEY` is set | Environment Variable & Secrets Hygiene |
-| 61 | `.env.example` contains real-looking credentials that may be copied verbatim | Environment Variable & Secrets Hygiene |
-| 62 | No Stripe publishable/secret key environment consistency validation | Environment Variable & Secrets Hygiene |
-| 63 | `ensureColumn` interpolates raw strings into SQL without quoting | Database Schema & Bootstrap |
-| 64 | No audit logging for admin actions | Admin Panel Security |
-| 65 | No database migrations — schema via startup DDL with no rollback | Missing Features / Infrastructure |
-| 66 | No error tracking (Sentry or equivalent) | Missing Features / Infrastructure |
-| 67 | No CI/CD pipeline | Missing Features / Infrastructure |
-| 68 | No React Error Boundaries — one crash takes down entire UI | Missing Features / Infrastructure |
-| 69 | WCAG failures: missing form labels, no skip link, no ARIA tab semantics, low contrast | Accessibility |
-| 70 | No sitemap, no canonical URL, og:image falls back to SVG, no structured data | SEO |
+| [x] 24 | Cross-page navigation blank pages — React Router `<Link>` doesn't work across Astro boundaries (15 files) | Cross-Page Navigation |
+| [x] 25 | Dashboard `[...path].astro` only generates `path: ''` — sub-routes 404 in production static build | Static Build — getStaticPaths |
+| [x] 26 | Two separate VAT systems (local 20% vs Stripe automatic_tax) with no reconciliation | VAT Calculations |
+| [x] 27 | Guest booking page shows subtotal as "total" — VAT not shown before Stripe Checkout | VAT Calculations |
+| [x] 28 | `createBookingPaymentIntentDraft` charges local 20% VAT with no Stripe Tax — inconsistent with Checkout flow | VAT Calculations |
+| [x] 29 | `calculateVat` hardcoded to 20% with no config or zero-rate support | VAT Calculations |
+| [x] 30 | Refunds allocated across any historical invoice, not the specific charge being adjusted | Payments / Memberships / Invoices / Refunds |
+| [x] 31 | Guest checkout cancel leaves pending booking hold — cancel endpoint never called | Payments / Memberships / Invoices / Refunds |
+| [x] 32 | Availability API failures make all slots appear available (Dashboard + MeetingRoomBooking) | Frontend Error Handling / Payments |
+| [x] 33 | `handleSubscriptionUpdated` does not sync user access status — active access during `past_due` window | Membership Lifecycle |
+| [x] 34 | `upsertMembershipFromSubscription` can overwrite wrong membership row via fallback lookup | Membership Lifecycle |
+| [x] 35 | Payment-intent-to-invoice hydration uses fragile heuristics — can cross-match wrong invoices | Membership Lifecycle |
+| [x] 36 | Mock-mode upgrade refund can consume wrong historical invoice | Membership Lifecycle |
+| [x] 37 | `upsertStripeInvoice` booking fallback can overwrite existing invoice — destroys billing history | Refund / Invoice Reconciliation |
+| [x] 38 | `syncBookingRefundState` resets payment status to `succeeded` for partially-refunded bookings | Refund / Invoice Reconciliation |
+| [x] 39 | `handleChargeRefunded` relies on `charge.refunds.data` — empty array causes silent miss | Refund / Invoice Reconciliation |
+| [x] 40 | `checkout.session.completed` routing silently drops events with missing metadata | Stripe Webhook Handler |
+| [x] 41 | Webhook event handlers have no explicit idempotency guards | Stripe Webhook Handler |
+| [x] 42 | `syncBookingAdjustmentCheckoutSession` applies update without DB lock — race condition | Booking / Payment Lifecycle |
+| [x] 43 | Stale-booking expiry runs synchronously in list/availability hot paths — latency + Stripe rate-limit risk | Booking / Payment Lifecycle |
+| [x] 44 | `expireStalePendingBookings` has no mutex — concurrent double-processing | Resource / Availability Concurrency |
+| [x] 45 | `listAvailableResources` treats all resources as capacity=1 | Resource / Availability Concurrency |
+| [x] 46 | Pending booking hold relies on app-level time check, not DB constraint | Resource / Availability Concurrency |
+| [x] 47 | Single shared session secret for admin and member portals | Authentication & Session Security |
+| [x] 48 | Rate limiter is in-memory — useless under cluster/Docker replicas | Security |
+| [x] 49 | `requireAuthenticatedMember` is a plain function, not Express middleware — easy to forget | Architecture |
+| [x] 50 | `/api/member-portal/resources` has no authentication check | API Input Validation |
+| [x] 51 | No schema validation library — all request validation is manual and inconsistent | API Input Validation |
+| [x] 52 | NaN propagation from `Number()` casts on request body fields | API Input Validation |
+| [x] 53 | No transactional emails (booking confirmation, payment receipt, etc.) | Email Notifications |
+| [x] 54 | Email send failures silently swallowed — no logging, retry, or alert | Email Notifications |
+| [x] 55 | `previewMembershipPlanChange` extracts tax only from proration lines — can show £0 VAT | VAT Calculations |
+| [x] 56 | Mock-mode membership upgrade invoice stores local tax, not Stripe-computed tax | VAT Calculations |
+| [x] 57 | `NaN` propagation in `calculateVat` — invalid values break downstream logic | VAT Calculations |
+| [x] 58 | Missing `tax_behavior` on membership adjustment checkout session | Stripe Webhook Handler |
+| [x] 59 | Single-item subscription assumption in plan update — multi-item subscriptions partially migrated | Stripe Webhook Handler |
+| [x] 60 | Production startup check does not validate `STRIPE_SECRET_KEY` is set | Environment Variable & Secrets Hygiene |
+| [x] 61 | `.env.example` contains real-looking credentials that may be copied verbatim | Environment Variable & Secrets Hygiene |
+| [x] 62 | No Stripe publishable/secret key environment consistency validation | Environment Variable & Secrets Hygiene |
+| [x] 63 | `ensureColumn` interpolates raw strings into SQL without quoting | Database Schema & Bootstrap |
+| [x] 64 | No audit logging for admin actions | Admin Panel Security |
+| [x] 65 | No database migrations — schema via startup DDL with no rollback | Missing Features / Infrastructure |
+| [x] 66 | No error tracking (Sentry or equivalent) | Missing Features / Infrastructure |
+| [x] 67 | No CI/CD pipeline | Missing Features / Infrastructure |
+| [x] 68 | No React Error Boundaries — one crash takes down entire UI | Missing Features / Infrastructure |
+| [x] 69 | WCAG failures: missing form labels, no skip link, no ARIA tab semantics, low contrast | Accessibility |
+| [x] 70 | No sitemap, no canonical URL, og:image falls back to SVG, no structured data | SEO |
 
 ### P2 — Fix Eventually
 > Code quality, maintainability, performance optimization, minor UX polish. Schedule as capacity allows.
@@ -233,8 +233,8 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 - [ ] **No code splitting** — entire app is one bundle including `Dashboard.tsx`. Add route-level `React.lazy()` + `<Suspense>` to cut initial load.
 - [ ] **Stripe.js always loads** — imported at top level in `Dashboard.tsx:4`, loads for every dashboard visitor even if they never touch payments. Lazy-import only when the payment UI opens.
 - [ ] **`QueryClient` has no global defaults** — `staleTime: 60_000` is copy-pasted into every single query hook. Set once in `QueryClient` constructor via `defaultOptions`.
-- [ ] **`JSON.parse(JSON.stringify(...))` for deep cloning** in `useCmsContent.ts:43` — replace with `structuredClone()`.
-- [ ] **No DB connection pool config** — Sequelize defaults to 5 connections. Set explicit pool options in `database.js`: `pool: { max: 10, min: 2, acquire: 30000, idle: 10000 }`.
+- [x] **`JSON.parse(JSON.stringify(...))` for deep cloning** in `useCmsContent.ts:43` — replace with `structuredClone()`.
+- [x] **No DB connection pool config** — Sequelize defaults to 5 connections. Set explicit pool options in `database.js`: `pool: { max: 10, min: 2, acquire: 30000, idle: 10000 }`.
 - [ ] **`refreshDashboard()` refetches everything** after every action. Should invalidate only the relevant query instead of reloading the entire dashboard payload.
 
 ---
@@ -248,7 +248,7 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 - [ ] **No React Error Boundaries** — one component crash takes down the entire UI.
 - [ ] **No CI/CD pipeline** — no `.github/workflows/` at all. No automated lint, test, or build checks on PRs.
 - [ ] **`framer-motion` listed as a dependency** but no usage was found. If unused, remove it (~75KB bundle savings).
-- [ ] **`.adminjs/` build cache** in `adminjs/` folder is likely not gitignored — check and add if missing.
+- [x] **`.adminjs/` build cache** in `adminjs/` folder is likely not gitignored — check and add if missing.
 
 ---
 
@@ -367,12 +367,12 @@ Base `DialogContent` lacks `max-height` and `overflow-y-auto`. Dashboard booking
 
 ## API / Auth (LOW)
 
-- [ ] No fetch request timeout configured — requests can hang indefinitely
-- [ ] `RequestOptions.method` in `src/lib/member-api.ts` only allows `GET | POST | PUT` (no `DELETE` or `PATCH`)
-- [ ] Logout API call is fire-and-forget (no error handling, no await)
+- [x] No fetch request timeout configured — requests can hang indefinitely
+- [x] `RequestOptions.method` in `src/lib/member-api.ts` only allows `GET | POST | PUT` (no `DELETE` or `PATCH`)
+- [x] Logout API call is fire-and-forget (no error handling, no await)
 - [ ] No session refresh mechanism — 7-day cookie expiry, silent logout on expiry
-- [ ] All 4 custom `import.meta.env` variables are untyped (no `ImportMetaEnv` augmentation in `env.d.ts`)
-- [ ] `console.error` left in `src/pages-react/NotFound.tsx` (line 17)
+- [x] All 4 custom `import.meta.env` variables are untyped (no `ImportMetaEnv` augmentation in `env.d.ts`)
+- [x] `console.error` left in `src/pages-react/NotFound.tsx` (line 17)
 
 ---
 
@@ -520,29 +520,29 @@ Base `DialogContent` lacks `max-height` and `overflow-y-auto`. Dashboard booking
 
 ## Frontend Error Handling (MEDIUM)
 
-- [ ] **`MeetingRoomBooking.tsx` returns `null` during CMS query loading — blank screen** — `src/pages-react/MeetingRoomBooking.tsx:496-498` returns `null` while CMS data is loading. The user sees a completely blank page with no loading indicator until the CMS query resolves, which can take several seconds on slow connections.
+- [x] **`MeetingRoomBooking.tsx` returns `null` during CMS query loading — blank screen** — `src/pages-react/MeetingRoomBooking.tsx:496-498` returns `null` while CMS data is loading. The user sees a completely blank page with no loading indicator until the CMS query resolves, which can take several seconds on slow connections.
 
 - [ ] **Availability API failures make all slots appear available** — `src/pages-react/Dashboard.tsx:519` and `src/pages-react/MeetingRoomBooking.tsx:280` both have catch blocks that set `newAvailability.set(time, true)` on API failure. If the availability endpoint returns an error, all time slots are marked as available, letting users proceed to book slots that may already be taken.
 
-- [ ] **`member-api.ts` swallows JSON parse errors** — `src/lib/member-api.ts:22` uses `response.json().catch(() => null)`. If the server returns non-JSON (e.g. HTML error page, 502 gateway response), `payload` becomes `null` and the error message falls through to a generic `API request failed: ${status}` — hiding the actual server error from both the user and any error tracking.
+- [x] **`member-api.ts` swallows JSON parse errors** — `src/lib/member-api.ts:22` uses `response.json().catch(() => null)`. If the server returns non-JSON (e.g. HTML error page, 502 gateway response), `payload` becomes `null` and the error message falls through to a generic `API request failed: ${status}` — hiding the actual server error from both the user and any error tracking.
 
-- [ ] **`handleConfirmClick` does not wrap `confirmCardPayment` in try/catch** — `src/pages-react/Dashboard.tsx:1198-1230` awaits `stripeRef.current.confirmCardPayment(...)` at line 1213. The `result.error` check only handles Stripe's structured error responses, not JS exceptions from network failures or unexpected Stripe SDK errors. An unhandled promise rejection could crash the payment flow with no user feedback.
+- [x] **`handleConfirmClick` does not wrap `confirmCardPayment` in try/catch** — `src/pages-react/Dashboard.tsx:1198-1230` awaits `stripeRef.current.confirmCardPayment(...)` at line 1213. The `result.error` check only handles Stripe's structured error responses, not JS exceptions from network failures or unexpected Stripe SDK errors. An unhandled promise rejection could crash the payment flow with no user feedback.
 
-- [ ] **Success/error messages persist across dashboard section navigation** — `src/pages-react/Dashboard.tsx:1350-1351` — `actionError` and `successMessage` are never cleared when the user navigates between dashboard sections. A stale error from the bookings page will still be visible when the user switches to the billing or profile page.
+- [x] **Success/error messages persist across dashboard section navigation** — `src/pages-react/Dashboard.tsx:1350-1351` — `actionError` and `successMessage` are never cleared when the user navigates between dashboard sections. A stale error from the bookings page will still be visible when the user switches to the billing or profile page.
 
 ---
 
 ## Frontend State Management (MEDIUM)
 
-- [ ] **`availableResources` useState creates a stale duplicate of `dashboardData.resources`** — `src/pages-react/Dashboard.tsx:1654-1658` copies `dashboardData.resources` into a separate `availableResources` state. But `availableResources` is also set independently by `refreshAvailableResources` (line 1402-1412). These two sources can desync: `dashboardData` refreshes the full dashboard, while `refreshAvailableResources` only fetches resources, leaving two different views of the same data.
+- [x] **`availableResources` useState creates a stale duplicate of `dashboardData.resources`** — `src/pages-react/Dashboard.tsx:1654-1658` copies `dashboardData.resources` into a separate `availableResources` state. But `availableResources` is also set independently by `refreshAvailableResources` (line 1402-1412). These two sources can desync: `dashboardData` refreshes the full dashboard, while `refreshAvailableResources` only fetches resources, leaving two different views of the same data.
 
-- [ ] **`actionError` change closes all open dialogs, losing user form input** — `src/pages-react/Dashboard.tsx:1660-1669` — a useEffect closes `isCreateBookingOpen`, `isEditBookingOpen`, `isDetailsOpen`, and `isPlanChangeOpen` whenever `actionError` changes. If a booking edit API call returns an error, the edit dialog is immediately closed and the user loses all unsaved form data. The error should be shown inside the dialog, not trigger dialog dismissal.
+- [x] **`actionError` change closes all open dialogs, losing user form input** — `src/pages-react/Dashboard.tsx:1660-1669` — a useEffect closes `isCreateBookingOpen`, `isEditBookingOpen`, `isDetailsOpen`, and `isPlanChangeOpen` whenever `actionError` changes. If a booking edit API call returns an error, the edit dialog is immediately closed and the user loses all unsaved form data. The error should be shown inside the dialog, not trigger dialog dismissal.
 
-- [ ] **Four nearly identical useEffect blocks for checkout sync** — `src/pages-react/Dashboard.tsx:1418-1646` contains separate ~40-line useEffect hooks for membership checkout sync, membership adjustment sync, booking adjustment sync, and booking checkout sync. All four follow the same pattern (check URL param → call sync API → clear param → refresh). This duplication means a bug fix in one block can easily be missed in the other three.
+- [x] **Four nearly identical useEffect blocks for checkout sync** — `src/pages-react/Dashboard.tsx:1418-1646` contains separate ~40-line useEffect hooks for membership checkout sync, membership adjustment sync, booking adjustment sync, and booking checkout sync. All four follow the same pattern (check URL param → call sync API → clear param → refresh). This duplication means a bug fix in one block can easily be missed in the other three.
 
 - [ ] **`refreshDashboard` replaces all state at once, causing full re-render cascade** — `src/pages-react/Dashboard.tsx:1394` calls `setDashboardData(payload)` which replaces the entire dashboard state object. Every section component re-renders even if only one section's data changed. Combined with the dialog-closing effect (above), this can cause visible UI disruption mid-interaction.
 
-- [ ] **`useEffect` at line 1416 depends on `[user]` object reference** — `src/pages-react/Dashboard.tsx:1416` triggers `refreshDashboard()` whenever `user` changes. If the `user` object reference changes on every context re-render (common with object values in React context that are not memoized), `refreshDashboard()` will fire unnecessarily on every parent render, causing redundant API calls and UI flicker.
+- [x] **`useEffect` at line 1416 depends on `[user]` object reference** — `src/pages-react/Dashboard.tsx:1416` triggers `refreshDashboard()` whenever `user` changes. If the `user` object reference changes on every context re-render (common with object values in React context that are not memoized), `refreshDashboard()` will fire unnecessarily on every parent render, causing redundant API calls and UI flicker.
 
 ---
 
@@ -584,65 +584,65 @@ Base `DialogContent` lacks `max-height` and `overflow-y-auto`. Dashboard booking
 
 - [ ] **`ensureColumn` cannot modify existing columns** — `adminjs/src/bootstrap-commerce.js:294-300` only adds a column if it doesn't exist. It cannot alter an existing column's type, nullability, or default value. Schema changes requiring column modification silently do nothing, leaving the database out of sync with application expectations.
 
-- [ ] **No index on `contact_submissions.email` or `created_at`** — `adminjs/src/bootstrap-content.js:290-300` creates the `contact_submissions` table with no indexes beyond the primary key. Admin queries filtering by email or sorting by date will perform full table scans, degrading as the table grows.
+- [x] **No index on `contact_submissions.email` or `created_at`** — `adminjs/src/bootstrap-content.js:290-300` creates the `contact_submissions` table with no indexes beyond the primary key. Admin queries filtering by email or sorting by date will perform full table scans, degrading as the table grows.
 
-- [ ] **No index on `stripe_webhook_events.processed_at` or `event_type`** — `adminjs/src/bootstrap-commerce.js:188-196` — the `stripe_webhook_events` table has only a unique key on `stripe_event_id`. Queries filtering by `event_type` or `processed_at IS NULL` (unprocessed events) will full-scan as webhook volume grows.
+- [x] **No index on `stripe_webhook_events.processed_at` or `event_type`** — `adminjs/src/bootstrap-commerce.js:188-196` — the `stripe_webhook_events` table has only a unique key on `stripe_event_id`. Queries filtering by `event_type` or `processed_at IS NULL` (unprocessed events) will full-scan as webhook volume grows.
 
 - [ ] **Database Client Does Not Request SSL/TLS** — `adminjs/src/database.js:4-18` The Sequelize instance has no `dialectOptions.ssl` configuration, so the MySQL client never requests an encrypted connection. Whether traffic is actually encrypted depends entirely on server-side enforcement. Severity: MEDIUM
 
-- [ ] **SQL Logging Hard Disabled With No Override** — `adminjs/src/database.js:12` Sequelize SQL logging is hardcoded to `false`, making query/debug and performance troubleshooting harder without a code change. Severity: LOW
+- [x] **SQL Logging Hard Disabled With No Override** — `adminjs/src/database.js:12` Sequelize SQL logging is hardcoded to `false`, making query/debug and performance troubleshooting harder without a code change. Severity: LOW
 
 ---
 
 ## Backend Code Quality (MEDIUM)
 
-- [ ] **Contact submission email fired without awaiting — caller sees success even if email fails** — `adminjs/src/public-api.js:160-168` calls `sendContactSubmissionEmail` as fire-and-forget. The user receives a 201 response, but if SMTP is down the admin is never notified of the contact submission. No retry, no dead-letter, no admin-visible failure indicator.
+- [x] **Contact submission email fired without awaiting — caller sees success even if email fails** — `adminjs/src/public-api.js:160-168` calls `sendContactSubmissionEmail` as fire-and-forget. The user receives a 201 response, but if SMTP is down the admin is never notified of the contact submission. No retry, no dead-letter, no admin-visible failure indicator.
 
-- [ ] **No validation on `sourcePage` field in contact submission** — `adminjs/src/public-api.js:64` — `normalizeSubmissionBody` accepts any string for `sourcePage` with no length limit or allowlist. While `name`, `phone`, `email`, and `message` are validated for length, `sourcePage` bypasses the size guard and can store arbitrarily large values in the database.
+- [x] **No validation on `sourcePage` field in contact submission** — `adminjs/src/public-api.js:64` — `normalizeSubmissionBody` accepts any string for `sourcePage` with no length limit or allowlist. While `name`, `phone`, `email`, and `message` are validated for length, `sourcePage` bypasses the size guard and can store arbitrarily large values in the database.
 
-- [ ] **`toResource` throws on malformed JSON in `metadata` column** — `adminjs/src/services/resources-service.js:13` calls `JSON.parse(row.metadata)` with no try/catch. If the `metadata` column contains invalid JSON (manual DB edit, migration bug), any endpoint that lists resources returns a 500 error.
+- [x] **`toResource` throws on malformed JSON in `metadata` column** — `adminjs/src/services/resources-service.js:13` calls `JSON.parse(row.metadata)` with no try/catch. If the `metadata` column contains invalid JSON (manual DB edit, migration bug), any endpoint that lists resources returns a 500 error.
 
-- [ ] **`mapColumnType` misclassifies `BIGINT`, `MEDIUMINT`, and other SQL types as `STRING`** — `adminjs/src/models.js:98-138` only handles a subset of MySQL types (`tinyint`, `int`, `double`, `decimal`, `datetime`, `date`, `json`, `text`). Any column using `BIGINT`, `MEDIUMINT`, `SMALLINT`, `FLOAT`, `TIME`, `TIMESTAMP`, `BLOB`, `ENUM`, or sized `VARCHAR` falls through to `DataTypes.STRING`, causing Sequelize to misrepresent column types in AdminJS.
+- [x] **`mapColumnType` misclassifies `BIGINT`, `MEDIUMINT`, and other SQL types as `STRING`** — `adminjs/src/models.js:98-138` only handles a subset of MySQL types (`tinyint`, `int`, `double`, `decimal`, `datetime`, `date`, `json`, `text`). Any column using `BIGINT`, `MEDIUMINT`, `SMALLINT`, `FLOAT`, `TIME`, `TIMESTAMP`, `BLOB`, `ENUM`, or sized `VARCHAR` falls through to `DataTypes.STRING`, causing Sequelize to misrepresent column types in AdminJS.
 
-- [ ] **`buildResources` fails entirely if any single table does not exist** — `adminjs/src/models.js:188` — `defineModelForTable` calls `sequelize.getQueryInterface().describeTable(definition.table)`, which throws if the table is missing. Since `buildResources` uses `Promise.all`, one missing table prevents the entire admin panel from starting. No graceful degradation or per-resource error handling.
+- [x] **`buildResources` fails entirely if any single table does not exist** — `adminjs/src/models.js:188` — `defineModelForTable` calls `sequelize.getQueryInterface().describeTable(definition.table)`, which throws if the table is missing. Since `buildResources` uses `Promise.all`, one missing table prevents the entire admin panel from starting. No graceful degradation or per-resource error handling.
 
-- [ ] **Hardcoded currency `'gbp'` in seed data** — `adminjs/src/bootstrap-commerce.js:325` — `seedPlans` hardcodes `'gbp'` as the currency for all default plans instead of reading from config. Multi-currency or currency changes require a code change.
+- [x] **Hardcoded currency `'gbp'` in seed data** — `adminjs/src/bootstrap-commerce.js:325` — `seedPlans` hardcodes `'gbp'` as the currency for all default plans instead of reading from config. Multi-currency or currency changes require a code change.
 
-- [ ] **Duplicate `toResource` mapping logic across services** — `adminjs/src/services/resources-service.js:3-15` contains a `toResource` row-to-object mapper that is duplicated in `bookings-service.js`. A shared utility would reduce duplication and ensure consistent field parsing.
+- [x] **Duplicate `toResource` mapping logic across services** — `adminjs/src/services/resources-service.js:3-15` contains a `toResource` row-to-object mapper that is duplicated in `bookings-service.js`. A shared utility would reduce duplication and ensure consistent field parsing.
 
-- [ ] **No error handling or logging in SQL helper wrappers** — `adminjs/src/services/sql.js:4-22` — `queryOne`, `queryAll`, and `execute` are thin wrappers around `sequelize.query` with no error handling, structured logging, or query duration tracking. Raw Sequelize errors propagate directly to callers with no observability.
+- [x] **No error handling or logging in SQL helper wrappers** — `adminjs/src/services/sql.js:4-22` — `queryOne`, `queryAll`, and `execute` are thin wrappers around `sequelize.query` with no error handling, structured logging, or query duration tracking. Raw Sequelize errors propagate directly to callers with no observability.
 
-- [ ] **`toPascalCase` produces empty string for edge-case inputs** — `adminjs/src/models.js:54-60` returns an empty string if `value` is empty, underscores-only, or hyphens-only. This would cause `sequelize.define('', ...)` to fail with a cryptic error.
+- [x] **`toPascalCase` produces empty string for edge-case inputs** — `adminjs/src/models.js:54-60` returns an empty string if `value` is empty, underscores-only, or hyphens-only. This would cause `sequelize.define('', ...)` to fail with a cryptic error.
 
 ---
 
 ## Auth & Session UX (MEDIUM)
 
-- [ ] **Auth redirect during render body — side effect violates React rendering contract** — `src/pages-react/Auth.tsx:27-30` calls `window.location.href = redirectTarget` directly in the render body when `user` is truthy, not inside a `useEffect`. React 18 Strict Mode executes render functions twice in development, causing a double navigation. In production it fires once but violates React's purity contract and is fragile with concurrent features.
+- [x] **Auth redirect during render body — side effect violates React rendering contract** — `src/pages-react/Auth.tsx:27-30` calls `window.location.href = redirectTarget` directly in the render body when `user` is truthy, not inside a `useEffect`. React 18 Strict Mode executes render functions twice in development, causing a double navigation. In production it fires once but violates React's purity contract and is fragile with concurrent features.
 
-- [ ] **Logout sets user to `null` before server session is destroyed** — `src/context/AuthContext.tsx:130-133` calls `setUser(null)` synchronously before the async `logoutMember()` API call completes. If the logout API fails (network error, server down), the UI shows the user as logged out while the server session remains active. A page refresh re-authenticates, creating a confusing inconsistent state.
+- [x] **Logout sets user to `null` before server session is destroyed** — `src/context/AuthContext.tsx:130-133` calls `setUser(null)` synchronously before the async `logoutMember()` API call completes. If the logout API fails (network error, server down), the UI shows the user as logged out while the server session remains active. A page refresh re-authenticates, creating a confusing inconsistent state.
 
 - [ ] **`useSeo` hook overwrites SSG meta tags at runtime with no cleanup** — `src/lib/seo.ts:95-116` uses `useEffect` to mutate `document.title` and inject `<meta>` tags client-side. In Astro SSG, the server-rendered `<title>` and `<meta>` are immediately overwritten on hydration, causing a flash of incorrect metadata. The effect has no cleanup function, so stale meta tags from the previous page persist during navigation until the next effect fires.
 
-- [ ] **No loading state in Layout — Navbar/Footer absent during query fetch** — `src/components/layout/Layout.tsx:20-38` conditionally renders `<Navbar />` and `<Footer />` only when `siteSettings` is truthy. During the initial CMS query, both are absent from the DOM, causing a visible layout shift (CLS) when they suddenly appear.
+- [x] **No loading state in Layout — Navbar/Footer absent during query fetch** — `src/components/layout/Layout.tsx:20-38` conditionally renders `<Navbar />` and `<Footer />` only when `siteSettings` is truthy. During the initial CMS query, both are absent from the DOM, causing a visible layout shift (CLS) when they suddenly appear.
 
-- [ ] **Auth form does not validate `name` field on registration** — `src/pages-react/Auth.tsx:36-44` — `handleSubmit` validates `email` and `password` for both login and register, but the `name` field is never checked. An empty name is sent to the backend, which may reject it with a generic error rather than a clear "Name is required" message.
+- [x] **Auth form does not validate `name` field on registration** — `src/pages-react/Auth.tsx:36-44` — `handleSubmit` validates `email` and `password` for both login and register, but the `name` field is never checked. An empty name is sent to the backend, which may reject it with a generic error rather than a clear "Name is required" message.
 
-- [ ] **Form state not reset after successful login/register** — `src/pages-react/Auth.tsx:32-56` — after a successful auth call, `name`, `email`, `password`, and `error` states are not cleared before the redirect. If the redirect fails or the user navigates back, the form still contains the submitted credentials, including the password.
+- [x] **Form state not reset after successful login/register** — `src/pages-react/Auth.tsx:32-56` — after a successful auth call, `name`, `email`, `password`, and `error` states are not cleared before the redirect. If the redirect fails or the user navigates back, the form still contains the submitted credentials, including the password.
 
-- [ ] **No submission-in-progress disable on auth form** — `src/pages-react/Auth.tsx:32-56, 175` — the submit button has no `disabled` state during the async login/register API call. Rapid clicks fire multiple concurrent requests, which can cause duplicate account creation attempts or multiple session tokens.
+- [x] **No submission-in-progress disable on auth form** — `src/pages-react/Auth.tsx:32-56, 175` — the submit button has no `disabled` state during the async login/register API call. Rapid clicks fire multiple concurrent requests, which can cause duplicate account creation attempts or multiple session tokens.
 
-- [ ] **`usePreviewStatus` reads `window.location` once — not reactive to SPA navigation** — `src/hooks/useCmsContent.ts:149-163` reads `window.location.search` at call time but has no subscription to route changes. In a SPA with client-side navigation, toggling preview mode via URL parameter changes is not detected until a full page reload. All CMS query hooks depending on this will use stale preview status.
+- [x] **`usePreviewStatus` reads `window.location` once — not reactive to SPA navigation** — `src/hooks/useCmsContent.ts:149-163` reads `window.location.search` at call time but has no subscription to route changes. In a SPA with client-side navigation, toggling preview mode via URL parameter changes is not detected until a full page reload. All CMS query hooks depending on this will use stale preview status.
 
-- [ ] **`useSiteSettings` passes raw CMS objects instead of mapped values for page content** — `src/hooks/useCmsContent.ts:1089-1096` passes `homePage`, `aboutPage`, etc. as raw Strapi objects into `mergeContent` without using the dedicated mapper functions (`mapHomepageContent`, `mapAboutPageContent`, etc.). Consumers of `useSiteSettings().homePage` receive Strapi-flavored data with `id`, `documentId`, `createdAt` fields instead of the clean shape components expect.
+- [x] **`useSiteSettings` passes raw CMS objects instead of mapped values for page content** — `src/hooks/useCmsContent.ts:1089-1096` passes `homePage`, `aboutPage`, etc. as raw Strapi objects into `mergeContent` without using the dedicated mapper functions (`mapHomepageContent`, `mapAboutPageContent`, etc.). Consumers of `useSiteSettings().homePage` receive Strapi-flavored data with `id`, `documentId`, `createdAt` fields instead of the clean shape components expect.
 
 - [ ] **CMS array mapper functions index into fallback without bounds check** — `src/hooks/useCmsContent.ts:176-177, 193-195, 211-214, etc.` — all `to*Items` mapper functions access `fallback[index]` when mapping CMS arrays. If the CMS returns more items than the fallback array, `fallback[index]` is `undefined` and silently falls back to hardcoded defaults. `toComparisonRows` at line 442 accesses `fallback[index]?.values?.[entryIndex]` with similar silent degradation.
 
-- [ ] **Dead import `Location` type in Auth.tsx** — `src/pages-react/Auth.tsx:3` imports `Location` from `react-router-dom` but never uses it. Line 21 uses an inline type literal instead.
+- [x] **Dead import `Location` type in Auth.tsx** — `src/pages-react/Auth.tsx:3` imports `Location` from `react-router-dom` but never uses it. Line 21 uses an inline type literal instead.
 
-- [ ] **`getInitials` fallback 'CF' is hardcoded** — `src/context/AuthContext.tsx:41` falls back to `'CF'` for empty names. This should come from config or site settings since the site name is CMS-configurable.
+- [x] **`getInitials` fallback 'CF' is hardcoded** — `src/context/AuthContext.tsx:41` falls back to `'CF'` for empty names. This should come from config or site settings since the site name is CMS-configurable.
 
-- [ ] **`normalizeExternalUrl` prepends `https://` to relative paths** — `src/hooks/useCmsContent.ts:74-86` prepends `https://` to any string not matching `https?:|mailto:|tel:|#`. A relative path like `/about` becomes `https:///about` (triple slash), an invalid URL. Currently only used for social links, but the logic is fragile.
+- [x] **`normalizeExternalUrl` prepends `https://` to relative paths** — `src/hooks/useCmsContent.ts:74-86` prepends `https://` to any string not matching `https?:|mailto:|tel:|#`. A relative path like `/about` becomes `https:///about` (triple slash), an invalid URL. Currently only used for social links, but the logic is fragile.
 
 - [ ] **`useSiteSettings` query key has no cache-busting mechanism** — `src/hooks/useCmsContent.ts:1066` uses key `['cms', 'site-settings', previewStatus ?? 'published']` with no versioning. If CMS content changes while the app is open, stale navbar/footer data is served for the full `staleTime` window. Since this hook is called on every page, stale navigation is highly visible.
 
@@ -666,12 +666,12 @@ Base `DialogContent` lacks `max-height` and `overflow-y-auto`. Dashboard booking
 
 ## Silent Error Swallowing (MEDIUM)
 
-- [ ] **Silent Sync-Failure Fallback to Stale DB Row (Memberships)** — `adminjs/src/services/memberships-service.js:407` `.catch(() => getMembershipAdjustmentRowById(...))` swallows failures from `syncMembershipAdjustmentCheckoutSession()` and returns the pre-sync DB row. No error is logged, so callers receive potentially stale state without knowing the sync failed. Severity: MEDIUM
+- [x] **Silent Sync-Failure Fallback to Stale DB Row (Memberships)** — `adminjs/src/services/memberships-service.js:407` `.catch(() => getMembershipAdjustmentRowById(...))` swallows failures from `syncMembershipAdjustmentCheckoutSession()` and returns the pre-sync DB row. No error is logged, so callers receive potentially stale state without knowing the sync failed. Severity: MEDIUM
 
-- [ ] **Silent Sync-Failure Fallback to Stale DB Row (Bookings)** — `adminjs/src/services/bookings-service.js:805` `.catch(() => getBookingAdjustmentRowById(...))` swallows failures from `syncBookingAdjustmentCheckoutSession()` and returns the pre-sync DB row with no error logged. Severity: MEDIUM
+- [x] **Silent Sync-Failure Fallback to Stale DB Row (Bookings)** — `adminjs/src/services/bookings-service.js:805` `.catch(() => getBookingAdjustmentRowById(...))` swallows failures from `syncBookingAdjustmentCheckoutSession()` and returns the pre-sync DB row with no error logged. Severity: MEDIUM
 
-- [ ] **Email Send Timeout Does Not Cancel In-Flight SMTP Call** — `adminjs/src/mailer.js:62` The timeout races `sendMail()` with a `setTimeout` rejection but does not abort the underlying SMTP call. Timed-out sends may continue executing in the background after the promise rejects. Severity: MEDIUM
+- [x] **Email Send Timeout Does Not Cancel In-Flight SMTP Call** — `adminjs/src/mailer.js:62` The timeout races `sendMail()` with a `setTimeout` rejection but does not abort the underlying SMTP call. Timed-out sends may continue executing in the background after the promise rejects. Severity: MEDIUM
 
-- [ ] **Silent unlink Failure Masks Filesystem Issues** — `adminjs/src/server.js:85` `unlink(file.path).catch(() => {})` suppresses failed cleanup when upload format validation fails, hiding filesystem problems behind a misleading invalid-format error. Severity: LOW
+- [x] **Silent unlink Failure Masks Filesystem Issues** — `adminjs/src/server.js:85` `unlink(file.path).catch(() => {})` suppresses failed cleanup when upload format validation fails, hiding filesystem problems behind a misleading invalid-format error. Severity: LOW
 
-- [ ] **Debug Log Exposes Request Params When NODE_ENV Misconfigured** — `adminjs/src/collection-pages.js:1393` `console.log` dumps `request.query`, `request.params`, and payload keys. The guard is `process.env.NODE_ENV !== 'production'`, so a misconfigured environment variable causes request metadata to appear in stdout. Severity: LOW
+- [x] **Debug Log Exposes Request Params When NODE_ENV Misconfigured** — `adminjs/src/collection-pages.js:1393` `console.log` dumps `request.query`, `request.params`, and payload keys. The guard is `process.env.NODE_ENV !== 'production'`, so a misconfigured environment variable causes request metadata to appear in stdout. Severity: LOW

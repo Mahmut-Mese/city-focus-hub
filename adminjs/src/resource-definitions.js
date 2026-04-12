@@ -77,8 +77,8 @@ export const ADMIN_RESOURCE_DEFINITIONS = [
     navigation: 'Operations',
     sidebarSection: 'orders',
     sidebarHref: '/admin/pages/orders',
-    listProperties: ['id', 'user_id', 'resource_id', 'status', 'start_at', 'total_minor', 'updated_at'],
-    filterProperties: ['id', 'user_id', 'resource_id', 'status', 'start_at', 'stripe_payment_status'],
+    listProperties: ['id', 'user_id', 'resource_id', 'status', 'refund_request_status', 'start_at', 'total_minor', 'updated_at'],
+    filterProperties: ['id', 'user_id', 'resource_id', 'status', 'refund_request_status', 'start_at', 'stripe_payment_status'],
     readOnly: true,
   },
   {
