@@ -2,7 +2,11 @@ import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { initSentry } from '@/lib/sentry';
 import Dashboard from '@/pages-react/Dashboard';
+
+// P1-66: Initialise Sentry error tracking before any component mounts
+initSentry();
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000 } },

@@ -420,6 +420,7 @@ export default function HomeContent() {
                     value={formState.name}
                     onChange={(event) => handleFieldChange('name', event.target.value)}
                     placeholder={content.contactForm.namePlaceholder}
+                    aria-label="Full name"
                     className="h-10 rounded-md border-black/15 text-sm"
                     autoComplete="name"
                   />
@@ -428,6 +429,7 @@ export default function HomeContent() {
                     value={formState.email}
                     onChange={(event) => handleFieldChange('email', event.target.value)}
                     placeholder={content.contactForm.emailPlaceholder}
+                    aria-label="Email address"
                     className="h-10 rounded-md border-black/15 text-sm"
                     autoComplete="email"
                   />
@@ -436,12 +438,14 @@ export default function HomeContent() {
                   value={formState.subject}
                   onChange={(event) => handleFieldChange('subject', event.target.value)}
                   placeholder={content.contactForm.subjectPlaceholder}
+                  aria-label="Subject"
                   className="h-10 rounded-md border-black/15 text-sm"
                 />
                 <Textarea
                   value={formState.message}
                   onChange={(event) => handleFieldChange('message', event.target.value)}
                   placeholder={content.contactForm.messagePlaceholder}
+                  aria-label="Message"
                   className="min-h-[108px] rounded-md border-black/15 text-sm"
                 />
                 {submitError ? <p className="text-sm font-medium text-red-600">{submitError}</p> : null}

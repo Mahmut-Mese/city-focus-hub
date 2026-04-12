@@ -218,6 +218,7 @@ export default function ContactContent() {
                     value={formState.name}
                     onChange={(event) => handleFieldChange('name', event.target.value)}
                     placeholder={content.form.namePlaceholder}
+                    aria-label="Full name"
                     className="h-12 border-black/15 text-base"
                     autoComplete="name"
                   />
@@ -226,6 +227,7 @@ export default function ContactContent() {
                     value={formState.phone}
                     onChange={(event) => handleFieldChange('phone', event.target.value)}
                     placeholder={content.form.phonePlaceholder}
+                    aria-label="Phone number"
                     className="h-12 border-black/15 text-base"
                     autoComplete="tel"
                   />
@@ -235,6 +237,7 @@ export default function ContactContent() {
                   value={formState.email}
                   onChange={(event) => handleFieldChange('email', event.target.value)}
                   placeholder={content.form.emailPlaceholder}
+                  aria-label="Email address"
                   className="h-12 border-black/15 text-base"
                   autoComplete="email"
                 />
@@ -242,6 +245,7 @@ export default function ContactContent() {
                   value={formState.message}
                   onChange={(event) => handleFieldChange('message', event.target.value)}
                   placeholder={content.form.messagePlaceholder}
+                  aria-label="Message"
                   className="min-h-[170px] border-black/15 text-base"
                 />
                 {submitError ? (

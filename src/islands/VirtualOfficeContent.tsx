@@ -214,6 +214,7 @@ export default function VirtualOfficeContent() {
                     value={formState.name}
                     onChange={(event) => handleFieldChange('name', event.target.value)}
                     placeholder={content.contactForm.namePlaceholder}
+                    aria-label="Full name"
                     className="h-11 border-black/15"
                     autoComplete="name"
                   />
@@ -222,6 +223,7 @@ export default function VirtualOfficeContent() {
                     value={formState.email}
                     onChange={(event) => handleFieldChange('email', event.target.value)}
                     placeholder={content.contactForm.emailPlaceholder}
+                    aria-label="Email address"
                     className="h-11 border-black/15"
                     autoComplete="email"
                   />
@@ -229,6 +231,7 @@ export default function VirtualOfficeContent() {
                     value={formState.message}
                     onChange={(event) => handleFieldChange('message', event.target.value)}
                     placeholder={content.contactForm.messagePlaceholder}
+                    aria-label="Message"
                     className="min-h-[100px] border-black/15"
                   />
                   {submitError ? <p className="text-sm font-medium text-red-600">{submitError}</p> : null}

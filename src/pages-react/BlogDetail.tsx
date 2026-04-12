@@ -180,24 +180,24 @@ export default function BlogDetail() {
                   ) : null}
                   <form className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Input placeholder={content.detailCommentForm.namePlaceholder} className="h-11 border-black/15" />
-                      <Input type="email" placeholder={content.detailCommentForm.emailPlaceholder} className="h-11 border-black/15" />
+                      <Input placeholder={content.detailCommentForm.namePlaceholder} aria-label="Full name" className="h-11 border-black/15" />
+                      <Input type="email" placeholder={content.detailCommentForm.emailPlaceholder} aria-label="Email address" className="h-11 border-black/15" />
                     </div>
                     {(content.detailCommentForm.phonePlaceholder || content.detailCommentForm.subjectPlaceholder) ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {content.detailCommentForm.phonePlaceholder ? (
-                          <Input placeholder={content.detailCommentForm.phonePlaceholder} className="h-11 border-black/15" />
+                          <Input placeholder={content.detailCommentForm.phonePlaceholder} aria-label="Phone number" className="h-11 border-black/15" />
                         ) : (
                           <div />
                         )}
                         {content.detailCommentForm.subjectPlaceholder ? (
-                          <Input placeholder={content.detailCommentForm.subjectPlaceholder} className="h-11 border-black/15" />
+                          <Input placeholder={content.detailCommentForm.subjectPlaceholder} aria-label="Subject" className="h-11 border-black/15" />
                         ) : (
                           <div />
                         )}
                       </div>
                     ) : null}
-                    <Textarea placeholder={content.detailCommentForm.messagePlaceholder} className="min-h-[120px] border-black/15" />
+                    <Textarea placeholder={content.detailCommentForm.messagePlaceholder} aria-label="Comment" className="min-h-[120px] border-black/15" />
                     <Button className="h-10 rounded-xl px-5 text-sm bg-black text-white hover:bg-black/90">
                       {content.detailCommentForm.submitLabel}
                     </Button>
@@ -214,6 +214,7 @@ export default function BlogDetail() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45" size={16} />
                     <Input
                       placeholder={content.searchPlaceholder}
+                      aria-label="Search blog posts"
                       className="pl-9 border-black/15"
                       value={detailSearchQuery}
                       onChange={(event) => setDetailSearchQuery(event.target.value)}

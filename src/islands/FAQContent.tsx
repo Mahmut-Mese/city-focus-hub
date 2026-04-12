@@ -63,6 +63,7 @@ export default function FAQContent() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40" size={18} />
                 <Input
                   placeholder={content.searchPlaceholder}
+                  aria-label="Search frequently asked questions"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   className="pl-10 h-12 border-black/15 bg-white"

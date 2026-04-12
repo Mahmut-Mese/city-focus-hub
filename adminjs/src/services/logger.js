@@ -9,18 +9,20 @@
  * In development (NODE_ENV !== 'production'), output is prettified for
  * readability. In production it is compact single-line JSON per entry.
  *
+ * Sentry integration:
+ *   When `SENTRY_DSN` is set (see `instrument.js`), `logger.error()`
+ *   automatically forwards exceptions to Sentry with structured context
+ *   attached as `extra` data. No separate Sentry calls are needed.
+ *
  * Usage:
  *   import { logger } from './services/logger.js';
  *
  *   logger.info('booking.confirmed', { bookingId: 42, userId: 7 });
  *   logger.warn('stripe.key_mismatch', { detail: '...' });
  *   logger.error('db.query_failed', error, { query: 'SELECT ...' });
- *
- * Integration with Sentry / error-tracking:
- *   Replace the body of logger.error() with your Sentry.captureException()
- *   call when you add an error-tracking SDK. The structured context object
- *   maps directly to Sentry's `extra` / `tags` fields.
  */
+
+import * as Sentry from '@sentry/node';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -68,13 +70,23 @@ export const logger = {
 
   /**
    * Error — exception or critical failure.
-   * Replace the body with Sentry.captureException() when adding an SDK.
+   * Automatically forwards to Sentry when `SENTRY_DSN` is configured.
    * @param {string} event
    * @param {Error|unknown} error
    * @param {Record<string, unknown>} [context]
    */
   error(event, error, context) {
-    process.stderr.write(serialize('error', event, error instanceof Error ? error : new Error(String(error?.message ?? error)), context) + '\n');
+    const err = error instanceof Error ? error : new Error(String(error?.message ?? error));
+    process.stderr.write(serialize('error', event, err, context) + '\n');
+
+    // P1-66: Forward to Sentry with structured context
+    Sentry.withScope((scope) => {
+      scope.setTag('event', event);
+      if (context && typeof context === 'object') {
+        scope.setExtras(context);
+      }
+      Sentry.captureException(err);
+    });
   },
 };
 
@@ -84,8 +96,8 @@ export const logger = {
 
 /**
  * Express 4.x error handler — attach as the LAST middleware in server.js.
- * Logs the error with structured context (method, path, status) and sends
- * a safe JSON response to the client.
+ * Logs the error with structured context (method, path, status), forwards
+ * to Sentry, and sends a safe JSON response to the client.
  *
  * Usage in server.js:
  *   import { expressErrorHandler } from './services/logger.js';

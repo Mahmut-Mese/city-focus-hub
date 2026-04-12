@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sentry } from '@/lib/sentry';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -14,6 +15,8 @@ interface ErrorBoundaryState {
  * P1-68: Generic React Error Boundary.
  * Catches unhandled rendering errors in child components and displays a fallback UI
  * instead of crashing the entire page.
+ *
+ * P1-66: Forwards captured errors to Sentry when `PUBLIC_SENTRY_DSN` is configured.
  */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -27,7 +30,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.error('[ErrorBoundary] Unhandled error:', error, errorInfo);
-    // TODO: Send to error tracking service (Sentry, etc.) — see P1-66
+
+    // P1-66: Report to Sentry with React component stack context
+    Sentry.withScope((scope) => {
+      scope.setTag('source', 'ErrorBoundary');
+      if (errorInfo.componentStack) {
+        scope.setExtra('componentStack', errorInfo.componentStack);
+      }
+      Sentry.captureException(error);
+    });
   }
 
   render(): React.ReactNode {

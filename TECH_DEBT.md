@@ -80,10 +80,10 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 | ~~63~~ | ~~`ensureColumn` interpolates raw strings into SQL without quoting~~ (FIXED: assertSafeIdentifier regex validation) | Database Schema & Bootstrap |
 | ~~64~~ | ~~No audit logging for admin actions~~ (FIXED: audit-service.js with audit_log table, 23 action types) | Admin Panel Security |
 | ~~65~~ | ~~No database migrations — schema via startup DDL with no rollback~~ (FIXED: migrations directory with runner) | Missing Features / Infrastructure |
-| 66 | No error tracking (Sentry or equivalent) — **NOT FIXED** | Missing Features / Infrastructure |
+| ~~66~~ | ~~No error tracking (Sentry or equivalent)~~ (FIXED: @sentry/node backend + @sentry/react frontend, logger.error forwards to Sentry, ErrorBoundary reports to Sentry, env-gated via SENTRY_DSN) | Missing Features / Infrastructure |
 | ~~67~~ | ~~No CI/CD pipeline~~ (FIXED: .github/workflows/ci.yml) | Missing Features / Infrastructure |
 | ~~68~~ | ~~No React Error Boundaries — one crash takes down entire UI~~ (FIXED: ErrorBoundary.tsx in all app entry points) | Missing Features / Infrastructure |
-| 69 | WCAG failures: missing form labels, no skip link, no ARIA tab semantics, low contrast — **PARTIAL** (skip-to-content added, ARIA roles on Auth tabs, but no sitemap.xml in src/, some form labels may still be missing) | Accessibility |
+| ~~69~~ | ~~WCAG failures: missing form labels, no skip link, no ARIA tab semantics, low contrast~~ (FIXED: skip-to-content link, ARIA tab roles on Auth, aria-label on all placeholder-only inputs across 12 form files, @astrojs/sitemap generates sitemap) | Accessibility |
 | ~~70~~ | ~~No sitemap, no canonical URL, og:image falls back to SVG, no structured data~~ (FIXED: @astrojs/sitemap, canonical URL, JSON-LD, og:image) | SEO |
 
 ### P2 — Fix Eventually
@@ -170,7 +170,7 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 | 147 | Zero meaningful tests — one placeholder unit test exists | Missing Features / Infrastructure |
 | 148 | No password reset flow — no "forgot password" or email verification | Missing Features / Infrastructure |
 
-**Summary:** ~~23~~ **0** P0 (all fixed) | ~~47~~ **2** P1 (45 fixed, 2 partial) | 78 P2 — Total: 148 findings
+**Summary:** ~~23~~ **0** P0 (all fixed) | ~~47~~ **0** P1 (all fixed) | 78 P2 — Total: 148 findings
 
 ---
 

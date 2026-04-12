@@ -91,6 +91,7 @@ export default function Blog() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
               placeholder={content.searchPlaceholder}
+              aria-label="Search blog posts"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               className="pl-11 h-12 bg-white"
@@ -139,6 +140,7 @@ export default function Blog() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/45" size={16} />
                   <Input
                     placeholder={content.searchPlaceholder}
+                    aria-label="Search blog posts"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-9 border-black/15"
