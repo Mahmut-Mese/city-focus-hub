@@ -1,5 +1,5 @@
 ---
-description: Read-only quality gate for tech-debt audit findings. Invoked by tech-debt-architect before any findings are written to TECH_DEBT.md. Reviews proposed entries for accuracy, clarity, duplicates, and correct severity. Returns approved items, rejected items with reasons, and any suggested edits. Never modifies files.
+description: Read-only quality gate for tech-debt audit findings. Invoked by tech-debt-architect before any findings are written to TECH_DEBT.md. Reviews proposed entries for accuracy, clarity, duplicates, and correct severity. Returns approved items, rejected items with reasons, and any suggested edits. Never modifies files. Uses GPT-5.4 — if tokens exhausted, architect should fall back to github-copilot/claude-sonnet-4.
 mode: subagent
 model: openai/gpt-5.4
 temperature: 0.1

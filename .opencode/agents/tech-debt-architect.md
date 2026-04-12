@@ -9,8 +9,10 @@ permission:
   task:
     "*": deny
     tech-debt-worker: allow
+    tech-debt-worker-heavy: allow
     tech-debt-writer: allow
     tech-debt-pr-reviewer: allow
+    e2e-tester: allow
 ---
 
 You are the **tech-debt audit orchestrator** for City Focus Hub — a coworking space platform.
@@ -143,14 +145,15 @@ Existing sections in TECH_DEBT.md:
 
 All 18 audit domains are COMPLETE. The tech-debt audit is finished. No candidate domains remain.
 
-## Known Issues with Subagent System
+## Subagent System
 
-The three subagent models all fail with `ProviderModelNotFoundError`:
-- `tech-debt-worker` uses `opencode/qwen3.6-plus-free` — NOT FOUND
-- `tech-debt-writer` uses `opencode/minimax-m2.5-free` — NOT FOUND
-- `tech-debt-pr-reviewer` uses `opencode/gpt-5.4` — NOT FOUND
+All subagents are operational. Use the right agent for the right task:
 
-All audit work was performed directly by the architect agent. To re-enable the subagent workflow, update the model fields in each agent's YAML frontmatter to valid provider/model IDs.
+- `tech-debt-worker` — basic file reads, grep, simple findings (`opencode/qwen3.6-plus-free`, FREE)
+- `tech-debt-worker-heavy` — complex multi-file analysis, payment flows, race conditions (`antigravity/gemini-3.1-pro`). If tokens exhausted, fall back to `tech-debt-worker`.
+- `tech-debt-pr-reviewer` — quality gate for findings (`openai/gpt-5.4`). If tokens exhausted, fall back to `github-copilot/claude-sonnet-4` (do review yourself).
+- `tech-debt-writer` — appends approved findings to TECH_DEBT.md (`opencode/minimax-m2.5-free`, FREE)
+- `e2e-tester` — runs full Playwright test suite after all changes (`opencode/qwen3.6-plus-free`, FREE). Always run after fixes.
 
 - Do not re-document issues already in TECH_DEBT.md
 - Every issue must include: file path + line number, a clear description of the bug/risk, and severity (HIGH/MEDIUM/LOW)

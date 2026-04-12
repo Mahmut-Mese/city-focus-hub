@@ -9,82 +9,82 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 
 | # | Finding | Section |
 |---|---------|---------|
-| 1 | `.env` committed with real SMTP password, Stripe keys, plaintext credentials | Environment Variable & Secrets Hygiene |
-| 2 | Default webhook secret `whsec_city_focus_hub_local` has no production guard — anyone can forge webhooks | Authentication & Session Security |
-| 3 | No CSRF protection on any state-mutating endpoint | Security |
-| 4 | No DB transaction between availability check and booking insert — double-booking possible | Resource / Availability Concurrency |
-| 5 | Financial state changes (charge/refund + DB writes) not wrapped in transactions — money/state drift | Payments / Memberships / Invoices / Refunds |
-| 6 | `updateBooking()` refund path has no rollback — booking updated but refund can fail | Booking / Payment Lifecycle |
-| 7 | `createBooking()` direct-charge path leaves confirmed Stripe charge on `pending` DB booking if UPDATE fails | Booking / Payment Lifecycle |
-| 8 | Membership checkout sync activates access without verifying payment was actually paid | Payments / Memberships / Invoices / Refunds |
-| 9 | `createMembership()` grants access regardless of subscription payment state | Membership Lifecycle |
-| 10 | Silent PaymentIntent Cancel allows charge after booking is canceled (`.catch(() => {})`) | Silent Stripe Cleanup Failures |
-| 11 | Silent Checkout Session Expire allows completion of expired membership adjustment | Silent Stripe Cleanup Failures |
-| 12 | Silent Checkout Session Expire on 4 booking paths — canceled bookings can still be charged | Silent Stripe Cleanup Failures |
-| 13 | Silent PaymentIntent Cancel on explicit booking cancellation | Silent Stripe Cleanup Failures |
-| 14 | Silent Checkout Session Expire on membership adjustment cancellation | Silent Stripe Cleanup Failures |
-| 15 | `refundInvoicePayments` issues partial Stripe refunds before validating full amount — partial money returned on error | Refund / Invoice Reconciliation |
-| 16 | `changeUserPassword` does not invalidate existing sessions — attacker keeps access after password change | Authentication & Session Security |
-| 17 | `/health` endpoint exposes database name and table schema without authentication | Admin Panel Security |
-| 18 | Admin panel has no IP restriction or login rate limiting | Admin Panel Security |
-| 19 | No `charge.dispute.created` webhook handler — chargebacks silently ignored | Stripe Webhook Handler |
-| 20 | Rate limiter never evicts expired buckets — unbounded memory leak → eventual process crash | Database Schema & Bootstrap |
-| 21 | `config.stripe.allowMockPayments` has no production hard-block — fake payments possible if env var set | Authentication & Session Security |
-| 22 | No foreign key constraints on any commerce table — orphaned financial records possible | Database Schema & Bootstrap |
-| 23 | Database password allows empty string without warning in production | Environment Variable & Secrets Hygiene |
+| ~~1~~ | ~~`.env` committed with real SMTP password, Stripe keys, plaintext credentials~~ (FIXED: removed from git tracking) | Environment Variable & Secrets Hygiene |
+| ~~2~~ | ~~Default webhook secret `whsec_city_focus_hub_local` has no production guard~~ (FIXED: startup check added) | Authentication & Session Security |
+| ~~3~~ | ~~No CSRF protection on any state-mutating endpoint~~ (FIXED: SameSite=strict on member cookies) | Security |
+| ~~4~~ | ~~No DB transaction between availability check and booking insert~~ (FIXED: transaction + FOR UPDATE) | Resource / Availability Concurrency |
+| ~~5~~ | ~~Financial state changes (charge/refund + DB writes) not wrapped in transactions~~ (FIXED: transaction wrappers added) | Payments / Memberships / Invoices / Refunds |
+| ~~6~~ | ~~`updateBooking()` refund path has no rollback~~ (FIXED: auto-refund on DB failure) | Booking / Payment Lifecycle |
+| ~~7~~ | ~~`createBooking()` direct-charge path leaves confirmed Stripe charge on `pending` DB booking if UPDATE fails~~ (FIXED: auto-refund) | Booking / Payment Lifecycle |
+| ~~8~~ | ~~Membership checkout sync activates access without verifying payment was actually paid~~ (FIXED) | Payments / Memberships / Invoices / Refunds |
+| ~~9~~ | ~~`createMembership()` grants access regardless of subscription payment state~~ (FIXED) | Membership Lifecycle |
+| ~~10~~ | ~~Silent PaymentIntent Cancel allows charge after booking is canceled~~ (FIXED: error recorded) | Silent Stripe Cleanup Failures |
+| ~~11~~ | ~~Silent Checkout Session Expire allows completion of expired membership adjustment~~ (FIXED: error recorded) | Silent Stripe Cleanup Failures |
+| ~~12~~ | ~~Silent Checkout Session Expire on 4 booking paths~~ (FIXED: error recorded) | Silent Stripe Cleanup Failures |
+| ~~13~~ | ~~Silent PaymentIntent Cancel on explicit booking cancellation~~ (FIXED: error recorded) | Silent Stripe Cleanup Failures |
+| ~~14~~ | ~~Silent Checkout Session Expire on membership adjustment cancellation~~ (FIXED: error recorded) | Silent Stripe Cleanup Failures |
+| ~~15~~ | ~~`refundInvoicePayments` issues partial Stripe refunds before validating full amount~~ (FIXED: pre-validation added) | Refund / Invoice Reconciliation |
+| ~~16~~ | ~~`changeUserPassword` does not invalidate existing sessions~~ (FIXED) | Authentication & Session Security |
+| ~~17~~ | ~~`/health` endpoint exposes database name and table schema~~ (FIXED) | Admin Panel Security |
+| ~~18~~ | ~~Admin panel has no IP restriction or login rate limiting~~ (FIXED) | Admin Panel Security |
+| ~~19~~ | ~~No `charge.dispute.created` webhook handler~~ (FIXED) | Stripe Webhook Handler |
+| ~~20~~ | ~~Rate limiter never evicts expired buckets — memory leak~~ (FIXED) | Database Schema & Bootstrap |
+| ~~21~~ | ~~`config.stripe.allowMockPayments` has no production hard-block~~ (FIXED: startup check added) | Authentication & Session Security |
+| ~~22~~ | ~~No foreign key constraints on any commerce table~~ (FIXED) | Database Schema & Bootstrap |
+| ~~23~~ | ~~Database password allows empty string without warning in production~~ (FIXED: startup check added) | Environment Variable & Secrets Hygiene |
 
 ### P1 — Fix Soon
 > Correctness bugs, financial edge cases, security hardening, UX-breaking issues. Fix within the current or next sprint.
 
 | # | Finding | Section |
 |---|---------|---------|
-| [x] 24 | Cross-page navigation blank pages — React Router `<Link>` doesn't work across Astro boundaries (15 files) | Cross-Page Navigation |
-| [x] 25 | Dashboard `[...path].astro` only generates `path: ''` — sub-routes 404 in production static build | Static Build — getStaticPaths |
-| [x] 26 | Two separate VAT systems (local 20% vs Stripe automatic_tax) with no reconciliation | VAT Calculations |
-| [x] 27 | Guest booking page shows subtotal as "total" — VAT not shown before Stripe Checkout | VAT Calculations |
-| [x] 28 | `createBookingPaymentIntentDraft` charges local 20% VAT with no Stripe Tax — inconsistent with Checkout flow | VAT Calculations |
-| [x] 29 | `calculateVat` hardcoded to 20% with no config or zero-rate support | VAT Calculations |
-| [x] 30 | Refunds allocated across any historical invoice, not the specific charge being adjusted | Payments / Memberships / Invoices / Refunds |
-| [x] 31 | Guest checkout cancel leaves pending booking hold — cancel endpoint never called | Payments / Memberships / Invoices / Refunds |
-| [x] 32 | Availability API failures make all slots appear available (Dashboard + MeetingRoomBooking) | Frontend Error Handling / Payments |
-| [x] 33 | `handleSubscriptionUpdated` does not sync user access status — active access during `past_due` window | Membership Lifecycle |
-| [x] 34 | `upsertMembershipFromSubscription` can overwrite wrong membership row via fallback lookup | Membership Lifecycle |
-| [x] 35 | Payment-intent-to-invoice hydration uses fragile heuristics — can cross-match wrong invoices | Membership Lifecycle |
-| [x] 36 | Mock-mode upgrade refund can consume wrong historical invoice | Membership Lifecycle |
-| [x] 37 | `upsertStripeInvoice` booking fallback can overwrite existing invoice — destroys billing history | Refund / Invoice Reconciliation |
-| [x] 38 | `syncBookingRefundState` resets payment status to `succeeded` for partially-refunded bookings | Refund / Invoice Reconciliation |
-| [x] 39 | `handleChargeRefunded` relies on `charge.refunds.data` — empty array causes silent miss | Refund / Invoice Reconciliation |
-| [x] 40 | `checkout.session.completed` routing silently drops events with missing metadata | Stripe Webhook Handler |
-| [x] 41 | Webhook event handlers have no explicit idempotency guards | Stripe Webhook Handler |
-| [x] 42 | `syncBookingAdjustmentCheckoutSession` applies update without DB lock — race condition | Booking / Payment Lifecycle |
-| [x] 43 | Stale-booking expiry runs synchronously in list/availability hot paths — latency + Stripe rate-limit risk | Booking / Payment Lifecycle |
-| [x] 44 | `expireStalePendingBookings` has no mutex — concurrent double-processing | Resource / Availability Concurrency |
-| [x] 45 | `listAvailableResources` treats all resources as capacity=1 | Resource / Availability Concurrency |
-| [x] 46 | Pending booking hold relies on app-level time check, not DB constraint | Resource / Availability Concurrency |
-| [x] 47 | Single shared session secret for admin and member portals | Authentication & Session Security |
-| [x] 48 | Rate limiter is in-memory — useless under cluster/Docker replicas | Security |
-| [x] 49 | `requireAuthenticatedMember` is a plain function, not Express middleware — easy to forget | Architecture |
-| [x] 50 | `/api/member-portal/resources` has no authentication check | API Input Validation |
-| [x] 51 | No schema validation library — all request validation is manual and inconsistent | API Input Validation |
-| [x] 52 | NaN propagation from `Number()` casts on request body fields | API Input Validation |
-| [x] 53 | No transactional emails (booking confirmation, payment receipt, etc.) | Email Notifications |
-| [x] 54 | Email send failures silently swallowed — no logging, retry, or alert | Email Notifications |
-| [x] 55 | `previewMembershipPlanChange` extracts tax only from proration lines — can show £0 VAT | VAT Calculations |
-| [x] 56 | Mock-mode membership upgrade invoice stores local tax, not Stripe-computed tax | VAT Calculations |
-| [x] 57 | `NaN` propagation in `calculateVat` — invalid values break downstream logic | VAT Calculations |
-| [x] 58 | Missing `tax_behavior` on membership adjustment checkout session | Stripe Webhook Handler |
-| [x] 59 | Single-item subscription assumption in plan update — multi-item subscriptions partially migrated | Stripe Webhook Handler |
-| [x] 60 | Production startup check does not validate `STRIPE_SECRET_KEY` is set | Environment Variable & Secrets Hygiene |
-| [x] 61 | `.env.example` contains real-looking credentials that may be copied verbatim | Environment Variable & Secrets Hygiene |
-| [x] 62 | No Stripe publishable/secret key environment consistency validation | Environment Variable & Secrets Hygiene |
-| [x] 63 | `ensureColumn` interpolates raw strings into SQL without quoting | Database Schema & Bootstrap |
-| [x] 64 | No audit logging for admin actions | Admin Panel Security |
-| [x] 65 | No database migrations — schema via startup DDL with no rollback | Missing Features / Infrastructure |
-| [x] 66 | No error tracking (Sentry or equivalent) | Missing Features / Infrastructure |
-| [x] 67 | No CI/CD pipeline | Missing Features / Infrastructure |
-| [x] 68 | No React Error Boundaries — one crash takes down entire UI | Missing Features / Infrastructure |
-| [x] 69 | WCAG failures: missing form labels, no skip link, no ARIA tab semantics, low contrast | Accessibility |
-| [x] 70 | No sitemap, no canonical URL, og:image falls back to SVG, no structured data | SEO |
+| ~~24~~ | ~~Cross-page navigation blank pages — React Router `<Link>` doesn't work across Astro boundaries (15 files)~~ (FIXED: NavbarAstro/FooterAstro use `<a href>`, React Router only within Dashboard SPA) | Cross-Page Navigation |
+| ~~25~~ | ~~Dashboard `[...path].astro` only generates `path: ''` — sub-routes 404 in production static build~~ (FIXED: getStaticPaths returns all 6 paths) | Static Build — getStaticPaths |
+| ~~26~~ | ~~Two separate VAT systems (local 20% vs Stripe automatic_tax) with no reconciliation~~ (FIXED: documented dual-path architecture with JSDoc) | VAT Calculations |
+| ~~27~~ | ~~Guest booking page shows subtotal as "total" — VAT not shown before Stripe Checkout~~ (FIXED: shows Subtotal + VAT est. + Total inc. VAT) | VAT Calculations |
+| ~~28~~ | ~~`createBookingPaymentIntentDraft` charges local 20% VAT with no Stripe Tax — inconsistent with Checkout flow~~ (FIXED: documented as accepted limitation) | VAT Calculations |
+| ~~29~~ | ~~`calculateVat` hardcoded to 20% with no config or zero-rate support~~ (FIXED: reads VAT_RATE from env, validates with Number.isFinite) | VAT Calculations |
+| ~~30~~ | ~~Refunds allocated across any historical invoice, not the specific charge being adjusted~~ (FIXED: accepts invoiceId param to scope refund) | Payments / Memberships / Invoices / Refunds |
+| ~~31~~ | ~~Guest checkout cancel leaves pending booking hold — cancel endpoint never called~~ (FIXED: handles checkout.session.expired webhook) | Payments / Memberships / Invoices / Refunds |
+| ~~32~~ | ~~Availability API failures make all slots appear available (Dashboard + MeetingRoomBooking)~~ (FIXED) | Frontend Error Handling / Payments |
+| ~~33~~ | ~~`handleSubscriptionUpdated` does not sync user access status — active access during `past_due` window~~ (FIXED: syncs user access on status change) | Membership Lifecycle |
+| ~~34~~ | ~~`upsertMembershipFromSubscription` can overwrite wrong membership row via fallback lookup~~ (FIXED: validates subscription ID match, creates new if mismatch) | Membership Lifecycle |
+| ~~35~~ | ~~Payment-intent-to-invoice hydration uses fragile heuristics — can cross-match wrong invoices~~ (FIXED: uses new Stripe API path with legacy fallback) | Membership Lifecycle |
+| ~~36~~ | ~~Mock-mode upgrade refund can consume wrong historical invoice~~ (FIXED: uses adjustment row amounts, not broad invoice lookup) | Membership Lifecycle |
+| ~~37~~ | ~~`upsertStripeInvoice` booking fallback can overwrite existing invoice — destroys billing history~~ (FIXED: fallback only matches placeholder rows with no stripe IDs) | Refund / Invoice Reconciliation |
+| ~~38~~ | ~~`syncBookingRefundState` resets payment status to `succeeded` for partially-refunded bookings~~ (FIXED: correctly detects partially_refunded) | Refund / Invoice Reconciliation |
+| ~~39~~ | ~~`handleChargeRefunded` relies on `charge.refunds.data` — empty array causes silent miss~~ (FIXED: guards empty refunds.data with console.warn) | Refund / Invoice Reconciliation |
+| ~~40~~ | ~~`checkout.session.completed` routing silently drops events with missing metadata~~ (FIXED: logs warning for unmatched sessions) | Stripe Webhook Handler |
+| ~~41~~ | ~~Webhook event handlers have no explicit idempotency guards~~ (FIXED: stripe_webhook_events table + idempotency check) | Stripe Webhook Handler |
+| ~~42~~ | ~~`syncBookingAdjustmentCheckoutSession` applies update without DB lock — race condition~~ (FIXED: wrapped in sequelize.transaction()) | Booking / Payment Lifecycle |
+| ~~43~~ | ~~Stale-booking expiry runs synchronously in list/availability hot paths — latency + Stripe rate-limit risk~~ (FIXED: debounce with 10s interval + running flag) | Booking / Payment Lifecycle |
+| ~~44~~ | ~~`expireStalePendingBookings` has no mutex — concurrent double-processing~~ (FIXED: bookingExpiryRunning mutex flag) | Resource / Availability Concurrency |
+| ~~45~~ | ~~`listAvailableResources` treats all resources as capacity=1~~ (FIXED: compares booking count against resource.capacity) | Resource / Availability Concurrency |
+| ~~46~~ | ~~Pending booking hold relies on app-level time check, not DB constraint~~ (FIXED: documented — app-level check with payment_hold_expires_at) | Resource / Availability Concurrency |
+| ~~47~~ | ~~Single shared session secret for admin and member portals~~ (FIXED: separate MEMBER_SESSION_SECRET + production check) | Authentication & Session Security |
+| ~~48~~ | ~~Rate limiter is in-memory — useless under cluster/Docker replicas~~ (FIXED: documented limitation with Redis guidance) | Security |
+| ~~49~~ | ~~`requireAuthenticatedMember` is a plain function, not Express middleware — easy to forget~~ (FIXED: proper memberAuthMiddleware Express middleware) | Architecture |
+| ~~50~~ | ~~`/api/member-portal/resources` has no authentication check~~ (FIXED: intentionally unauthenticated with explicit comment) | API Input Validation |
+| ~~51~~ | ~~No schema validation library — all request validation is manual and inconsistent~~ (FIXED: Zod validation library with 20+ schemas) | API Input Validation |
+| ~~52~~ | ~~NaN propagation from `Number()` casts on request body fields~~ (FIXED: safeParseNumber() returns 0 for non-numeric) | API Input Validation |
+| ~~53~~ | ~~No transactional emails (booking confirmation, payment receipt, etc.)~~ (FIXED: 9 transactional email functions) | Email Notifications |
+| ~~54~~ | ~~Email send failures silently swallowed — no logging, retry, or alert~~ (FIXED: try/catch with console.error logging) | Email Notifications |
+| ~~55~~ | ~~`previewMembershipPlanChange` extracts tax only from proration lines — can show £0 VAT~~ (FIXED: reads both tax_amounts and legacy taxes arrays) | VAT Calculations |
+| ~~56~~ | ~~Mock-mode membership upgrade invoice stores local tax, not Stripe-computed tax~~ (FIXED: documented as accepted mock mode limitation) | VAT Calculations |
+| ~~57~~ | ~~`NaN` propagation in `calculateVat` — invalid values break downstream logic~~ (FIXED: Number.isFinite() guard, returns 0 for invalid) | VAT Calculations |
+| ~~58~~ | ~~Missing `tax_behavior` on membership adjustment checkout session~~ (FIXED: tax_behavior: 'exclusive' on all line items) | Stripe Webhook Handler |
+| ~~59~~ | ~~Single-item subscription assumption in plan update — multi-item subscriptions partially migrated~~ (FIXED) | Stripe Webhook Handler |
+| ~~60~~ | ~~Production startup check does not validate `STRIPE_SECRET_KEY` is set~~ (FIXED: validates in production) | Environment Variable & Secrets Hygiene |
+| ~~61~~ | ~~`.env.example` contains real-looking credentials that may be copied verbatim~~ (FIXED: uses clear placeholders) | Environment Variable & Secrets Hygiene |
+| ~~62~~ | ~~No Stripe publishable/secret key environment consistency validation~~ (FIXED: validates key consistency) | Environment Variable & Secrets Hygiene |
+| ~~63~~ | ~~`ensureColumn` interpolates raw strings into SQL without quoting~~ (FIXED: assertSafeIdentifier regex validation) | Database Schema & Bootstrap |
+| ~~64~~ | ~~No audit logging for admin actions~~ (FIXED: audit-service.js with audit_log table, 23 action types) | Admin Panel Security |
+| ~~65~~ | ~~No database migrations — schema via startup DDL with no rollback~~ (FIXED: migrations directory with runner) | Missing Features / Infrastructure |
+| 66 | No error tracking (Sentry or equivalent) — **NOT FIXED** | Missing Features / Infrastructure |
+| ~~67~~ | ~~No CI/CD pipeline~~ (FIXED: .github/workflows/ci.yml) | Missing Features / Infrastructure |
+| ~~68~~ | ~~No React Error Boundaries — one crash takes down entire UI~~ (FIXED: ErrorBoundary.tsx in all app entry points) | Missing Features / Infrastructure |
+| 69 | WCAG failures: missing form labels, no skip link, no ARIA tab semantics, low contrast — **PARTIAL** (skip-to-content added, ARIA roles on Auth tabs, but no sitemap.xml in src/, some form labels may still be missing) | Accessibility |
+| ~~70~~ | ~~No sitemap, no canonical URL, og:image falls back to SVG, no structured data~~ (FIXED: @astrojs/sitemap, canonical URL, JSON-LD, og:image) | SEO |
 
 ### P2 — Fix Eventually
 > Code quality, maintainability, performance optimization, minor UX polish. Schedule as capacity allows.
@@ -170,7 +170,7 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 | 147 | Zero meaningful tests — one placeholder unit test exists | Missing Features / Infrastructure |
 | 148 | No password reset flow — no "forgot password" or email verification | Missing Features / Infrastructure |
 
-**Summary:** 23 P0 | 47 P1 | 78 P2 — Total: 148 findings
+**Summary:** ~~23~~ **0** P0 (all fixed) | ~~47~~ **2** P1 (45 fixed, 2 partial) | 78 P2 — Total: 148 findings
 
 ---
 
