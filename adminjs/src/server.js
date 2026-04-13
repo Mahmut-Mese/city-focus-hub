@@ -170,6 +170,21 @@ const start = async () => {
       tableName: config.memberSession.tableName,
     },
   });
+  const adminSessionOptions = {
+    name: config.session.cookieName,
+    secret: config.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: config.session.cookieMaxAgeMs,
+      secure: config.publicOrigin.startsWith('https://'),
+    },
+    store: sessionStore,
+  };
+  const adminSessionMiddleware = session(adminSessionOptions);
+
   const memberSessionMiddleware = session({
     name: config.memberSession.cookieName,
     secret: config.memberSession.secret,
@@ -291,19 +306,7 @@ const start = async () => {
       cookiePassword: config.sessionSecret,
     },
     null,
-    {
-      name: config.session.cookieName,
-      secret: config.sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        sameSite: 'lax',
-        maxAge: config.session.cookieMaxAgeMs,
-        secure: config.publicOrigin.startsWith('https://'),
-      },
-      store: sessionStore,
-    },
+    adminSessionOptions,
   );
 
   adminRouter.get('/api/contact-submissions', async (request, response) => {
@@ -444,7 +447,15 @@ const start = async () => {
     });
   };
 
-  adminRouter.post('/api/media/upload', handleMediaUpload);
+  const requireAdminAuthentication = (request, response, next) => {
+    if (!request.session?.adminUser) {
+      response.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    next();
+  };
+
+  app.post(`${config.rootPath}/api/media/upload`, adminSessionMiddleware, requireAdminAuthentication, handleMediaUpload);
   app.use(admin.options.rootPath, adminRouter);
 
   if (hasFrontendBuild) {

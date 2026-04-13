@@ -30,7 +30,8 @@ function absoluteUrl(url) {
     return url;
   }
 
-  return `${ASSET_HOST}${url.startsWith('/') ? url : `/${url}`}`;
+  // Keep uploads relative so the frontend (Astro) maps them properly
+  return url.startsWith('/') ? url : `/${url}`;
 }
 
 function formatTimestamp(value) {

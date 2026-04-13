@@ -3,20 +3,20 @@
     "heroTitle": "About Coworking Hub2",
     "heroSubtitle": "We're on a mission to create inspiring workspaces where innovation thrives and communities grow.2",
     "heroBackgroundImage": {
-      "url": "http://localhost:3001/uploads/1776116650935-0b2e7c4d-756a-4073-ae33-d0353fb93562.jpeg"
+      "url": "/uploads/1776119598977-3bacef3e-c452-4d2d-a376-7b0f35557788.jpg"
     },
     "storyTitle": "Our Story2",
     "storyParagraphs": [
       {
-        "id": 380,
+        "id": 413,
         "text": "1111"
       },
       {
-        "id": 381,
+        "id": 414,
         "text": "sss"
       },
       {
-        "id": 382,
+        "id": 415,
         "text": ""
       }
     ],
@@ -26,19 +26,19 @@
     "whyChooseTitle": "Why Choose Us22",
     "whyChooseItems": [
       {
-        "id": 40,
+        "id": 73,
         "icon": "MapPin",
         "title": "Prime Location2",
         "description": "Situated in Central London (EC3V), offering unparalleled access to the City's business district and transport links.222"
       },
       {
-        "id": 41,
+        "id": 74,
         "icon": "CalendarDays222",
         "title": "Flexible Terms2",
         "description": "No long-term commitments required. Choose from daily, weekly, or monthly memberships that adapt to your needs.22"
       },
       {
-        "id": 42,
+        "id": 75,
         "icon": "HeadphonesIcon",
         "title": "Professional Support",
         "description": "Access business support services, mail handling, and professional reception services to enhance your operations."
@@ -50,25 +50,25 @@
     },
     "amenities": [
       {
-        "id": 53,
+        "id": 97,
         "icon": "Wifi",
         "title": "High-Speed Internet22",
         "description": "222Gigabit fiber connection throughout the space"
       },
       {
-        "id": 54,
+        "id": 98,
         "icon": "Users",
         "title": "Modern Meeting Rooms22",
         "description": "State-of-the-art conference facilities"
       },
       {
-        "id": 55,
+        "id": 99,
         "icon": "Coffee",
         "title": "Kitchen & Breakout Areas",
         "description": "Fully equipped kitchen and relaxation zones"
       },
       {
-        "id": 56,
+        "id": 100,
         "icon": "Printer",
         "title": "Print & Scan Facilities",
         "description": "Professional printing and scanning services"

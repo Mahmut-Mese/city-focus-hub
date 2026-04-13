@@ -248,11 +248,16 @@ function toAbsoluteFileUrl(value) {
     return '';
   }
 
+  // Keep uploads relative so the frontend (Astro) maps them properly
+  if (value.startsWith('/')) {
+    return value;
+  }
+
   if (value.startsWith('http://') || value.startsWith('https://')) {
     return value;
   }
 
-  return `${ASSET_ORIGIN}${value}`;
+  return `/${value}`;
 }
 
 function toRelativeFileUrl(value) {
