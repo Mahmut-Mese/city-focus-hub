@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { sequelize } from './database.js';
 import { sendContactSubmissionEmail } from './mailer.js';
 import { createRateLimitMiddleware } from './security.js';
+import { listPlans } from './services/memberships-service.js';
 
 const contactSubmissionRateLimiter = createRateLimitMiddleware({
   keyPrefix: 'contact-submissions',
@@ -103,6 +104,15 @@ export function registerPublicApi(app) {
       });
 
       response.json({ data });
+    } catch (error) {
+      response.status(500).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.get('/api/public/plans', async (request, response) => {
+    try {
+      const plans = await listPlans();
+      response.json({ data: plans });
     } catch (error) {
       response.status(500).json({ error: String(error?.message ?? error) });
     }

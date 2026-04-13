@@ -185,7 +185,7 @@ export async function getPlanBySlug(planSlug) {
 
 export async function listPlans() {
   const rows = await queryAll(
-    'SELECT * FROM membership_plans WHERE active = 1 ORDER BY monthly_price_minor ASC, id ASC',
+    'SELECT * FROM membership_plans WHERE active = 1 ORDER BY sort_order ASC, id ASC',
   );
 
   return rows.map((row) => ({
@@ -196,6 +196,8 @@ export async function listPlans() {
     monthlyPriceMinor: Number(row.monthly_price_minor || 0),
     currency: row.currency || 'gbp',
     features: typeof row.features === 'string' ? JSON.parse(row.features) : (row.features || []),
+    isPopular: Boolean(row.is_popular),
+    sortOrder: Number(row.sort_order || 0),
   }));
 }
 

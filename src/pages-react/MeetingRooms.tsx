@@ -74,13 +74,10 @@ export default function MeetingRooms() {
 
   if (
     meetingRoomsQuery.isError
-    || meetingPlansQuery.isError
     || meetingRoomsPageQuery.isError
     || !meetingRoomsPageQuery.data
     || !meetingRoomsQuery.data
-    || !meetingPlansQuery.data
     || meetingRoomsQuery.data.length === 0
-    || meetingPlansQuery.data.length === 0
   ) {
     return (
       <Layout>
@@ -99,7 +96,8 @@ export default function MeetingRooms() {
     badges: room.badges,
     capacity: room.capacity || 0,
   }));
-  const roomPlans = meetingPlansQuery.data.map((plan) => ({
+  // Meeting-room plans are CMS-only decorative links — only render section if data exists
+  const roomPlans = (meetingPlansQuery.data ?? []).map((plan) => ({
     id: plan.slug || plan.id,
     name: plan.name,
     price: plan.price,
@@ -124,22 +122,25 @@ export default function MeetingRooms() {
 
       <section className="section-padding bg-white">
         <div className="container-custom">
-          <div className="mb-12 text-center md:mb-14">
-            <h2 className="mb-4 font-sans text-3xl leading-tight md:text-4xl">{content.roomsTitle}</h2>
-            <p className="text-lg text-black/55">{content.roomsSubtitle}</p>
-          </div>
+          {(content.roomsTitle || content.roomsSubtitle) && (
+            <div className="mb-12 text-center md:mb-14">
+              <h2 className="mb-4 font-sans text-3xl leading-tight md:text-4xl">{content.roomsTitle}</h2>
+              <p className="text-lg text-black/55">{content.roomsSubtitle}</p>
+            </div>
+          )}
 
           <div className="space-y-12">
             {rooms.map((room) => {
               const isExpanded = expandedRoomId === room.id;
               const visibleFeatures = isExpanded ? room.features : room.features.slice(0, 3);
               const matchedResource = matchRoomToResource(room, resources);
+              const roomImage = room.image || matchedResource?.image || 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800';
 
               return (
                 <div key={room.id} className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
                   <div className="relative lg:order-1">
                     <div className="aspect-[16/10] overflow-hidden rounded-2xl">
-                      <img src={room.image} alt={room.name} className="h-full w-full object-cover" />
+                      <img src={roomImage} alt={room.name} className="h-full w-full object-cover" />
                     </div>
                     <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
                       {room.badges.map((badge) => (
@@ -150,8 +151,8 @@ export default function MeetingRooms() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-black/10 bg-white p-7 transition-all duration-300 md:p-9 lg:order-2">
-                    <h3 className="mb-1 font-sans text-3xl leading-none md:text-4xl">{room.name}</h3>
+                   <div className="rounded-2xl border border-black/10 bg-white p-7 transition-all duration-300 md:p-9 lg:order-2">
+                    <h3 className="mb-1 font-sans text-xl leading-none md:text-2xl">{room.name}</h3>
                     <p className="mb-4 text-xl font-bold text-black">
                       {matchedResource?.hourlyRateMinor
                         ? <>{formatCurrency(matchedResource.hourlyRateMinor)}<span className="text-sm font-normal text-black/50"> / hour</span></>
@@ -222,6 +223,7 @@ export default function MeetingRooms() {
         </div>
       </section>
 
+      {roomPlans.length > 0 && (
       <section className="section-padding bg-white">
         <div className="container-custom">
           <div className="mb-12 text-center md:mb-14">
@@ -256,6 +258,7 @@ export default function MeetingRooms() {
           </div>
         </div>
       </section>
+      )}
     </Layout>
   );
 }

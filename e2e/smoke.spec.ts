@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect, type ConsoleMessage } from '@playwright/test';
 
@@ -95,9 +95,26 @@ const BLOG_SLUGS = loadCmsCollection('blog-posts.json')
   .map((post) => toSlug(post.slug) ?? toSlug(post.id))
   .filter((slug): slug is string => Boolean(slug));
 
-const ROOM_SLUGS = loadCmsCollection('meeting-rooms.json')
-  .map((room) => toSlug(room.slug) ?? toSlug(room.id))
-  .filter((slug): slug is string => Boolean(slug));
+// Room booking slugs: read from the built dist directory (populated from the resources DB at build time).
+// Falls back to CMS snapshot if the dist directory doesn't have meeting room pages.
+const ROOM_SLUGS = (() => {
+  try {
+    const meetingRoomsDir = path.join(process.cwd(), 'dist', 'meeting-rooms');
+    const entries = readdirSync(meetingRoomsDir);
+    const slugs = entries.filter((entry) => {
+      if (entry === 'index.html' || entry.includes(' ')) return false;
+      const entryPath = path.join(meetingRoomsDir, entry);
+      return statSync(entryPath).isDirectory();
+    });
+    if (slugs.length > 0) return slugs;
+  } catch {
+    // dist not available — fall back to CMS snapshot
+  }
+
+  return loadCmsCollection('meeting-rooms.json')
+    .map((room) => toSlug(room.slug) ?? toSlug(room.id))
+    .filter((slug): slug is string => Boolean(slug));
+})();
 
 const PLAN_SLUGS = loadCmsCollection('pricing-plans.json')
   .map((plan) => toSlug(plan.slug) ?? toSlug(plan.id))

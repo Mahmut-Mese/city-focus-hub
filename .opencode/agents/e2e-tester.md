@@ -1,7 +1,7 @@
 ---
 description: Runs the full e2e test suite (Playwright) after code changes are complete. Invoked by the architect after all fixes/features are done. Reports pass/fail with details on any failures. FREE model — use liberally.
 mode: subagent
-model: opencode/qwen3.6-plus-free
+model: opencode/deepseek-r1-0528-free
 temperature: 0.1
 permission:
   edit: deny

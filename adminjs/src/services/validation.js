@@ -92,6 +92,16 @@ export const changePasswordSchema = z.object({
   newPassword: requiredTrimmedString.min(6, 'New password must be at least 6 characters').max(128),
 });
 
+// #148: Password reset flow schemas
+export const forgotPasswordSchema = z.object({
+  email: emailField.max(255),
+});
+
+export const resetPasswordSchema = z.object({
+  token: requiredTrimmedString.min(1, 'Reset token is required'),
+  newPassword: requiredTrimmedString.min(6, 'Password must be at least 6 characters').max(128),
+});
+
 export const updateProfileSchema = z.object({
   name: requiredTrimmedString.min(1, 'Name is required').max(255),
   email: emailField.max(255),

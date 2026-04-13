@@ -2,7 +2,7 @@
 // Existing consumers import from '@/hooks/useCmsContent' and continue to work.
 
 export { useBlogPosts, useBlogPostBySlug, useBlogPageContent } from './cms/useBlogContent';
-export { usePricingPlans, usePricingPageContent } from './cms/usePricingContent';
+export { usePricingPlans, usePricingPageContent, useDbPlans } from './cms/usePricingContent';
 export { useFaqItems, useFaqPageContent } from './cms/useFaqContent';
 export { useMeetingRooms, useMeetingRoomsPageContent } from './cms/useMeetingRoomsContent';
 export {

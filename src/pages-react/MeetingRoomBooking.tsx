@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { meetingRooms as fallbackMeetingRooms } from '@/data/mockData';
-import { useMeetingRooms } from '@/hooks/useCmsContent';
 import {
   cancelGuestMeetingRoomBookingPayment,
   confirmGuestMeetingRoomBookingPayment,
@@ -41,6 +40,20 @@ type HourSlotInfo = {
   label: string;
   available: boolean;
   isPast: boolean;
+};
+
+type ConfirmedBookingInfo = {
+  roomName: string;
+  date: string;
+  startAt: string;
+  endAt: string;
+  totalMinor: number;
+  subtotalMinor: number;
+  taxMinor: number;
+  currency: string;
+  bookingId: number;
+  guestName: string;
+  guestEmail: string;
 };
 
 function normalizeRoomKey(value: string) {
@@ -381,9 +394,51 @@ function GuestBookingPaymentCard({
   );
 }
 
+/** sessionStorage key for persisting an in-progress guest payment draft across page refreshes. */
+const DRAFT_STORAGE_KEY = 'guestBookingDraft';
+
+type PersistedDraft = {
+  bookingId: number;
+  guestEmail: string;
+  paymentIntentId: string;
+};
+
+function saveDraftToStorage(draft: BookingPaymentDraft, guestEmail: string) {
+  if (!draft.booking?.id) return;
+  try {
+    const persisted: PersistedDraft = {
+      bookingId: draft.booking.id,
+      guestEmail,
+      paymentIntentId: draft.paymentIntentId || '',
+    };
+    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(persisted));
+  } catch {
+    // sessionStorage unavailable — silently ignore
+  }
+}
+
+function loadDraftFromStorage(): PersistedDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedDraft;
+    if (!parsed.bookingId || !parsed.guestEmail) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftFromStorage() {
+  try {
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export default function MeetingRoomBooking() {
   const { roomSlug = '' } = useParams();
-  const meetingRoomsQuery = useMeetingRooms();
   const [availabilityResources, setAvailabilityResources] = useState<MemberResource[]>([]);
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [availabilityError, setAvailabilityError] = useState('');
@@ -392,8 +447,13 @@ export default function MeetingRoomBooking() {
   const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState<BookingPaymentDraft | null>(null);
+  const [confirmedBooking, setConfirmedBooking] = useState<ConfirmedBookingInfo | null>(null);
   const paymentCardRef = useRef<HTMLDivElement | null>(null);
   const bookingErrorRef = useRef<HTMLDivElement | null>(null);
+
+  // Room resolved from the resources API — single source of truth
+  const [selectedRoom, setSelectedRoom] = useState<MemberResource | null>(null);
+  const [isRoomLoading, setIsRoomLoading] = useState(true);
 
   // Day slot availability
   const [daySlotAvailability, setDaySlotAvailability] = useState<Map<string, boolean>>(new Map());
@@ -449,38 +509,59 @@ export default function MeetingRoomBooking() {
 
   const [summaryImageSrc, setSummaryImageSrc] = useState(fallbackImage);
 
-  const selectedRoom = useMemo(() => {
-    if (!meetingRoomsQuery.data) return null;
-    return meetingRoomsQuery.data.find((room) => (
-      normalizeRoomKey(room.slug || room.id) === normalizeRoomKey(roomSlug)
-      || normalizeRoomKey(room.name) === normalizeRoomKey(roomSlug)
-    )) || null;
-  }, [meetingRoomsQuery.data, roomSlug]);
+  // On mount: cancel any orphaned pending booking left over from a previous page refresh.
+  // When a guest creates a PaymentIntent, the booking is persisted in sessionStorage.
+  // If they refresh or close the tab before clicking "Cancel payment", that pending
+  // booking stays in the DB blocking the slot for up to 20 minutes. This effect
+  // fires once on mount to silently cancel it so the slot is freed immediately.
+  useEffect(() => {
+    const orphan = loadDraftFromStorage();
+    if (!orphan) return;
+    clearDraftFromStorage();
+    void cancelGuestMeetingRoomBookingPayment({
+      bookingId: orphan.bookingId,
+      guestEmail: orphan.guestEmail,
+      paymentIntentId: orphan.paymentIntentId,
+    }).catch(() => {
+      // Silently ignore — the booking will expire on its own via payment_hold_expires_at
+    });
+  }, []);
+
+  // Fetch the room from resources API on mount (single source of truth)
+  useEffect(() => {
+    let active = true;
+    setIsRoomLoading(true);
+
+    void listPublicMeetingRoomResources()
+      .then((payload) => {
+        if (!active) return;
+        if (payload.stripe.publishableKey) {
+          setStripePublishableKey(payload.stripe.publishableKey);
+        }
+        const match = payload.resources.find((r) =>
+          normalizeRoomKey(r.slug) === normalizeRoomKey(roomSlug)
+          || normalizeRoomKey(r.name) === normalizeRoomKey(roomSlug)
+        ) || null;
+        setSelectedRoom(match);
+      })
+      .catch(() => {
+        if (active) setSelectedRoom(null);
+      })
+      .finally(() => {
+        if (active) setIsRoomLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [roomSlug]);
 
   useEffect(() => {
     setSummaryImageSrc(selectedRoom?.image || fallbackImage);
   }, [fallbackImage, selectedRoom?.image]);
 
+  // selectedResource tracks the live availability for the matched room
   const selectedResource = useMemo(() => {
     if (!selectedRoom) return null;
-
-    const exactMatch = availabilityResources.find((resource) => (
-      normalizeRoomKey(resource.slug) === normalizeRoomKey(selectedRoom.slug || selectedRoom.id)
-      || normalizeRoomKey(resource.name) === normalizeRoomKey(selectedRoom.name)
-    ));
-    if (exactMatch) return exactMatch;
-    if (!availabilityResources.length) return null;
-
-    const capacity = Number(selectedRoom.capacity || 0);
-    if (!capacity) return availabilityResources[0] || null;
-
-    return [...availabilityResources]
-      .sort((left, right) => {
-        const leftDiff = Math.abs(Number(left.capacity || 0) - capacity);
-        const rightDiff = Math.abs(Number(right.capacity || 0) - capacity);
-        if (leftDiff !== rightDiff) return leftDiff - rightDiff;
-        return Number(right.capacity || 0) - Number(left.capacity || 0);
-      })[0] || null;
+    return availabilityResources.find((r) => r.id === selectedRoom.id) || selectedRoom;
   }, [availabilityResources, selectedRoom]);
 
   const durationLabel = useMemo(() => {
@@ -730,6 +811,7 @@ export default function MeetingRoomBooking() {
       }
 
       setPaymentDraft(draft);
+      saveDraftToStorage(draft, formState.guestEmail.trim());
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : 'Failed to create guest booking.');
     } finally {
@@ -752,9 +834,27 @@ export default function MeetingRoomBooking() {
         guestEmail: formState.guestEmail.trim(),
         paymentIntentId,
       });
+
+      // Capture booking details before clearing the draft
+      const booking = paymentDraft.booking;
+      const confirmed: ConfirmedBookingInfo = {
+        roomName: booking.resourceName || selectedRoom?.name || 'Meeting Room',
+        date: booking.startAt,
+        startAt: booking.startAt,
+        endAt: booking.endAt,
+        totalMinor: booking.totalMinor,
+        subtotalMinor: booking.subtotalMinor,
+        taxMinor: booking.taxMinor,
+        currency: booking.currency || 'gbp',
+        bookingId: booking.id,
+        guestName: formState.guestName.trim(),
+        guestEmail: formState.guestEmail.trim(),
+      };
+
+      clearDraftFromStorage();
       setPaymentDraft(null);
       setSelectedHours([]);
-      window.location.href = '/';
+      setConfirmedBooking(confirmed);
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : 'Failed to finalize booking payment.');
     } finally {
@@ -764,6 +864,7 @@ export default function MeetingRoomBooking() {
 
   const handleCancelPayment = async () => {
     if (!paymentDraft?.booking?.id) {
+      clearDraftFromStorage();
       setPaymentDraft(null);
       return;
     }
@@ -779,13 +880,14 @@ export default function MeetingRoomBooking() {
     } catch {
       // Ignore cancellation failures so the payment form can still be dismissed.
     } finally {
+      clearDraftFromStorage();
       setPaymentDraft(null);
       setIsSubmitting(false);
     }
   };
 
-  // #112: Show a loading skeleton instead of a blank screen while CMS data fetches.
-  if (meetingRoomsQuery.isLoading) {
+  // Show a loading skeleton while the room is being fetched from the resources API.
+  if (isRoomLoading) {
     return (
       <Layout hideNavigation hideFooter>
         <section className="min-h-screen bg-[#fbfaf8] py-6 sm:py-8">
@@ -804,10 +906,123 @@ export default function MeetingRoomBooking() {
     );
   }
 
-  if (meetingRoomsQuery.isError || !meetingRoomsQuery.data || meetingRoomsQuery.data.length === 0 || !selectedRoom) {
+  if (!selectedRoom) {
     return (
       <Layout>
         <CmsNoData />
+      </Layout>
+    );
+  }
+
+  // Show confirmation page after successful guest booking payment
+  if (confirmedBooking) {
+    const confirmedDate = formatLongDate(confirmedBooking.startAt);
+    const startHour = new Date(confirmedBooking.startAt).getHours();
+    const endHour = new Date(confirmedBooking.endAt).getHours();
+    const confirmedTimeRange = formatTimeRange(
+      `${String(startHour).padStart(2, '0')}:00`,
+      endHour,
+    );
+    const hours = endHour - startHour;
+    const confirmedDuration = hours === 1 ? '1 hour' : `${hours} hours`;
+
+    return (
+      <Layout hideNavigation hideFooter>
+        <section className="min-h-screen bg-[#fbfaf8] py-6 sm:py-8">
+          <div className="container-custom">
+            <div className="mx-auto max-w-xl">
+              <div className="rounded-[2rem] border border-[#10153f]/15 bg-white p-6 sm:p-8">
+                <div className="flex items-center justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                    <Check className="h-8 w-8 text-emerald-600" />
+                  </div>
+                </div>
+
+                <h1 className="mt-5 text-center font-sans text-2xl font-semibold tracking-tight text-[#10153f] sm:text-3xl">
+                  Booking confirmed
+                </h1>
+
+                <p className="mt-2 text-center text-sm text-[#10153f]/70">
+                  A confirmation email has been sent to{' '}
+                  <span className="font-medium text-[#10153f]">{confirmedBooking.guestEmail}</span>.
+                </p>
+
+                <div className="mt-6 space-y-3 text-[#10153f]">
+                  <Separator className="bg-[#10153f]/15" />
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-sm font-semibold">Room</p>
+                    <p className="text-sm">{confirmedBooking.roomName}</p>
+                  </div>
+
+                  <Separator className="bg-[#10153f]/15" />
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-sm font-semibold">Date</p>
+                    <p className="text-sm">{confirmedDate}</p>
+                  </div>
+
+                  <Separator className="bg-[#10153f]/15" />
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-sm font-semibold">Time</p>
+                    <p className="text-sm">{confirmedTimeRange}</p>
+                  </div>
+
+                  <Separator className="bg-[#10153f]/15" />
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-sm font-semibold">Duration</p>
+                    <p className="inline-flex items-center gap-2 text-sm">
+                      <Clock3 size={16} />
+                      {confirmedDuration}
+                    </p>
+                  </div>
+
+                  <Separator className="bg-[#10153f]/15" />
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-sm font-semibold">Subtotal</p>
+                    <p className="text-sm">{formatCurrency(confirmedBooking.subtotalMinor, confirmedBooking.currency)}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-xs text-[#10153f]/60">VAT</p>
+                    <p className="text-xs text-[#10153f]/60">{formatCurrency(confirmedBooking.taxMinor, confirmedBooking.currency)}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-base font-semibold">Total paid</p>
+                    <p className="text-lg font-semibold">{formatCurrency(confirmedBooking.totalMinor, confirmedBooking.currency)}</p>
+                  </div>
+
+                  <Separator className="bg-[#10153f]/15" />
+
+                  <div className="flex items-center justify-between gap-6">
+                    <p className="text-sm font-semibold">Booking ID</p>
+                    <p className="text-sm font-mono">#{confirmedBooking.bookingId}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    className="flex-1 rounded-full bg-[#10153f] text-white hover:bg-[#10153f]/90"
+                    onClick={() => setConfirmedBooking(null)}
+                  >
+                    Book another room
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-full border-[#10153f]/20 text-[#10153f] hover:bg-[#10153f]/5"
+                    asChild
+                  >
+                    <a href="/">Go to homepage</a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }

@@ -22,6 +22,7 @@ const PrivacyPolicy = lazy(() => import("./pages-react/PrivacyPolicy"));
 const Terms = lazy(() => import("./pages-react/Terms"));
 const Dashboard = lazy(() => import("./pages-react/Dashboard"));
 const Auth = lazy(() => import("./pages-react/Auth"));
+const ResetPassword = lazy(() => import("./pages-react/ResetPassword"));
 const NotFound = lazy(() => import("./pages-react/NotFound"));
 
 const queryClient = createQueryClient();
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard/*" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

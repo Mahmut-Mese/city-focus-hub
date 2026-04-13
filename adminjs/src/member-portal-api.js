@@ -5,8 +5,10 @@ import {
   authenticateUser,
   changeUserPassword,
   createOrGetGuestUser,
+  createPasswordResetToken,
   findUserById,
   registerUser,
+  resetPasswordWithToken,
   updateUserAccessStatus,
   updateUserProfile,
 } from './services/users-service.js';
@@ -69,6 +71,7 @@ import {
   isStripeEnabled,
 } from './services/stripe-service.js';
 import { createRateLimitMiddleware } from './security.js';
+import { sendPasswordResetEmail } from './mailer.js';
 import { randomUUID } from 'node:crypto';
 import {
   validate,
@@ -76,6 +79,8 @@ import {
   registerSchema,
   loginSchema,
   changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   guestBookingPaymentIntentSchema,
   guestBookingCheckoutSessionSchema,
   guestBookingSyncCheckoutSchema,
@@ -554,6 +559,44 @@ export function registerMemberPortalApi(app) {
         newPassword: request.body.newPassword,
       });
 
+      response.json({ ok: true });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  // #148: Forgot password — accepts email, generates reset token, sends email.
+  // Always returns 200 regardless of whether the email exists (prevents user enumeration).
+  authRouter.post('/forgot-password', authRateLimiter, validate(forgotPasswordSchema), async (request, response) => {
+    try {
+      const result = await createPasswordResetToken(request.body.email);
+
+      if (result) {
+        // Build the frontend reset URL with the raw token
+        const frontendOrigin = config.cors.allowedOrigins[0] || config.publicOrigin;
+        const resetUrl = `${frontendOrigin}/reset-password?token=${encodeURIComponent(result.token)}`;
+
+        // Fire-and-forget — don't let email failure affect the response
+        void sendPasswordResetEmail({
+          recipientName: result.user.name,
+          recipientEmail: result.user.email,
+          resetUrl,
+        });
+      }
+
+      // Always return success to prevent user enumeration
+      response.json({ ok: true });
+    } catch (error) {
+      // Even on error, return 200 to prevent information leakage
+      console.error('[auth] forgot-password error:', error?.message || error);
+      response.json({ ok: true });
+    }
+  });
+
+  // #148: Reset password — validates token and sets new password.
+  authRouter.post('/reset-password', authRateLimiter, validate(resetPasswordSchema), async (request, response) => {
+    try {
+      await resetPasswordWithToken(request.body.token, request.body.newPassword);
       response.json({ ok: true });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });

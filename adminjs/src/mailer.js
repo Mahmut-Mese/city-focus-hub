@@ -900,3 +900,74 @@ export async function sendRefundRejectedEmail(req) {
   void sendAdminNotificationCopy(subject, text);
   return { ok: true };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// #148: Password reset email
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Sends a password reset link to the member.
+ * @param {{ recipientName: string, recipientEmail: string, resetUrl: string }} params
+ */
+export async function sendPasswordResetEmail({ recipientName, recipientEmail, resetUrl }) {
+  const transporter = await getTransporter();
+
+  if (!transporter) {
+    return { ok: false, reason: 'Email notifications are not configured.' };
+  }
+
+  const name = String(recipientName ?? '').trim() || 'Member';
+  const subject = 'Reset your password';
+  const signature = buildEmailSignature();
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    'We received a request to reset your password.',
+    '',
+    'Click the link below to set a new password:',
+    resetUrl,
+    '',
+    'This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.',
+    '',
+    'Best regards,',
+    '',
+    signature.text,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111;">
+      <h2 style="margin-bottom:16px;">Reset Your Password</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We received a request to reset your password.</p>
+      <p style="margin: 24px 0;">
+        <a href="${escapeHtml(resetUrl)}" style="display:inline-block; padding:12px 28px; background-color:#111; color:#fff; text-decoration:none; border-radius:9999px; font-size:14px; font-weight:500;">
+          Reset Password
+        </a>
+      </p>
+      <p style="font-size:13px; color:#666;">Or copy and paste this link into your browser:</p>
+      <p style="font-size:13px; color:#666; word-break:break-all;">${escapeHtml(resetUrl)}</p>
+      <p style="margin-top:16px;">This link will expire in <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+      <p style="margin-top:24px;">Best regards,</p>
+      ${signature.html}
+    </div>
+  `;
+
+  try {
+    await withRetry(() => withTimeout(
+      transporter.sendMail({
+        from: config.mail.from,
+        to: recipientEmail,
+        subject,
+        text,
+        html,
+        attachments: signature.attachments,
+      }),
+    ));
+  } catch (error) {
+    console.error('[mailer] sendPasswordResetEmail failed:', error?.message || error);
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+
+  return { ok: true };
+}

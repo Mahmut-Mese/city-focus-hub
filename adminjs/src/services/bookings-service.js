@@ -340,9 +340,11 @@ export async function listAvailableResources({ type = '', startAt = '', endAt = 
     return resources.map((resource) => ({ ...resource, available: true }));
   }
 
-  // P1-45: Count concurrent bookings per resource instead of treating any conflict as fully booked
+  // Check for ANY conflicting booking per resource (one booking per slot, regardless of room capacity).
+  // Room capacity = number of people, NOT number of concurrent bookings.
+  // This matches validateAvailability() which rejects if even one conflict exists.
   const conflictingRows = await queryAll(
-    `SELECT resource_id, COUNT(*) AS booking_count
+    `SELECT DISTINCT resource_id
        FROM (
          SELECT resource_id
            FROM bookings
@@ -362,8 +364,7 @@ export async function listAvailableResources({ type = '', startAt = '', endAt = 
             AND (payment_hold_expires_at IS NULL OR payment_hold_expires_at > :now)
             AND start_at < :endAt
             AND end_at > :startAt
-       ) AS conflicting
-      GROUP BY resource_id`,
+       ) AS conflicting`,
     {
       now: new Date(),
       startAt: toUtcMysqlDateTime(startAt),
@@ -371,11 +372,11 @@ export async function listAvailableResources({ type = '', startAt = '', endAt = 
     },
   );
 
-  const bookingCountByResource = new Map(conflictingRows.map((row) => [Number(row.resource_id), Number(row.booking_count)]));
+  const bookedResourceIds = new Set(conflictingRows.map((row) => Number(row.resource_id)));
 
   return resources.map((resource) => ({
     ...resource,
-    available: (bookingCountByResource.get(resource.id) || 0) < resource.capacity,
+    available: !bookedResourceIds.has(resource.id),
   }));
 }
 

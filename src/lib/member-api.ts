@@ -118,6 +118,8 @@ export type MembershipPlan = {
   monthlyPriceMinor: number;
   currency: string;
   features: string[];
+  isPopular: boolean;
+  sortOrder: number;
 };
 
 export type MemberMembership = {
@@ -186,6 +188,9 @@ export type MemberResource = {
   hourlyRateMinor: number;
   active: boolean;
   available?: boolean;
+  image: string;
+  features: string[];
+  badges: string[];
   metadata: Record<string, unknown>;
 };
 
@@ -353,6 +358,23 @@ export async function changeMemberPassword(payload: {
   return response.ok;
 }
 
+// #148: Password reset flow
+export async function forgotPassword(email: string) {
+  const response = await requestApi<{ ok: boolean }>('/member-auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+  return response.ok;
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const response = await requestApi<{ ok: boolean }>('/member-auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  });
+  return response.ok;
+}
+
 export async function updateMemberProfile(payload: {
   name: string;
   email: string;
@@ -505,6 +527,11 @@ export async function listPublicMeetingRoomResources(options: { startAt?: string
   }
 
   const response = await requestApi<{ data: PublicMeetingRoomAvailability }>(`/public/meeting-rooms/resources?${searchParams.toString()}`);
+  return response.data;
+}
+
+export async function listPublicPlans(): Promise<MembershipPlan[]> {
+  const response = await requestApi<{ data: MembershipPlan[] }>('/public/plans');
   return response.data;
 }
 

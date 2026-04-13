@@ -26,6 +26,8 @@ const TABLE_DEFINITIONS = [
     currency VARCHAR(8) NOT NULL DEFAULT 'gbp',
     interval_name VARCHAR(32) NOT NULL DEFAULT 'month',
     features JSON NULL,
+    is_popular TINYINT(1) NOT NULL DEFAULT 0,
+    sort_order INT NOT NULL DEFAULT 0,
     stripe_product_id VARCHAR(255) NULL,
     stripe_price_id VARCHAR(255) NULL,
     active TINYINT(1) NOT NULL DEFAULT 1,
@@ -216,22 +218,12 @@ const TABLE_DEFINITIONS = [
 
 const DEFAULT_PLANS = [
   {
-    slug: 'lounge1',
-    name: 'Lounge1',
-    description: 'Perfect for freelancers who need occasional workspace access.',
-    monthlyPriceMinor: 12900,
-    features: [
-      'Access to lounge area1',
-      'High-speed Wi-Fi1',
-      '5 hours meeting room/month',
-      'Community events access',
-    ],
-  },
-  {
     slug: 'smart-office',
     name: 'Smart Office',
     description: 'Ideal for remote workers who need a dedicated desk.',
     monthlyPriceMinor: 3900,
+    isPopular: 0,
+    sortOrder: 1,
     features: [
       'Dedicated desk access',
       'High-speed Wi-Fi',
@@ -244,11 +236,70 @@ const DEFAULT_PLANS = [
     name: 'Full Space',
     description: 'Complete access to all amenities and private office.',
     monthlyPriceMinor: 5900,
+    isPopular: 0,
+    sortOrder: 2,
     features: [
       'Private office access',
       'High-speed Wi-Fi',
       'Unlimited meeting rooms',
       '24/7 access',
+    ],
+  },
+  {
+    slug: 'lounge1',
+    name: 'Lounge1',
+    description: 'Perfect for freelancers who need occasional workspace access.',
+    monthlyPriceMinor: 12900,
+    isPopular: 1,
+    sortOrder: 3,
+    features: [
+      'Access to lounge area',
+      'High-speed Wi-Fi',
+      '5 hours meeting room/month',
+      'Community events access',
+    ],
+  },
+  {
+    slug: 'virtual-office',
+    name: 'Virtual Office',
+    description: 'Professional business address and mail handling without a physical desk.',
+    monthlyPriceMinor: 15000,
+    isPopular: 0,
+    sortOrder: 4,
+    features: [
+      'Business address',
+      'Mail handling & forwarding',
+      'Meeting room credits',
+      'Business phone number',
+    ],
+  },
+  {
+    slug: 'hot-desk',
+    name: 'Hot Desk',
+    description: 'Flexible desk access — book any available desk, any day.',
+    monthlyPriceMinor: 25000,
+    isPopular: 0,
+    sortOrder: 5,
+    features: [
+      'Flexible desk access',
+      'High-speed Wi-Fi',
+      '15 hours meeting room/month',
+      'Locker storage',
+    ],
+  },
+  {
+    slug: 'dedicated-desk',
+    name: 'Dedicated Desk',
+    description: 'Your own permanent desk in our shared workspace.',
+    monthlyPriceMinor: 35000,
+    isPopular: 0,
+    sortOrder: 6,
+    features: [
+      'Permanent dedicated desk',
+      'High-speed Wi-Fi',
+      'Unlimited meeting rooms',
+      '24/7 access',
+      'Storage pedestal',
     ],
   },
 ];
@@ -261,7 +312,7 @@ const DEFAULT_RESOURCES = [
     description: 'Private room for small team sessions and client calls.',
     capacity: 4,
     hourlyRateMinor: 4500,
-    metadata: { floor: 'Second Floor', zone: 'Room A' },
+    metadata: { floor: 'Second Floor', zone: 'Room A', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800' },
   },
   {
     slug: 'room-atlas-10',
@@ -270,7 +321,7 @@ const DEFAULT_RESOURCES = [
     description: 'Larger presentation room with screen sharing and VC equipment.',
     capacity: 10,
     hourlyRateMinor: 8000,
-    metadata: { floor: 'Third Floor', zone: 'Atlas Suite' },
+    metadata: { floor: 'Third Floor', zone: 'Atlas Suite', image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800' },
   },
   {
     slug: 'desk-window-a1',
@@ -418,6 +469,10 @@ async function runCommerceMigrations() {
 
   // Scheduled downgrade: store the target plan so the switch happens at period end
   await ensureColumn('memberships', 'scheduled_plan_id', 'scheduled_plan_id INT UNSIGNED NULL AFTER cancel_at_period_end');
+
+  // #148: Password reset flow — store hashed token + expiry on member_users
+  await ensureColumn('member_users', 'password_reset_token', 'password_reset_token VARCHAR(255) NULL');
+  await ensureColumn('member_users', 'password_reset_expires_at', 'password_reset_expires_at DATETIME(6) NULL');
 }
 
 async function seedPlans() {
@@ -433,7 +488,8 @@ async function seedPlans() {
       await sequelize.query(
         `UPDATE membership_plans
            SET name = :name, description = :description, monthly_price_minor = :monthlyPriceMinor,
-               features = :features, active = 1, updated_at = :updatedAt
+               features = :features, is_popular = :isPopular, sort_order = :sortOrder,
+               active = 1, updated_at = :updatedAt
          WHERE slug = :slug`,
         {
           replacements: {
@@ -442,6 +498,8 @@ async function seedPlans() {
             description: plan.description,
             monthlyPriceMinor: plan.monthlyPriceMinor,
             features: JSON.stringify(plan.features),
+            isPopular: plan.isPopular,
+            sortOrder: plan.sortOrder,
             updatedAt: now,
           },
         },
@@ -449,9 +507,9 @@ async function seedPlans() {
     } else {
       await sequelize.query(
         `INSERT INTO membership_plans
-          (document_id, slug, name, description, monthly_price_minor, currency, interval_name, features, active, created_at, updated_at)
+          (document_id, slug, name, description, monthly_price_minor, currency, interval_name, features, is_popular, sort_order, active, created_at, updated_at)
          VALUES
-          (:documentId, :slug, :name, :description, :monthlyPriceMinor, :currency, 'month', :features, 1, :createdAt, :updatedAt)`,
+          (:documentId, :slug, :name, :description, :monthlyPriceMinor, :currency, 'month', :features, :isPopular, :sortOrder, 1, :createdAt, :updatedAt)`,
         {
           replacements: {
             documentId: randomUUID(),
@@ -461,6 +519,8 @@ async function seedPlans() {
             monthlyPriceMinor: plan.monthlyPriceMinor,
             currency: config.commerce.defaultCurrency,
             features: JSON.stringify(plan.features),
+            isPopular: plan.isPopular,
+            sortOrder: plan.sortOrder,
             createdAt: now,
             updatedAt: now,
           },

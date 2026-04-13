@@ -2,41 +2,41 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { SectionTitle } from '@/components/shared/SectionTitle';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Check, X } from 'lucide-react';
-import { usePricingPageContent, usePricingPlans } from '@/hooks/useCmsContent';
+import { useDbPlans, usePricingPageContent } from '@/hooks/useCmsContent';
 
 function buildCheckoutPath(planSlug: string) {
   return `/pricing/${encodeURIComponent(planSlug)}/checkout`;
 }
 
 export default function PricingContent() {
-  const pricingPlansQuery = usePricingPlans('coworking');
+  const plansQuery = useDbPlans();
   const pricingPageQuery = usePricingPageContent();
 
-  if (pricingPlansQuery.isLoading || pricingPageQuery.isLoading) {
+  if (plansQuery.isLoading || pricingPageQuery.isLoading) {
     return null;
   }
 
   if (
-    pricingPlansQuery.isError
+    plansQuery.isError
     || pricingPageQuery.isError
     || !pricingPageQuery.data
-    || !pricingPlansQuery.data
-    || pricingPlansQuery.data.length === 0
+    || !plansQuery.data
+    || plansQuery.data.length === 0
   ) {
     return <CmsNoData />;
   }
 
-  const cmsPlans = pricingPlansQuery.data;
+  const dbPlans = plansQuery.data;
   const content = pricingPageQuery.data;
 
-  const pricingPlans = cmsPlans.map((plan) => ({
-    id: plan.slug || plan.id,
+  const pricingPlans = dbPlans.map((plan) => ({
+    id: plan.slug,
     name: plan.name,
-    price: plan.price,
+    price: plan.monthlyPriceMinor / 100,
     description: plan.description || '',
     features: plan.features,
     isPopular: plan.isPopular,
-    period: plan.period,
+    period: 'month',
   }));
 
   return (
@@ -68,7 +68,7 @@ export default function PricingContent() {
 
                 <h3 className="font-semibold text-[34px] font-sans mb-1 leading-none">{plan.name}</h3>
                 <div className="mb-2">
-                  <span className="text-5xl font-bold leading-none">${plan.price}</span>
+                  <span className="text-5xl font-bold leading-none">£{plan.price}</span>
                   <span className="text-sm text-black/45"> /{plan.period}</span>
                 </div>
                 <p className="text-sm text-black/50 mb-4">{plan.description}</p>

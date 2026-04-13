@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
+import { forgotPassword } from '@/lib/member-api';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'forgot';
 
 export default function Auth() {
   const location = useLocation();
@@ -16,6 +17,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const errorRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll to error when it appears
@@ -56,6 +58,19 @@ export default function Auth() {
 
     if (!email.trim()) {
       setError('Email is required.');
+      return;
+    }
+
+    if (mode === 'forgot') {
+      setIsSubmitting(true);
+      try {
+        await forgotPassword(email);
+        setForgotSent(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to send reset link.');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -125,15 +140,16 @@ export default function Auth() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={mode === 'login'}
+                aria-selected={mode === 'login' || mode === 'forgot'}
                 aria-controls="auth-form-panel"
                 id="tab-login"
                 onClick={() => {
                   setMode('login');
                   setError('');
+                  setForgotSent(false);
                 }}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  mode === 'login' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
+                  mode === 'login' || mode === 'forgot' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
                 }`}
               >
                 Login
@@ -147,6 +163,7 @@ export default function Auth() {
                 onClick={() => {
                   setMode('register');
                   setError('');
+                  setForgotSent(false);
                 }}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   mode === 'register' ? 'bg-black text-white' : 'text-black/60 hover:text-black'
@@ -156,70 +173,124 @@ export default function Auth() {
               </button>
             </div>
 
-            <div id="auth-form-panel" role="tabpanel" aria-labelledby={mode === 'login' ? 'tab-login' : 'tab-register'} className="mt-6">
+            <div id="auth-form-panel" role="tabpanel" aria-labelledby={mode === 'register' ? 'tab-register' : 'tab-login'} className="mt-6">
               <h2 className="text-3xl font-semibold tracking-tight text-black">
-                {mode === 'login' ? 'Welcome back' : 'Create your account'}
+                {mode === 'forgot'
+                  ? 'Reset your password'
+                  : mode === 'login' ? 'Welcome back' : 'Create your account'}
               </h2>
               <p className="mt-2 text-sm text-black/50">
-                {mode === 'login'
-                  ? 'Use your member credentials to continue.'
-                  : 'Register a new frontend account to access the membership dashboard.'}
+                {mode === 'forgot'
+                  ? "Enter your email address and we'll send you a link to reset your password."
+                  : mode === 'login'
+                    ? 'Use your member credentials to continue.'
+                    : 'Register a new frontend account to access the membership dashboard.'}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              {mode === 'register' ? (
-                <div className="space-y-2">
-                  <Label htmlFor="auth-name">Full name</Label>
-                  <Input
-                    id="auth-name"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    className="h-12 rounded-2xl border-black/10 bg-white"
-                    placeholder="John Smith"
-                  />
+              {mode === 'forgot' && forgotSent ? (
+                <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-800">
+                  <p className="font-medium">Check your email</p>
+                  <p className="mt-1 text-green-700">If an account exists with that email, we've sent a password reset link. Please check your inbox and spam folder.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setForgotSent(false);
+                      setEmail('');
+                      setError('');
+                    }}
+                    className="mt-3 text-sm font-medium text-black underline underline-offset-2 hover:text-black/70"
+                  >
+                    Back to login
+                  </button>
                 </div>
-              ) : null}
+              ) : (
+                <>
+                  {mode === 'register' ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="auth-name">Full name</Label>
+                      <Input
+                        id="auth-name"
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        className="h-12 rounded-2xl border-black/10 bg-white"
+                        placeholder="John Smith"
+                      />
+                    </div>
+                  ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="auth-email">Email</Label>
-                <Input
-                  id="auth-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="h-12 rounded-2xl border-black/10 bg-white"
-                  placeholder="john@example.com"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="auth-email">Email</Label>
+                    <Input
+                      id="auth-email"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="h-12 rounded-2xl border-black/10 bg-white"
+                      placeholder="john@example.com"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="auth-password">Password</Label>
-                <Input
-                  id="auth-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="h-12 rounded-2xl border-black/10 bg-white"
-                  placeholder="Enter your password"
-                />
-              </div>
+                  {mode !== 'forgot' ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="auth-password">Password</Label>
+                      <Input
+                        id="auth-password"
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        className="h-12 rounded-2xl border-black/10 bg-white"
+                        placeholder="Enter your password"
+                      />
+                      {mode === 'login' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode('forgot');
+                            setError('');
+                          }}
+                          className="text-sm text-black/50 hover:text-black underline underline-offset-2"
+                        >
+                          Forgot password?
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
 
-              {error ? (
-                <div ref={errorRef} role="alert" aria-live="assertive" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </div>
-              ) : null}
+                  {error ? (
+                    <div ref={errorRef} role="alert" aria-live="assertive" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  ) : null}
 
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-12 w-full rounded-full bg-black text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
-              >
-                {isSubmitting
-                  ? 'Please wait...'
-                  : mode === 'login' ? 'Login to dashboard' : 'Create account'}
-              </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="h-12 w-full rounded-full bg-black text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
+                  >
+                    {isSubmitting
+                      ? 'Please wait...'
+                      : mode === 'forgot'
+                        ? 'Send reset link'
+                        : mode === 'login' ? 'Login to dashboard' : 'Create account'}
+                  </Button>
+
+                  {mode === 'forgot' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('login');
+                        setError('');
+                      }}
+                      className="block w-full text-center text-sm text-black/50 hover:text-black underline underline-offset-2"
+                    >
+                      Back to login
+                    </button>
+                  ) : null}
+                </>
+              )}
             </form>
           </div>
         </div>

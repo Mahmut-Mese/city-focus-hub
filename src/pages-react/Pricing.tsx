@@ -3,26 +3,26 @@ import { HeroSection } from '@/components/shared/HeroSection';
 import { SectionTitle } from '@/components/shared/SectionTitle';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Check, X } from 'lucide-react';
-import { usePricingPageContent, usePricingPlans } from '@/hooks/useCmsContent';
+import { useDbPlans, usePricingPageContent } from '@/hooks/useCmsContent';
 
 function buildCheckoutPath(planSlug: string) {
   return `/pricing/${encodeURIComponent(planSlug)}/checkout`;
 }
 
 export default function Pricing() {
-  const pricingPlansQuery = usePricingPlans('coworking');
+  const plansQuery = useDbPlans();
   const pricingPageQuery = usePricingPageContent();
 
-  if (pricingPlansQuery.isLoading || pricingPageQuery.isLoading) {
+  if (plansQuery.isLoading || pricingPageQuery.isLoading) {
     return null;
   }
 
   if (
-    pricingPlansQuery.isError
+    plansQuery.isError
     || pricingPageQuery.isError
     || !pricingPageQuery.data
-    || !pricingPlansQuery.data
-    || pricingPlansQuery.data.length === 0
+    || !plansQuery.data
+    || plansQuery.data.length === 0
   ) {
     return (
       <Layout>
@@ -31,17 +31,17 @@ export default function Pricing() {
     );
   }
 
-  const cmsPlans = pricingPlansQuery.data;
+  const dbPlans = plansQuery.data;
   const content = pricingPageQuery.data;
 
-  const pricingPlans = cmsPlans.map((plan) => ({
-    id: plan.slug || plan.id,
+  const pricingPlans = dbPlans.map((plan) => ({
+    id: plan.slug,
     name: plan.name,
-    price: plan.price,
+    price: plan.monthlyPriceMinor / 100,
     description: plan.description || '',
     features: plan.features,
     isPopular: plan.isPopular,
-    period: plan.period,
+    period: 'month',
   }));
 
   return (

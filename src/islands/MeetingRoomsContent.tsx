@@ -3,23 +3,9 @@ import { ChevronDown, ChevronUp, Wifi } from 'lucide-react';
 import { HeroSection } from '@/components/shared/HeroSection';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Button } from '@/components/ui/button';
-import { useMeetingRooms, useMeetingRoomsPageContent, usePricingPlans } from '@/hooks/useCmsContent';
+import { useMeetingRoomsPageContent, usePricingPlans } from '@/hooks/useCmsContent';
 import { listPublicMeetingRoomResources, type MemberResource } from '@/lib/member-api';
 import { contentIconMap } from '@/lib/site-icons';
-
-function truncateDescription(value: string, maxLength = 180) {
-  const normalized = value.trim();
-
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
-}
-
-function normalizeRoomKey(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-}
 
 function formatCurrency(amountMinor: number, currency = 'gbp') {
   return new Intl.NumberFormat('en-GB', {
@@ -28,71 +14,36 @@ function formatCurrency(amountMinor: number, currency = 'gbp') {
   }).format(Number(amountMinor || 0) / 100);
 }
 
-function matchRoomToResource(
-  room: { id: string; name: string; capacity?: number },
-  resources: MemberResource[],
-): MemberResource | null {
-  const exactMatch = resources.find(
-    (r) =>
-      normalizeRoomKey(r.slug) === normalizeRoomKey(room.id) ||
-      normalizeRoomKey(r.name) === normalizeRoomKey(room.name),
-  );
-  if (exactMatch) return exactMatch;
-  if (!resources.length) return null;
-
-  const capacity = Number(room.capacity || 0);
-  if (!capacity) return resources[0] || null;
-
-  return (
-    [...resources].sort((left, right) => {
-      const leftDiff = Math.abs(Number(left.capacity || 0) - capacity);
-      const rightDiff = Math.abs(Number(right.capacity || 0) - capacity);
-      if (leftDiff !== rightDiff) return leftDiff - rightDiff;
-      return Number(right.capacity || 0) - Number(left.capacity || 0);
-    })[0] || null
-  );
-}
-
 export default function MeetingRoomsContent() {
-  const meetingRoomsQuery = useMeetingRooms();
   const meetingPlansQuery = usePricingPlans('meeting-room');
   const meetingRoomsPageQuery = useMeetingRoomsPageContent();
   const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null);
   const [resources, setResources] = useState<MemberResource[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
 
   useEffect(() => {
     listPublicMeetingRoomResources()
-      .then((result) => setResources(result.resources || []))
-      .catch(() => setResources([]));
+      .then((result) => setResources((result.resources || []).filter((r) => r.type === 'meeting_room')))
+      .catch(() => setResources([]))
+      .finally(() => setResourcesLoading(false));
   }, []);
 
-  if (meetingRoomsQuery.isLoading || meetingPlansQuery.isLoading || meetingRoomsPageQuery.isLoading) {
+  if (meetingPlansQuery.isLoading || meetingRoomsPageQuery.isLoading || resourcesLoading) {
     return null;
   }
 
   if (
-    meetingRoomsQuery.isError
-    || meetingPlansQuery.isError
+    meetingPlansQuery.isError
     || meetingRoomsPageQuery.isError
     || !meetingRoomsPageQuery.data
-    || !meetingRoomsQuery.data
     || !meetingPlansQuery.data
-    || meetingRoomsQuery.data.length === 0
     || meetingPlansQuery.data.length === 0
+    || resources.length === 0
   ) {
     return <CmsNoData />;
   }
 
   const content = meetingRoomsPageQuery.data;
-  const rooms = meetingRoomsQuery.data.map((room) => ({
-    id: room.slug || room.id,
-    name: room.name,
-    description: room.description || '',
-    features: room.features,
-    image: room.image || '',
-    badges: room.badges,
-    capacity: room.capacity || 0,
-  }));
   const roomPlans = meetingPlansQuery.data.map((plan) => ({
     id: plan.slug || plan.id,
     name: plan.name,
@@ -118,16 +69,19 @@ export default function MeetingRoomsContent() {
           </div>
 
           <div className="space-y-12">
-            {rooms.map((room) => {
-              const isExpanded = expandedRoomId === room.id;
+            {resources.map((room) => {
+              const isExpanded = expandedRoomId === room.slug;
               const visibleFeatures = isExpanded ? room.features : room.features.slice(0, 3);
-              const matchedResource = matchRoomToResource(room, resources);
 
               return (
-                <div key={room.id} className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
+                <div key={room.slug} className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
                   <div className="relative lg:order-1">
                     <div className="aspect-[16/10] overflow-hidden rounded-2xl">
-                      <img src={room.image} alt={room.name} className="h-full w-full object-cover" />
+                      {room.image ? (
+                        <img src={room.image} alt={room.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full bg-black/5" />
+                      )}
                     </div>
                     <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
                       {room.badges.map((badge) => (
@@ -141,21 +95,23 @@ export default function MeetingRoomsContent() {
                   <div className="rounded-2xl border border-black/10 bg-white p-7 transition-all duration-300 md:p-9 lg:order-2">
                     <h3 className="mb-1 font-sans text-5xl leading-none">{room.name}</h3>
                     <p className="mb-4 text-xl font-bold text-black">
-                      {matchedResource?.hourlyRateMinor
-                        ? <>{formatCurrency(matchedResource.hourlyRateMinor)}<span className="text-sm font-normal text-black/50"> / hour</span></>
-                        : <span className="text-sm font-normal text-black/40">Loading price...</span>}
+                      {room.hourlyRateMinor
+                        ? <>{formatCurrency(room.hourlyRateMinor)}<span className="text-sm font-normal text-black/50"> / hour</span></>
+                        : <span className="text-sm font-normal text-black/40">Price on request</span>}
                     </p>
                     <p className="mb-6 leading-relaxed text-black/60">
-                      {isExpanded ? room.description : truncateDescription(room.description)}
+                      {room.description}
                     </p>
-                    <ul className="mb-7 space-y-2">
-                      {visibleFeatures.map((feature) => (
-                        <li key={feature} className="flex items-center gap-2.5 text-sm text-black/85">
-                          <span className="h-1.5 w-1.5 rounded-full bg-black" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {visibleFeatures.length > 0 && (
+                      <ul className="mb-7 space-y-2">
+                        {visibleFeatures.map((feature) => (
+                          <li key={feature} className="flex items-center gap-2.5 text-sm text-black/85">
+                            <span className="h-1.5 w-1.5 rounded-full bg-black" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
                     <div className="flex flex-wrap gap-3">
                       <Button
@@ -164,20 +120,22 @@ export default function MeetingRoomsContent() {
                         variant="default"
                         className="h-11 rounded-xl border border-black px-5 text-sm font-medium !bg-black !text-white shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:!bg-black/90"
                       >
-                        <a href={`/meeting-rooms/${encodeURIComponent(room.id)}/book`}>
+                        <a href={`/meeting-rooms/${encodeURIComponent(room.slug)}/book`}>
                           {content.bookNowLabel}
                         </a>
                       </Button>
 
-                      <Button
-                        type="button"
-                        onClick={() => setExpandedRoomId(isExpanded ? null : room.id)}
-                        variant="outline"
-                        className="h-11 rounded-xl border border-black/15 bg-white px-5 text-sm font-medium text-black hover:bg-black/[0.03]"
-                      >
-                        {isExpanded ? content.readMoreLabel.replace(/more/i, 'less') : content.readMoreLabel}
-                        {isExpanded ? <ChevronUp /> : <ChevronDown />}
-                      </Button>
+                      {room.features.length > 3 && (
+                        <Button
+                          type="button"
+                          onClick={() => setExpandedRoomId(isExpanded ? null : room.slug)}
+                          variant="outline"
+                          className="h-11 rounded-xl border border-black/15 bg-white px-5 text-sm font-medium text-black hover:bg-black/[0.03]"
+                        >
+                          {isExpanded ? content.readMoreLabel.replace(/more/i, 'less') : content.readMoreLabel}
+                          {isExpanded ? <ChevronUp /> : <ChevronDown />}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

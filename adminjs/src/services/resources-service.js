@@ -23,6 +23,9 @@ function toResource(row) {
     capacity: Number(row.capacity || 1),
     hourlyRateMinor: Number(row.hourly_rate_minor || 0),
     active: Boolean(row.active),
+    image: typeof metadata.image === 'string' ? metadata.image : '',
+    features: Array.isArray(metadata.features) ? metadata.features.map(String) : [],
+    badges: Array.isArray(metadata.badges) ? metadata.badges.map(String) : [],
     metadata,
   };
 }

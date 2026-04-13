@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
-import { usePricingPlans } from '@/hooks/useCmsContent';
+import { useDbPlans } from '@/hooks/useCmsContent';
 import {
   changeMemberPlan,
   confirmMemberMembershipPayment,
@@ -255,7 +255,7 @@ function MembershipPaymentCard({
 export default function MembershipCheckout() {
   const { planSlug = '' } = useParams();
   const { user, isReady, isAuthenticated } = useAuth();
-  const pricingPlansQuery = usePricingPlans();
+  const plansQuery = useDbPlans();
 
   const [dashboardData, setDashboardData] = useState<MemberDashboardPayload | null>(null);
   const [paymentDraft, setPaymentDraft] = useState<MembershipPaymentDraft | null>(null);
@@ -299,33 +299,24 @@ export default function MembershipCheckout() {
     return () => { active = false; };
   }, [isReady, isAuthenticated]);
 
-  // Find plan from CMS data (works without auth), or fall back to backend plan from dashboard
-  const cmsPlanRaw = pricingPlansQuery.data?.find(
-    (plan) => plan.slug === planSlug,
-  ) || null;
-
-  // If the plan doesn't exist in CMS (e.g. virtual-office), build a compatible object from backend plans
-  const backendPlan = !cmsPlanRaw && dashboardData
-    ? dashboardData.plans.find((p) => p.slug === planSlug) || null
-    : null;
+  // Find plan from DB plans (single authoritative source)
+  const dbPlanRaw = plansQuery.data?.find((plan) => plan.slug === planSlug) || null;
 
   const cmsPlan: { slug: string; name: string; price: number; period: string; description: string; features: string[]; isPopular: boolean } | null =
-    cmsPlanRaw
-      ? cmsPlanRaw
-      : backendPlan
-        ? {
-            slug: backendPlan.slug,
-            name: backendPlan.name,
-            price: backendPlan.monthlyPriceMinor / 100,
-            period: 'month',
-            description: backendPlan.description,
-            features: backendPlan.features,
-            isPopular: false,
-          }
-        : null;
+    dbPlanRaw
+      ? {
+          slug: dbPlanRaw.slug,
+          name: dbPlanRaw.name,
+          price: dbPlanRaw.monthlyPriceMinor / 100,
+          period: 'month',
+          description: dbPlanRaw.description,
+          features: dbPlanRaw.features,
+          isPopular: dbPlanRaw.isPopular,
+        }
+      : null;
 
-  // Still loading if CMS query is pending, or if CMS has no match and dashboard hasn't loaded yet
-  const isPlanLoading = pricingPlansQuery.isLoading || (!cmsPlanRaw && !dashboardData && isAuthenticated && !error);
+  // Still loading if DB plans query is pending
+  const isPlanLoading = plansQuery.isLoading;
 
   const stripePublishableKey = dashboardData?.stripe.publishableKey || '';
   const existingMembership = dashboardData?.membership;

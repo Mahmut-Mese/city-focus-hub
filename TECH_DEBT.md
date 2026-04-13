@@ -168,9 +168,9 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 | ~~145~~ | ~~Silent unlink failure masks filesystem issues~~ (FIXED: error logged) | Silent Error Swallowing |
 | ~~146~~ | ~~Debug log exposes request params when NODE_ENV misconfigured~~ (FIXED: production guard) | Silent Error Swallowing |
 | 147 | Zero meaningful tests — one placeholder unit test exists *(76 Playwright E2E tests now exist; unit tests still needed)* | Missing Features / Infrastructure |
-| 148 | No password reset flow — no "forgot password" or email verification *(accepted — feature gap, not tech debt)* | Missing Features / Infrastructure |
+| ~~148~~ | ~~No password reset flow — no "forgot password" or email verification~~ (FIXED: full forgot-password + reset-password flow implemented) | Missing Features / Infrastructure |
 
-**Summary:** ~~23~~ **0** P0 (all fixed) | ~~47~~ **0** P1 (all fixed) | ~~78~~ **8** P2 (70 fixed, 2 deferred, 6 accepted trade-offs) — Total: 148 findings
+**Summary:** ~~23~~ **0** P0 (all fixed) | ~~47~~ **0** P1 (all fixed) | ~~78~~ **7** P2 (71 fixed, 2 deferred, 5 accepted trade-offs) — Total: 148 findings
 
 ---
 
@@ -242,7 +242,7 @@ Findings classified by fix urgency. Each item references its detailed descriptio
 - [x] **No database migrations** — schema changes happen via startup DDL (`ensureColumn()` in `bootstrap-commerce.js`) with no rollback capability. Adopt Sequelize CLI migrations.
 - [ ] **Zero meaningful tests** — *(partially addressed)* 76 Playwright E2E tests now exist (40 API + 36 smoke). Unit tests and component tests are still missing.
 - [x] **No error tracking** — no Sentry or equivalent. Production errors are invisible.
-- [ ] **No password reset flow** — *(accepted trade-off — feature gap, not tech debt)* No "forgot password" or email verification on registration.
+- [x] **No password reset flow** — full forgot-password + reset-password flow implemented: `POST /api/member-auth/forgot-password`, `POST /api/member-auth/reset-password`, `/reset-password` page, "Forgot password?" link on login form, `sendPasswordResetEmail()` mailer template.
 - [x] **No React Error Boundaries** — one component crash takes down the entire UI.
 - [x] **No CI/CD pipeline** — no `.github/workflows/` at all. No automated lint, test, or build checks on PRs.
 - [x] **`framer-motion` listed as a dependency** — confirmed unused, removed from package.json (~75KB bundle savings).

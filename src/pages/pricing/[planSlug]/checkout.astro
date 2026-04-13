@@ -3,26 +3,28 @@ import Layout from '@/layouts/Layout.astro';
 import MembershipCheckoutApp from '@/islands/MembershipCheckoutApp';
 
 export async function getStaticPaths() {
-  const fs = await import('node:fs');
-  const path = await import('node:path');
-  const filePath = path.join(process.cwd(), 'public', 'cms', 'pricing-plans.json');
+  // Fallback slugs used if the backend is unreachable during build
+  const fallbackSlugs = ['smart-office', 'full-space', 'lounge1', 'virtual-office', 'hot-desk', 'dedicated-desk'];
 
   const slugs = new Set<string>();
 
   try {
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const cms = JSON.parse(raw);
-    const plans = cms.data || [];
-    for (const plan of plans) {
-      slugs.add(plan.slug || String(plan.id));
+    const response = await fetch('http://127.0.0.1:3001/api/public/plans', {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (response.ok) {
+      const json = await response.json();
+      const plans: Array<{ slug: string }> = json.data || [];
+      for (const plan of plans) {
+        if (plan.slug) slugs.add(plan.slug);
+      }
     }
   } catch {
-    // CMS file missing — continue with extra slugs only
+    // Backend unreachable during build — use fallback slugs
   }
 
-  // Backend membership plan slugs that may not exist in CMS (e.g. virtual-office)
-  const extraSlugs = ['virtual-office', 'hot-desk', 'dedicated-desk'];
-  for (const slug of extraSlugs) {
+  // Always ensure fallback slugs are included so the build never misses a known plan
+  for (const slug of fallbackSlugs) {
     slugs.add(slug);
   }
 

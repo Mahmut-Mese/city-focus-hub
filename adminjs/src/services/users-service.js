@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
-import { execute, queryOne } from './sql.js';
+import { execute, queryAll, queryOne } from './sql.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -234,6 +234,110 @@ export async function changeUserPassword({ userId, currentPassword, newPassword 
   await revokeMemberSessions(userId);
 
   return toUserRecord(row);
+}
+
+// ──────────────────────────────────────────────
+// #148: Password reset flow
+// ──────────────────────────────────────────────
+
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Creates a password reset token for the given email.
+ * Returns the raw (unhashed) token to include in the reset URL.
+ * The DB stores a hashed version so a database leak doesn't expose valid tokens.
+ * Returns null if the email doesn't exist (caller should still return 200 to prevent enumeration).
+ */
+export async function createPasswordResetToken(email) {
+  const normalizedEmail = normalizeEmail(email);
+  const result = await findUserByEmail(normalizedEmail);
+
+  if (!result) {
+    return null;
+  }
+
+  const rawToken = randomBytes(32).toString('hex');
+  const tokenHash = hashPassword(rawToken); // reuse salt:hash format
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+  await execute(
+    `UPDATE member_users
+        SET password_reset_token = :tokenHash,
+            password_reset_expires_at = :expiresAt,
+            updated_at = :updatedAt
+      WHERE id = :userId`,
+    {
+      tokenHash,
+      expiresAt,
+      updatedAt: new Date(),
+      userId: result.user.id,
+    },
+  );
+
+  return { token: rawToken, user: result.user };
+}
+
+/**
+ * Validates a reset token and sets the new password.
+ * On success, revokes all sessions and clears the token.
+ * Throws on invalid/expired token or validation errors.
+ */
+export async function resetPasswordWithToken(token, newPassword) {
+  const normalizedPassword = String(newPassword || '').trim();
+
+  if (!token) {
+    throw new Error('Reset token is required.');
+  }
+
+  if (!normalizedPassword) {
+    throw new Error('New password is required.');
+  }
+
+  if (normalizedPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+  }
+
+  // Find all users with a non-null reset token (there should be at most one matching)
+  // We can't query by token directly because it's hashed, so we scan non-null tokens
+  const rows = await queryAll(
+    `SELECT id, password_reset_token, password_reset_expires_at
+       FROM member_users
+      WHERE password_reset_token IS NOT NULL
+        AND password_reset_expires_at > :now`,
+    { now: new Date() },
+  );
+
+  let matchedUserId = null;
+
+  for (const row of rows) {
+    if (verifyPassword(token, row.password_reset_token)) {
+      matchedUserId = Number(row.id);
+      break;
+    }
+  }
+
+  if (!matchedUserId) {
+    throw new Error('Invalid or expired reset link. Please request a new one.');
+  }
+
+  await execute(
+    `UPDATE member_users
+        SET password_hash = :passwordHash,
+            password_reset_token = NULL,
+            password_reset_expires_at = NULL,
+            updated_at = :updatedAt
+      WHERE id = :userId`,
+    {
+      passwordHash: hashPassword(normalizedPassword),
+      updatedAt: new Date(),
+      userId: matchedUserId,
+    },
+  );
+
+  // Revoke all sessions for this user
+  await revokeMemberSessions(matchedUserId);
+
+  return { userId: matchedUserId };
 }
 
 export async function updateUserStripeCustomerId(userId, stripeCustomerId) {

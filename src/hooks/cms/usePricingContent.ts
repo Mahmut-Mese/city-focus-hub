@@ -9,6 +9,7 @@ import {
   toStringArray,
   usePreviewStatus,
 } from './cms-utils';
+import { listPublicPlans, type MembershipPlan } from '@/lib/member-api';
 
 function toComparisonRows(
   value: unknown,
@@ -134,6 +135,19 @@ export function usePricingPlans(planType?: PlanType) {
           return left.name.localeCompare(right.name);
         });
     },
+  });
+}
+
+/**
+ * useDbPlans — fetches membership plans directly from the DB via /api/public/plans.
+ * This is the authoritative source for plan data on pricing, checkout, and dashboard pages.
+ * Returns plans in sort_order ASC.
+ */
+export function useDbPlans() {
+  return useQuery({
+    queryKey: ['db', 'plans'],
+    queryFn: (): Promise<MembershipPlan[]> => listPublicPlans(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

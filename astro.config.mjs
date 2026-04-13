@@ -20,6 +20,9 @@ export default defineConfig({
     css: {
       postcss: './postcss.config.js',
     },
+    optimizeDeps: {
+      exclude: ['@stripe/stripe-js'],
+    },
     server: {
       proxy: {
         '/api': {
