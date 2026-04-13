@@ -1,20 +1,20 @@
 {
   "data": {
     "hero": {
-      "title": "1Your space to work, connect and focus in the heart of the City.666",
-      "subtitle": "1CoworkingHub provides flexible workspace solutions tailored for freelancers, remote teams, and entrepreneurs. Enjoy a professional address, high-speed WiFi, and a community that helps you grow.p",
+      "title": "2Your space to work, connect and focus in the heart of the City.666",
+      "subtitle": "2CoworkingHub provides flexible workspace solutions tailored for freelancers, remote teams, and entrepreneurs. Enjoy a professional address, high-speed WiFi, and a community that helps you grow.p",
       "videoUrl": "<iframe width=\"1062\" height=\"597\" src=\"https://www.youtube.com/embed/beWF_rYAesA\" title=\"What is a Coworking Space and How Does it Work?\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>",
       "primaryCtaPath": "/pricing",
       "backgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
-      "primaryCtaLabel": "Get Started1",
-      "secondaryCtaLabel": "Watch Video1"
+      "primaryCtaLabel": "Get Started2",
+      "secondaryCtaLabel": "Watch Video3"
     },
     "services": [
       {
         "link": "/pricing",
         "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
-        "title": "Coworking1",
-        "description": "Shared spaces designed for focus, creativity, and collaboration.1"
+        "title": "Coworking2",
+        "description": "Shared spaces designed for focus, creativity, and collaboration.2"
       },
       {
         "link": "/meeting-rooms",
@@ -29,39 +29,39 @@
         "description": "Build your company presence with a premium city business address."
       }
     ],
-    "emailLabel": "Email1",
-    "phoneLabel": "Phone1",
+    "emailLabel": "Email2",
+    "phoneLabel": "Phone2",
     "contactForm": {
-      "title": "Contact Us / Book a Tour1",
-      "description": "We'll get back to you within one business day.1",
-      "submitLabel": "Send Message1",
-      "namePlaceholder": "Your name1",
+      "title": "Contact Us / Book a Tour2",
+      "description": "We'll get back to you within one business day.2",
+      "submitLabel": "Send Message2",
+      "namePlaceholder": "Your name2",
       "emailPlaceholder": "you@example.com",
-      "messagePlaceholder": "Tell us all your needs1",
-      "subjectPlaceholder": "Tour request1"
+      "messagePlaceholder": "Tell us all your needs2",
+      "subjectPlaceholder": "Tour request2"
     },
-    "addressLabel": "1Address",
+    "addressLabel": "2Address",
     "featureChips": [
       {
         "icon": "Users",
-        "text": "Meeting room access1"
+        "text": "Meeting room access2"
       },
       {
         "icon": "wifi",
-        "text": "abc"
+        "text": "abc2"
       },
       {
         "icon": "Wifi",
-        "text": "High-speed internet"
+        "text": "High-speed internet2"
       }
     ],
-    "galleryTitle": "Our Space1",
+    "galleryTitle": "Our Space2",
     "testimonials": [
       {
-        "name": "John Smith1",
-        "role": "Product Lead1",
+        "name": "John Smith2",
+        "role": "Product Lead2",
         "stars": 2,
-        "content": "A calm, professional space that makes it easy to focus and meet clients."
+        "content": "2A calm, professional space that makes it easy to focus and meet clients."
       },
       {
         "name": "Michael Brown",
@@ -76,12 +76,12 @@
         "content": "Flexible terms, central location, and a community that feels welcoming."
       }
     ],
-    "visitUsTitle": "Visit Us1",
+    "visitUsTitle": "Visit Us2",
     "weekdayHours": "Mon-Fri: 8:00 AM - 8:00 PM1",
-    "weekendHours": "Sat-Sun: 10:00 AM - 4:00 PM1",
+    "weekendHours": "Sat-Sun: 10:00 AM - 4:00 PM2",
     "galleryImages": [
       {
-        "alt": "Skylight architecture1",
+        "alt": "Skylight architecture2",
         "image": "https://images.unsplash.com/photo-1473091534298-04dcbce3278c?w=1200"
       },
       {
@@ -93,32 +93,32 @@
         "image": "https://images.unsplash.com/photo-1497366858526-0766cadbe8fa?w=1200"
       }
     ],
-    "galleryKicker": "Our Space1",
+    "galleryKicker": "Our Space2",
     "aboutHighlight": {
       "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200",
-      "title": "1A City business address without the office cost",
-      "eyebrow": "1About",
+      "title": "2A City business address without the office cost",
+      "eyebrow": "2About",
       "benefits": [
-        "1Premium mailing address",
+        "2Premium mailing address",
         "Business coordinates",
         "Reception and support",
         "Member events and perks"
       ],
-      "description": "1Get all the benefits of a prestigious business address without the overhead of a physical office.",
+      "description": "2Get all the benefits of a prestigious business address without the overhead of a physical office.",
       "primaryCtaPath": "/virtual-office",
-      "primaryCtaLabel": "More Details1",
+      "primaryCtaLabel": "More Details2",
       "secondaryCtaPath": "/pricing",
-      "secondaryCtaLabel": "See Plans1"
+      "secondaryCtaLabel": "See Plans2"
     },
-    "galleryEyebrow": "Gallery1",
-    "mapButtonLabel": "View on Google Maps1",
-    "openHoursLabel": "1Open Hours",
-    "servicesKicker": "Explore our spaces1",
+    "galleryEyebrow": "Gallery2",
+    "mapButtonLabel": "View on Google Maps2",
+    "openHoursLabel": "1Open Hours 2",
+    "servicesKicker": "Explore our spaces2",
     "whyChooseItems": [
       {
         "icon": "LayoutGrid",
-        "title": "Flexible Workstations1",
-        "description": "Choose hot desks, dedicated desks, or private spaces as you grow."
+        "title": "Flexible Workstations2",
+        "description": "Choose hot desks, dedicated desks, or private spaces as you grow.2"
       },
       {
         "icon": "CalendarDays",
@@ -131,12 +131,12 @@
         "description": "Front desk support, mail handling, and day-to-day assistance."
       }
     ],
-    "whyChooseTitle": "Why Choose CoworkingHub?1",
-    "servicesEyebrow": "Services1",
+    "whyChooseTitle": "Why Choose CoworkingHub?2",
+    "servicesEyebrow": "Services2",
     "whyChooseKicker": "Built for teams",
     "whyChooseEyebrow": "Features",
-    "testimonialsTitle": "What Our Members Say1",
-    "testimonialsKicker": "Member reviews1",
-    "testimonialsEyebrow": "Testimonials1"
+    "testimonialsTitle": "What Our Members Say2",
+    "testimonialsKicker": "Member reviews2",
+    "testimonialsEyebrow": "Testimonials2"
   }
 }

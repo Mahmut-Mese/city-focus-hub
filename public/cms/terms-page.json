@@ -1,39 +1,39 @@
 {
   "data": {
-    "heroTitle": "Terms & Conditions",
-    "heroSubtitle": "The rules, responsibilities, and legal terms for using our website and services.",
-    "effectiveDateLabel": "Effective date",
-    "effectiveDateValue": "February 28, 2026",
-    "introText": "These Terms & Conditions govern your access to our website and any services, memberships, bookings, or workspace facilities provided by CoworkingHub.",
+    "heroTitle": "2Terms & Conditions",
+    "heroSubtitle": "2The rules, responsibilities, and legal terms for using our website and services.",
+    "effectiveDateLabel": "2Effective date",
+    "effectiveDateValue": "2February 28, 2026",
+    "introText": "2These Terms & Conditions govern your access to our website and any services, memberships, bookings, or workspace facilities provided by CoworkingHub.",
     "sections": [
       {
-        "id": 46,
-        "title": "Use of the Website",
-        "body": "You agree to use the website only for lawful purposes and in a way that does not infringe the rights of others or restrict their use of the site.\n\nWe may suspend or restrict access if we believe misuse has occurred."
+        "id": 66,
+        "title": "2Use of the Website",
+        "body": "2You agree to use the website only for lawful purposes and in a way that does not infringe the rights of others or restrict their use of the site.\n\nWe may suspend or restrict access if we believe misuse has occurred."
       },
       {
-        "id": 47,
+        "id": 67,
         "title": "Bookings and Memberships",
         "body": "Meeting room bookings, memberships, and workspace services are subject to availability, confirmation, and any separate commercial agreement or booking terms we provide.\n\nPricing, availability, and service scope may change from time to time."
       },
       {
-        "id": 48,
+        "id": 68,
         "title": "Payments and Cancellations",
         "body": "Where payments apply, you agree to pay the applicable fees for booked services or memberships. Cancellation, refund, and renewal rules may depend on the service purchased and any agreement accepted at the time of purchase."
       },
       {
-        "id": 49,
+        "id": 69,
         "title": "Intellectual Property",
         "body": "All content on this website, including text, branding, graphics, and design elements, is owned by or licensed to CoworkingHub unless otherwise stated.\n\nYou may not reproduce or redistribute website content without prior written permission."
       },
       {
-        "id": 50,
+        "id": 70,
         "title": "Liability",
         "body": "To the maximum extent permitted by law, we are not liable for indirect, incidental, or consequential losses arising from the use of the website or services.\n\nNothing in these terms excludes liability that cannot be excluded under applicable law."
       }
     ],
-    "contactTitle": "Need clarification on the terms?",
-    "contactBody": "If you have questions before booking or signing up, contact our team and we can walk you through the relevant terms.",
+    "contactTitle": "2Need clarification on the terms?",
+    "contactBody": "2If you have questions before booking or signing up, contact our team and we can walk you through the relevant terms.",
     "contactButtonLabel": "Contact Us"
   }
 }

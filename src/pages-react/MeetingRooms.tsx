@@ -122,13 +122,6 @@ export default function MeetingRooms() {
 
       <section className="section-padding bg-white">
         <div className="container-custom">
-          {(content.roomsTitle || content.roomsSubtitle) && (
-            <div className="mb-12 text-center md:mb-14">
-              <h2 className="mb-4 font-sans text-3xl leading-tight md:text-4xl">{content.roomsTitle}</h2>
-              <p className="text-lg text-black/55">{content.roomsSubtitle}</p>
-            </div>
-          )}
-
           <div className="space-y-12">
             {rooms.map((room) => {
               const isExpanded = expandedRoomId === room.id;

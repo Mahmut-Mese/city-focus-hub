@@ -1,22 +1,22 @@
 {
   "data": {
-    "heroTitle": "About Coworking Hub1",
-    "heroSubtitle": "We're on a mission to create inspiring workspaces where innovation thrives and communities grow.1",
+    "heroTitle": "About Coworking Hub2",
+    "heroSubtitle": "We're on a mission to create inspiring workspaces where innovation thrives and communities grow.2",
     "heroBackgroundImage": {
-      "url": "http://localhost:3001/uploads/1772652811637-4f6d98ad-9e44-40da-ae31-60414152f92f.svg"
+      "url": "http://localhost:3001/uploads/1776116650935-0b2e7c4d-756a-4073-ae33-d0353fb93562.jpeg"
     },
-    "storyTitle": "Our Story1",
+    "storyTitle": "Our Story2",
     "storyParagraphs": [
       {
-        "id": 255,
+        "id": 380,
         "text": "1111"
       },
       {
-        "id": 256,
+        "id": 381,
         "text": "sss"
       },
       {
-        "id": 257,
+        "id": 382,
         "text": ""
       }
     ],
@@ -26,19 +26,19 @@
     "whyChooseTitle": "Why Choose Us22",
     "whyChooseItems": [
       {
-        "id": 28,
+        "id": 40,
         "icon": "MapPin",
         "title": "Prime Location2",
         "description": "Situated in Central London (EC3V), offering unparalleled access to the City's business district and transport links.222"
       },
       {
-        "id": 29,
+        "id": 41,
         "icon": "CalendarDays222",
         "title": "Flexible Terms2",
         "description": "No long-term commitments required. Choose from daily, weekly, or monthly memberships that adapt to your needs.22"
       },
       {
-        "id": 30,
+        "id": 42,
         "icon": "HeadphonesIcon",
         "title": "Professional Support",
         "description": "Access business support services, mail handling, and professional reception services to enhance your operations."
@@ -50,25 +50,25 @@
     },
     "amenities": [
       {
-        "id": 37,
+        "id": 53,
         "icon": "Wifi",
         "title": "High-Speed Internet22",
         "description": "222Gigabit fiber connection throughout the space"
       },
       {
-        "id": 38,
+        "id": 54,
         "icon": "Users",
         "title": "Modern Meeting Rooms22",
         "description": "State-of-the-art conference facilities"
       },
       {
-        "id": 39,
+        "id": 55,
         "icon": "Coffee",
         "title": "Kitchen & Breakout Areas",
         "description": "Fully equipped kitchen and relaxation zones"
       },
       {
-        "id": 40,
+        "id": 56,
         "icon": "Printer",
         "title": "Print & Scan Facilities",
         "description": "Professional printing and scanning services"

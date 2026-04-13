@@ -1,6 +1,28 @@
 {
   "data": [
     {
+      "id": 2,
+      "documentId": "d4ef8e1b-3d3a-4693-bfcf-a10a329d18bd",
+      "title": "2How Flexible Workspaces Help You Stay Productive",
+      "slug": "2how-flexible-workspaces-help-you-stay-productive",
+      "excerpt": "2Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
+      "content": "2Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
+      "contentImages": [],
+      "proTipTitle": "2Key takeaway",
+      "proTipText": "2Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
+      "category": "2Productivity",
+      "publishedDate": "2026-04-13",
+      "readTime": "25 min",
+      "author": "2Sarah Johnson",
+      "tags": [
+        "Productivity",
+        "Remote Work",
+        "Workspace"
+      ],
+      "featured": false,
+      "coverImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600"
+    },
+    {
       "id": 6,
       "documentId": "de6061b8-67eb-46ca-a8c2-f89e6182dc8d",
       "title": "Building Community in Your Workspace23",
@@ -93,28 +115,6 @@
       ],
       "featured": false,
       "coverImage": "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600"
-    },
-    {
-      "id": 2,
-      "documentId": "d4ef8e1b-3d3a-4693-bfcf-a10a329d18bd",
-      "title": "How Flexible Workspaces Help You Stay Productive",
-      "slug": "how-flexible-workspaces-help-you-stay-productive",
-      "excerpt": "Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
-      "content": "Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
-      "contentImages": [],
-      "proTipTitle": "Key takeaway",
-      "proTipText": "Discover how modern coworking spaces are designed to boost your focus and creativity while maintaining work-life balance.",
-      "category": "Productivity",
-      "publishedDate": "2026-03-04",
-      "readTime": "5 min",
-      "author": "Sarah Johnson",
-      "tags": [
-        "Productivity",
-        "Remote Work",
-        "Workspace"
-      ],
-      "featured": false,
-      "coverImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600"
     }
   ]
 }

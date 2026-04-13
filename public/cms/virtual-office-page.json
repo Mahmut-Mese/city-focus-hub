@@ -1,22 +1,22 @@
 {
   "data": {
-    "ctaTitle": "Get Any Coworking Services From us Now",
-    "heroTitle": "Office Space",
-    "resultText": "Our flexible office solutions eliminate these pain points. You get a premium workspace without the traditional overhead, with month-to-month flexibility and all-inclusive pricing. Our spaces have helped hundreds of businesses establish a professional presence while maintaining the agility they need to grow.",
+    "ctaTitle": "2Get Any Coworking Services From us Now",
+    "heroTitle": "2Office Space",
+    "resultText": "2Our flexible office solutions eliminate these pain points. You get a premium workspace without the traditional overhead, with month-to-month flexibility and all-inclusive pricing. Our spaces have helped hundreds of businesses establish a professional presence while maintaining the agility they need to grow.",
     "contactForm": {
-      "title": "Contact Us",
-      "submitLabel": "Send Message",
-      "namePlaceholder": "Your Name",
-      "emailPlaceholder": "Email",
-      "messagePlaceholder": "Message"
+      "title": "2Contact Us",
+      "submitLabel": "2Send Message",
+      "namePlaceholder": "2Your Name",
+      "emailPlaceholder": "2Email",
+      "messagePlaceholder": "2Message"
     },
-    "resultTitle": "Final Result",
-    "heroSubtitle": "Premium private offices and virtual office solutions",
-    "overviewText": "Our private office spaces are designed for teams who need a dedicated, professional environment. Each office comes fully furnished with ergonomic furniture, high-speed internet, and access to all common amenities. Whether you're a growing startup or an established company looking for a satellite office, we have solutions that scale with your needs.",
+    "resultTitle": "2Final Result",
+    "heroSubtitle": "2Premium private offices and virtual office solutions",
+    "overviewText": "2Our private office spaces are designed for teams who need a dedicated, professional environment. Each office comes fully furnished with ergonomic furniture, high-speed internet, and access to all common amenities. Whether you're a growing startup or an established company looking for a satellite office, we have solutions that scale with your needs.",
     "featuredImage": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200",
     "galleryImages": [
       {
-        "alt": "Office interior",
+        "alt": "2Office interior",
         "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600"
       },
       {
@@ -24,24 +24,24 @@
         "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600"
       }
     ],
-    "overviewTitle": "Project Overview",
-    "challengeIntro": "Many businesses face challenges when it comes to workspace decisions:",
+    "overviewTitle": "2Project Overview",
+    "challengeIntro": "2Many businesses face challenges when it comes to workspace decisions:",
     "challengeItems": [
-      "High upfront costs for traditional office leases",
+      "2High upfront costs for traditional office leases",
       "Long-term commitments that don't fit scaling needs",
       "Managing office maintenance and utilities",
       "Finding the right location for clients and team"
     ],
-    "challengeTitle": "Challenge of This Project",
-    "ctaButtonLabel": "Contact Us",
-    "ctaDescription": "Contact us today to find your perfect workspace solution.",
-    "projectDateLabel": "Date",
-    "projectDateValue": "January 2026",
-    "projectInfoTitle": "Project Info",
+    "challengeTitle": "2Challenge of This Project",
+    "ctaButtonLabel": "2Contact Us",
+    "ctaDescription": "2Contact us today to find your perfect workspace solution.",
+    "projectDateLabel": "2Date",
+    "projectDateValue": "2January 2026",
+    "projectInfoTitle": "2Project Info",
     "heroBackgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
-    "projectWebsiteLabel": "Website",
-    "projectWebsiteValue": "coworkinghub.com",
-    "projectCategoryLabel": "Categories",
-    "projectCategoryValue": "Private Office, Virtual Office"
+    "projectWebsiteLabel": "2Website",
+    "projectWebsiteValue": "2coworkinghub.com",
+    "projectCategoryLabel": "2Categories",
+    "projectCategoryValue": "2Private Office, Virtual Office"
   }
 }

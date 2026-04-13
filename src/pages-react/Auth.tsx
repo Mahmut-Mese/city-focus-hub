@@ -123,7 +123,6 @@ export default function Auth() {
             <div className="mt-8 space-y-4">
               {[
                 'Open your member dashboard after sign in',
-                'Create a frontend-only account in seconds',
                 'Log out from the navbar or dashboard at any time',
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 text-sm text-white/80">

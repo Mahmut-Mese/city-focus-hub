@@ -1,44 +1,21 @@
 {
   "data": [
     {
-      "id": 1,
-      "documentId": "smart-office",
-      "name": "Smart Office",
-      "slug": "smart-office",
-      "planType": "coworking",
-      "price": 39,
-      "period": "month",
-      "description": "Ideal for remote workers who need a dedicated desk.",
-      "features": [
-        "Dedicated desk access",
-        "High-speed Wi-Fi",
-        "10 hours meeting room/month",
-        "Mail handling"
-      ],
+      "id": 10,
+      "documentId": "00f60aca-3dcf-4919-a726-ec8758171ed4",
+      "name": "2Flex",
+      "slug": "2flex",
+      "planType": "meeting-room",
+      "price": 149,
+      "period": "2month",
+      "description": "2Flex access plan",
+      "features": [],
       "isPopular": true,
-      "sortOrder": 1
+      "sortOrder": 5
     },
     {
       "id": 2,
-      "documentId": "full-space",
-      "name": "Full Space",
-      "slug": "full-space",
-      "planType": "coworking",
-      "price": 59,
-      "period": "month",
-      "description": "Complete access to all amenities and private office.",
-      "features": [
-        "Private office access",
-        "High-speed Wi-Fi",
-        "Unlimited meeting rooms",
-        "24/7 access"
-      ],
-      "isPopular": false,
-      "sortOrder": 2
-    },
-    {
-      "id": 3,
-      "documentId": "lounge1",
+      "documentId": "8e3bfc00-26ac-4acc-9b0d-051cf2ee872b",
       "name": "Lounge1",
       "slug": "lounge1",
       "planType": "coworking",
@@ -52,61 +29,71 @@
         "Community events access"
       ],
       "isPopular": false,
-      "sortOrder": 3
+      "sortOrder": 2
     },
     {
-      "id": 4,
-      "documentId": "virtual-office",
-      "name": "Virtual Office",
-      "slug": "virtual-office",
-      "planType": "coworking",
-      "price": 49,
-      "period": "month",
-      "description": "Perfect for remote teams needing a business address.",
+      "id": 12,
+      "documentId": "b562a4d8-3df1-409c-86ee-234bfb1d8f02",
+      "name": "Dedicated1",
+      "slug": "dedicated1",
+      "planType": "meeting-room",
+      "price": 299,
+      "period": "222",
+      "description": "Dedicated access plan2",
       "features": [
-        "Business address",
-        "Mail forwarding",
-        "Meeting room access",
-        "Professional phone service"
+        "22222"
       ],
+      "isPopular": false,
+      "sortOrder": 1
+    },
+    {
+      "id": 8,
+      "documentId": "400f5fb2-7e66-4812-8760-29f14dfff020",
+      "name": "Day Pass",
+      "slug": "day-pass",
+      "planType": "meeting-room",
+      "price": 18,
+      "period": "day",
+      "description": "Day Pass access plan",
+      "features": [],
       "isPopular": false,
       "sortOrder": 4
     },
     {
-      "id": 5,
-      "documentId": "hot-desk",
-      "name": "Hot Desk",
-      "slug": "hot-desk",
-      "planType": "coworking",
-      "price": 29,
-      "period": "month",
-      "description": "Flexible hot desk access when you need it.",
-      "features": [
-        "Hot desk access",
-        "High-speed Wi-Fi",
-        "Meeting room discount",
-        "Community access"
-      ],
-      "isPopular": false,
-      "sortOrder": 5
-    },
-    {
       "id": 6,
-      "documentId": "dedicated-desk",
-      "name": "Dedicated Desk",
-      "slug": "dedicated-desk",
+      "documentId": "88198228-e0be-4290-a718-2be1e76630d7",
+      "name": "Full Space",
+      "slug": "full-space",
       "planType": "coworking",
-      "price": 69,
+      "price": 59,
       "period": "month",
-      "description": "Your own dedicated desk for maximum productivity.",
+      "description": "Complete access to all amenities and private office.",
       "features": [
-        "Dedicated desk access",
+        "Private office access",
         "High-speed Wi-Fi",
         "Unlimited meeting rooms",
         "24/7 access"
       ],
       "isPopular": false,
-      "sortOrder": 6
+      "sortOrder": 3
+    },
+    {
+      "id": 4,
+      "documentId": "f857d494-c7e6-47c4-a0f1-698c50814ce0",
+      "name": "Smart Office",
+      "slug": "smart-office",
+      "planType": "coworking",
+      "price": 39,
+      "period": "month",
+      "description": "Ideal for remote workers who need a dedicated desk.",
+      "features": [
+        "Dedicated desk access",
+        "High-speed Wi-Fi",
+        "10 hours meeting room/month",
+        "Mail handling"
+      ],
+      "isPopular": true,
+      "sortOrder": 2
     }
   ]
 }

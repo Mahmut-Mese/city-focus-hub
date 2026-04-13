@@ -246,6 +246,7 @@ function mapHomepageContent(raw: Record<string, unknown>): SiteSettingsContent['
     weekdayHours: getString(raw.weekdayHours, fallback.weekdayHours),
     weekendHours: getString(raw.weekendHours, fallback.weekendHours),
     mapButtonLabel: getString(raw.mapButtonLabel, fallback.mapButtonLabel),
+    mapUrl: getString(raw.mapUrl, fallback.mapUrl),
   };
 }
 

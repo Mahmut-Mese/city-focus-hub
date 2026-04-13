@@ -1,39 +1,39 @@
 {
   "data": {
-    "siteName": "CoworkingHub1",
-    "tagline": "1Your space to work, connect and focus in the heart of the City.",
-    "contactEmail": "hello@coworking.com",
-    "contactPhone": "+1 (555) 013-02491",
-    "address": "142 Market Street, Suite 200, City Center",
-    "defaultSeoTitle": "CoworkingHub1",
-    "defaultSeoDescription": "Your space to work, connect and focus in the heart of the City.1",
+    "siteName": "2CoworkingHub2",
+    "tagline": "2Your space to work, connect and focus in the heart of the City.",
+    "contactEmail": "2hello@coworking.com",
+    "contactPhone": "2+1 (555) 013-024912",
+    "address": "2142 Market Street, Suite 200, City Center",
+    "defaultSeoTitle": "2CoworkingHub",
+    "defaultSeoDescription": "2Your space to work, connect and focus in the heart of the City.",
     "navigation": {
       "id": 2,
-      "ctaLabel": "Book a Tour1",
+      "ctaLabel": "2Book a Tour",
       "ctaPath": "/contact",
       "links": [
         {
-          "id": 257,
-          "name": "Home1",
+          "id": 289,
+          "name": "2Home",
           "path": "/"
         },
         {
-          "id": 258,
+          "id": 290,
           "name": "Memberships",
           "path": "/pricing"
         },
         {
-          "id": 259,
+          "id": 291,
           "name": "Meeting Room",
           "path": "/meeting-rooms"
         },
         {
-          "id": 260,
+          "id": 292,
           "name": "Private Office",
           "path": "/virtual-office"
         },
         {
-          "id": 261,
+          "id": 293,
           "name": "Contact",
           "path": "/contact"
         }
@@ -41,66 +41,66 @@
     },
     "footer": {
       "id": 2,
-      "description": "Flexible coworking spaces in the heart of the city built for focus, meetings, and meaningful connections.1",
-      "contactTitle": "Contact1",
-      "copyright": "© 2026 Coworking Hub. All rights reserved.1",
+      "description": "2Flexible coworking spaces in the heart of the city built for focus, meetings, and meaningful connections.",
+      "contactTitle": "2Contact",
+      "copyright": "© 2026 Coworking Hub. All rights reserved.",
       "serviceLinks": [
         {
-          "id": 262,
-          "name": "Memberships1",
+          "id": 294,
+          "name": "2Memberships",
           "path": "/pricing"
         },
         {
-          "id": 263,
+          "id": 295,
           "name": "Meeting Room1",
           "path": "/meeting-rooms"
         },
         {
-          "id": 264,
+          "id": 296,
           "name": "Virtual Office1",
           "path": "/virtual-office"
         },
         {
-          "id": 265,
+          "id": 297,
           "name": "Private Office1",
           "path": "/virtual-office"
         }
       ],
       "aboutLinks": [
         {
-          "id": 266,
-          "name": "1About Us",
+          "id": 298,
+          "name": "2About Us",
           "path": "/about"
         },
         {
-          "id": 267,
+          "id": 299,
           "name": "1Our Space",
           "path": "/"
         },
         {
-          "id": 268,
+          "id": 300,
           "name": "Blog",
           "path": "/blog"
         },
         {
-          "id": 269,
+          "id": 301,
           "name": "FAQ",
           "path": "/faq"
         },
         {
-          "id": 270,
+          "id": 302,
           "name": "Contact",
           "path": "/contact"
         }
       ],
       "legalLinks": [
         {
-          "id": 271,
-          "name": "Privacy Policy1",
+          "id": 303,
+          "name": "2Privacy Policy",
           "path": "/privacy"
         },
         {
-          "id": 272,
+          "id": 304,
           "name": "Terms1",
           "path": "/terms"
         }
@@ -108,25 +108,25 @@
     },
     "socialLinks": [
       {
-        "id": 65,
-        "label": "Facebook1",
+        "id": 73,
+        "label": "2Facebook",
         "href": "#",
         "icon": "Facebook"
       },
       {
-        "id": 66,
+        "id": 74,
         "label": "Twitter",
         "href": "#",
         "icon": "Twitter"
       },
       {
-        "id": 67,
+        "id": 75,
         "label": "Instagram",
         "href": "#",
         "icon": "Instagram"
       },
       {
-        "id": 68,
+        "id": 76,
         "label": "LinkedIn",
         "href": "#",
         "icon": "Linkedin"

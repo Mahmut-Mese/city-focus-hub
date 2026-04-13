@@ -1,39 +1,39 @@
 {
   "data": {
-    "heroTitle": "Privacy Policy",
-    "heroSubtitle": "How we collect, use, and protect your information across our website and coworking services.",
-    "effectiveDateLabel": "Effective date",
-    "effectiveDateValue": "February 28, 2026",
-    "introText": "This Privacy Policy explains how CoworkingHub collects, uses, stores, and shares personal information when you visit our website, contact us, or use our workspace services.",
+    "heroTitle": "2Privacy Policy",
+    "heroSubtitle": "2How we collect, use, and protect your information across our website and coworking services.",
+    "effectiveDateLabel": "2Effective date",
+    "effectiveDateValue": "2February 28, 2026",
+    "introText": "2This Privacy Policy explains how CoworkingHub collects, uses, stores, and shares personal information when you visit our website, contact us, or use our workspace services.",
     "sections": [
       {
-        "id": 36,
-        "title": "Information We Collect",
-        "body": "We may collect information you provide directly, such as your name, email address, phone number, company details, billing information, and any message you send through our forms.\n\nWe may also collect technical data such as IP address, browser type, device information, pages viewed, and referral sources."
+        "id": 56,
+        "title": "2Information We Collect",
+        "body": "2We may collect information you provide directly, such as your name, email address, phone number, company details, billing information, and any message you send through our forms.\n\nWe may also collect technical data such as IP address, browser type, device information, pages viewed, and referral sources."
       },
       {
-        "id": 37,
+        "id": 57,
         "title": "How We Use Your Information",
         "body": "We use your information to respond to enquiries, manage bookings, provide memberships and related services, send operational updates, improve the website, and comply with legal obligations.\n\nWe do not sell your personal information."
       },
       {
-        "id": 38,
+        "id": 58,
         "title": "Sharing and Service Providers",
         "body": "We may share information with trusted service providers who help us operate the website, manage payments, host infrastructure, send communications, or support business operations.\n\nThese providers may only use your information for the services they perform on our behalf."
       },
       {
-        "id": 39,
+        "id": 59,
         "title": "Data Retention and Security",
         "body": "We retain personal information only for as long as necessary for the purposes described in this policy, including legal, accounting, or operational requirements.\n\nWe use reasonable administrative, technical, and organisational measures to protect information against unauthorised access, disclosure, or loss."
       },
       {
-        "id": 40,
+        "id": 60,
         "title": "Your Rights",
         "body": "Depending on your location, you may have rights to request access to your data, ask for corrections, request deletion, object to certain processing, or request a copy of your information.\n\nTo exercise these rights, contact us using the details on this page."
       }
     ],
-    "contactTitle": "Questions about privacy?",
-    "contactBody": "If you need more information about how your data is used, contact our team and we will respond as soon as possible.",
-    "contactButtonLabel": "Contact Us"
+    "contactTitle": "2Questions about privacy?",
+    "contactBody": "2If you need more information about how your data is used, contact our team and we will respond as soon as possible.",
+    "contactButtonLabel": "2Contact Us"
   }
 }

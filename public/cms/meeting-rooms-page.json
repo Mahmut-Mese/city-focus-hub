@@ -3,8 +3,8 @@
     "amenities": [
       {
         "icon": "Wifi",
-        "title": "Fast Wi-Fi",
-        "description": "Gigabit internet for seamless work"
+        "title": "2Fast Wi-Fi",
+        "description": "2Gigabit internet for seamless work"
       },
       {
         "icon": "Coffee",
@@ -32,18 +32,18 @@
         "description": "Backup power & redundant systems"
       }
     ],
-    "heroTitle": "Meeting Rooms",
-    "plansTitle": "Flexible plans, monochrome clarity.",
-    "roomsTitle": "",
-    "bookNowLabel": "Book now",
-    "heroSubtitle": "Professional spaces designed for productive meetings",
-    "popularLabel": "Most popular",
-    "plansSubtitle": "Choose the access that works for you",
-    "readMoreLabel": "Read more",
-    "roomsSubtitle": "",
-    "amenitiesTitle": "Everything you need to stay in flow.",
-    "getStartedLabel": "Get Started",
-    "amenitiesSubtitle": "Premium amenities included with every booking",
+    "heroTitle": "2Meeting Rooms",
+    "plansTitle": "2Flexible plans, monochrome clarity.",
+    "roomsTitle": "222",
+    "bookNowLabel": "2Book now",
+    "heroSubtitle": "2Professional spaces designed for productive meetings",
+    "popularLabel": "2Most popular",
+    "plansSubtitle": "2Choose the access that works for you",
+    "readMoreLabel": "2Read more",
+    "roomsSubtitle": "222222",
+    "amenitiesTitle": "2Everything you need to stay in flow.",
+    "getStartedLabel": "2Get Started",
+    "amenitiesSubtitle": "2Premium amenities included with every booking",
     "heroBackgroundImage": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1920"
   }
 }

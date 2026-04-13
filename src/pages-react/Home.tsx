@@ -505,8 +505,14 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" className="mt-6 h-8 rounded-full px-4 text-[11px] border-white/20 text-white bg-transparent hover:bg-white/10">
-                {content.mapButtonLabel}
+              <Button 
+                variant="outline" 
+                className="mt-6 h-8 rounded-full px-4 text-[11px] border-white/20 text-white bg-transparent hover:bg-white/10"
+                asChild
+              >
+                <a href={content.mapUrl} target="_blank" rel="noopener noreferrer">
+                  {content.mapButtonLabel}
+                </a>
               </Button>
             </div>
           </div>

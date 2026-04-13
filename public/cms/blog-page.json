@@ -1,28 +1,28 @@
 {
   "data": {
-    "heroTitle": "News, guides & workspace insights1",
-    "heroSubtitle": "Stay updated with the latest trends in coworking and remote work1",
-    "noResultsText": "No articles found matching your criteria.1",
-    "categoriesTitle": "Categories1",
-    "detailBackLabel": "Back to Blog1",
-    "popularTagsTitle": "Popular Tags1",
-    "quickSearchTitle": "Quick Search1",
-    "recentPostsTitle": "Recent Posts1",
+    "heroTitle": "2News, guides & workspace insights",
+    "heroSubtitle": "2Stay updated with the latest trends in coworking and remote work",
+    "noResultsText": "2No articles found matching your criteria.",
+    "categoriesTitle": "2Categories",
+    "detailBackLabel": "2Back to Blog",
+    "popularTagsTitle": "2Popular Tags",
+    "quickSearchTitle": "2Quick Search",
+    "recentPostsTitle": "2Recent Posts",
     "detailCommentForm": {
-      "title": "Post a comment1",
-      "submitLabel": "Post Comment1",
-      "namePlaceholder": "Name1",
-      "emailPlaceholder": "1Email",
-      "messagePlaceholder": "Comment1"
+      "title": "2Post a comment",
+      "submitLabel": "2Post Comment",
+      "namePlaceholder": "2Name",
+      "emailPlaceholder": "2Email",
+      "messagePlaceholder": "2Comment"
     },
-    "detailSearchTitle": "Search1",
+    "detailSearchTitle": "2Search",
     "relatedWorkspaces": [
       {
         "id": "private-office-1",
         "link": "/virtual-office",
         "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400",
-        "title": "Executive Suite1",
-        "category": "Private Office"
+        "title": "2Executive Suite",
+        "category": "2Private Office"
       },
       {
         "id": "private-office-2",
@@ -39,11 +39,11 @@
         "category": "Private Office"
       }
     ],
-    "searchPlaceholder": "Search articles...1",
+    "searchPlaceholder": "2Search articles...",
     "heroBackgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
-    "detailPopularTagsTitle": "Popular tags1",
-    "detailRecentPostsTitle": "Recent posts1",
-    "detailSearchButtonLabel": "Go1",
-    "detailRelatedWorkspacesTitle": "Related workspaces1"
+    "detailPopularTagsTitle": "2Popular tags",
+    "detailRecentPostsTitle": "2Recent posts",
+    "detailSearchButtonLabel": "2Go",
+    "detailRelatedWorkspacesTitle": "2Related workspaces"
   }
 }

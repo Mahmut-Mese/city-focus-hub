@@ -2,8 +2,8 @@
   "data": {
     "faqItems": [
       {
-        "answer": "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.",
-        "question": "Can I switch plans later?"
+        "answer": "2Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.",
+        "question": "2Can I switch plans later?"
       },
       {
         "answer": "Yes, we offer a 14-day free trial for the Smart Office plan. No credit card required to start your trial.",
@@ -14,10 +14,10 @@
         "question": "What payment methods do you accept?"
       }
     ],
-    "faqTitle": "Frequently Asked Questions",
-    "heroTitle": "Pricing",
-    "faqSubtitle": "Everything you need to know about our memberships",
-    "heroSubtitle": "Flexible plans designed to fit your needs",
+    "faqTitle": "2Frequently Asked Questions",
+    "heroTitle": "2Pricing",
+    "faqSubtitle": "2Everything you need to know about our memberships",
+    "heroSubtitle": "2Flexible plans designed to fit your needs",
     "comparisonRows": [
       {
         "values": [
@@ -139,16 +139,16 @@
         "feature": "Dedicated Support"
       }
     ],
-    "comparisonTitle": "Compare All Features",
-    "featureListTitle": "Features",
-    "recommendedLabel": "Recommend",
+    "comparisonTitle": "2Compare All Features",
+    "featureListTitle": "2Features",
+    "recommendedLabel": "2Recommend",
     "comparisonColumns": [
       "Lounge",
       "Smart Office",
       "Full Space"
     ],
-    "featureListSubtitle": "Everything in our free plan plus",
+    "featureListSubtitle": "2Everything in our free plan plus",
     "heroBackgroundImage": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920",
-    "purchaseButtonLabel": "Purchase Now"
+    "purchaseButtonLabel": "2Purchase Now"
   }
 }
