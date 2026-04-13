@@ -3,7 +3,7 @@ import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
-  content: ["./src/**/*.{astro,ts,tsx}", "./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}"],
+  content: ["./src/**/*.{astro,ts,tsx}"],
   prefix: "",
   theme: {
     container: {
@@ -24,9 +24,6 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        charcoal: "hsl(var(--charcoal))",
-        "warm-gray": "hsl(var(--warm-gray))",
-        "light-gray": "hsl(var(--light-gray))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface UseSeoOptions {
   siteName: string;
@@ -92,7 +92,43 @@ export function useSeo({
   type = 'website',
   noindex = false,
 }: UseSeoOptions) {
+  // Capture original SSG values on first mount so we can restore them on unmount.
+  const originals = useRef<{ title: string; metas: Map<string, string>; canonical: string } | null>(null);
+
   useEffect(() => {
+    // Snapshot originals once
+    if (!originals.current) {
+      const metaSelectors = [
+        'meta[name="description"]',
+        'meta[property="og:title"]',
+        'meta[property="og:description"]',
+        'meta[property="og:type"]',
+        'meta[property="og:image"]',
+        'meta[property="og:url"]',
+        'meta[property="og:site_name"]',
+        'meta[name="twitter:card"]',
+        'meta[name="twitter:title"]',
+        'meta[name="twitter:description"]',
+        'meta[name="twitter:image"]',
+        'meta[name="robots"]',
+      ] as const;
+
+      const metas = new Map<string, string>();
+      metaSelectors.forEach((sel) => {
+        const el = document.head.querySelector(sel);
+        if (el) {
+          metas.set(sel, el.getAttribute('content') ?? '');
+        }
+      });
+
+      const canonicalEl = document.head.querySelector('link[rel="canonical"]');
+      originals.current = {
+        title: document.title,
+        metas,
+        canonical: canonicalEl?.getAttribute('href') ?? '',
+      };
+    }
+
     const nextTitle = buildTitle(title, siteName);
     const nextDescription = buildDescription(description, siteName);
     const nextImage = absoluteUrl(image || '/logo.svg');
@@ -113,5 +149,20 @@ export function useSeo({
     upsertMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: nextImage });
     upsertMeta('meta[name="robots"]', { name: 'robots', content: noindex ? 'noindex, nofollow' : 'index, follow' });
     upsertLink('link[rel="canonical"]', { rel: 'canonical', href: nextUrl });
+
+    // Cleanup: restore SSG originals when the component that called useSeo unmounts
+    return () => {
+      const orig = originals.current;
+      if (!orig) return;
+      document.title = orig.title;
+      orig.metas.forEach((content, sel) => {
+        const el = document.head.querySelector(sel);
+        if (el) el.setAttribute('content', content);
+      });
+      const canonicalEl = document.head.querySelector('link[rel="canonical"]');
+      if (canonicalEl && orig.canonical) {
+        canonicalEl.setAttribute('href', orig.canonical);
+      }
+    };
   }, [description, image, noindex, siteName, title, type]);
 }

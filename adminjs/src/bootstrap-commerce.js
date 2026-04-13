@@ -331,6 +331,20 @@ async function ensureColumn(tableName, columnName, definition) {
   await sequelize.query(`ALTER TABLE \`${tableName}\` ADD COLUMN ${definition}`);
 }
 
+// P2-107: Modify an existing column's type/attributes if the column already exists.
+// Use when a migration needs to widen a column, change its default, etc.
+async function ensureColumnType(tableName, columnName, definition) {
+  assertSafeIdentifier(tableName, 'table name');
+  assertSafeIdentifier(columnName, 'column name');
+  if (!(await hasColumn(tableName, columnName))) {
+    // Column doesn't exist yet — add it instead
+    await sequelize.query(`ALTER TABLE \`${tableName}\` ADD COLUMN ${definition}`);
+    return;
+  }
+
+  await sequelize.query(`ALTER TABLE \`${tableName}\` MODIFY COLUMN ${definition}`);
+}
+
 async function ensureIndex(tableName, indexName, columnDefs) {
   assertSafeIdentifier(tableName, 'table name');
   assertSafeIdentifier(indexName, 'index name');
@@ -457,36 +471,57 @@ async function seedPlans() {
 }
 
 async function seedResources() {
-  const [rows] = await sequelize.query('SELECT COUNT(*) AS count FROM resources');
-  const count = Number(rows?.[0]?.count || 0);
-
-  if (count > 0) {
-    return;
-  }
-
   const now = new Date();
 
   for (const resource of DEFAULT_RESOURCES) {
-    await sequelize.query(
-      `INSERT INTO resources
-        (document_id, slug, type, name, description, capacity, hourly_rate_minor, active, metadata, created_at, updated_at)
-       VALUES
-        (:documentId, :slug, :type, :name, :description, :capacity, :hourlyRateMinor, 1, :metadata, :createdAt, :updatedAt)`,
-      {
-        replacements: {
-          documentId: randomUUID(),
-          slug: resource.slug,
-          type: resource.type,
-          name: resource.name,
-          description: resource.description,
-          capacity: resource.capacity,
-          hourlyRateMinor: resource.hourlyRateMinor,
-          metadata: JSON.stringify(resource.metadata),
-          createdAt: now,
-          updatedAt: now,
-        },
-      },
+    // P2-106: Upsert by slug — update if exists, insert if not (idempotent)
+    const [existing] = await sequelize.query(
+      'SELECT id FROM resources WHERE slug = :slug LIMIT 1',
+      { replacements: { slug: resource.slug } },
     );
+
+    if (existing.length > 0) {
+      await sequelize.query(
+        `UPDATE resources SET
+           type = :type, name = :name, description = :description,
+           capacity = :capacity, hourly_rate_minor = :hourlyRateMinor,
+           metadata = :metadata, updated_at = :updatedAt
+         WHERE slug = :slug`,
+        {
+          replacements: {
+            slug: resource.slug,
+            type: resource.type,
+            name: resource.name,
+            description: resource.description,
+            capacity: resource.capacity,
+            hourlyRateMinor: resource.hourlyRateMinor,
+            metadata: JSON.stringify(resource.metadata),
+            updatedAt: now,
+          },
+        },
+      );
+    } else {
+      await sequelize.query(
+        `INSERT INTO resources
+          (document_id, slug, type, name, description, capacity, hourly_rate_minor, active, metadata, created_at, updated_at)
+         VALUES
+          (:documentId, :slug, :type, :name, :description, :capacity, :hourlyRateMinor, 1, :metadata, :createdAt, :updatedAt)`,
+        {
+          replacements: {
+            documentId: randomUUID(),
+            slug: resource.slug,
+            type: resource.type,
+            name: resource.name,
+            description: resource.description,
+            capacity: resource.capacity,
+            hourlyRateMinor: resource.hourlyRateMinor,
+            metadata: JSON.stringify(resource.metadata),
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+      );
+    }
   }
 }
 

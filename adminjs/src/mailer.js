@@ -64,6 +64,24 @@ function withTimeout(promise, timeoutMs = 15000) {
   ]);
 }
 
+// P2-96: Simple retry wrapper for email sends — retries up to `maxRetries` times
+// with exponential back-off (1s, 2s, 4s). Covers transient SMTP / network failures.
+async function withRetry(fn, { maxRetries = 2, baseDelayMs = 1000 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function buildEmailSignature() {
   return {
     text: [
@@ -125,7 +143,7 @@ export async function sendContactSubmissionEmail(submission) {
   ];
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
       from: config.mail.from,
       to: config.mail.to,
@@ -144,7 +162,7 @@ export async function sendContactSubmissionEmail(submission) {
         </div>
       `,
       }),
-    );
+    ));
   } catch (error) {
     // P1-54: Log email send failures instead of silently returning
     console.error('[mailer] sendContactSubmissionEmail failed:', error?.message || error);
@@ -190,7 +208,7 @@ export async function sendContactReplyEmail({ recipientName, recipientEmail, sub
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: recipientEmail,
@@ -200,7 +218,7 @@ export async function sendContactReplyEmail({ recipientName, recipientEmail, sub
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
   } catch (error) {
     // P1-54: Log email send failures instead of silently returning
     console.error('[mailer] sendContactReplyEmail failed:', error?.message || error);
@@ -241,14 +259,14 @@ async function sendAdminNotificationCopy(subject, textBody) {
     const transporter = await getTransporter();
     if (!transporter) return;
 
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: config.mail.to,
         subject: `[Admin Copy] ${subject}`,
         text: textBody,
       }),
-    );
+    ));
   } catch (error) {
     console.error('[mailer] sendAdminNotificationCopy failed:', error?.message || error);
   }
@@ -314,7 +332,7 @@ export async function sendBookingConfirmationEmail(booking) {
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: booking.recipientEmail,
@@ -323,7 +341,7 @@ export async function sendBookingConfirmationEmail(booking) {
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
 
     // Send admin notification copy
     void sendAdminNotificationCopy(subject, `Booking confirmed for ${name} (${booking.recipientEmail}).\n\nRef: #${ref}\nResource: ${resourceName}\nFrom: ${startAt} UTC\nTo: ${endAt} UTC\nTotal: ${total}`);
@@ -393,7 +411,7 @@ export async function sendPaymentReceiptEmail(receipt) {
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: receipt.recipientEmail,
@@ -402,7 +420,7 @@ export async function sendPaymentReceiptEmail(receipt) {
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
   } catch (error) {
     console.error('[mailer] sendPaymentReceiptEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };
@@ -467,7 +485,7 @@ export async function sendMembershipActivationEmail(membership) {
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: membership.recipientEmail,
@@ -476,7 +494,7 @@ export async function sendMembershipActivationEmail(membership) {
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
 
     // Send admin notification copy
     void sendAdminNotificationCopy(subject, `New membership activated for ${name} (${membership.recipientEmail}).\n\nPlan: ${planName}\nMonthly price: ${price}/month\nNext renewal: ${renewsAt}`);
@@ -540,7 +558,7 @@ export async function sendMembershipCancellationEmail(cancellation) {
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: cancellation.recipientEmail,
@@ -549,7 +567,7 @@ export async function sendMembershipCancellationEmail(cancellation) {
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
   } catch (error) {
     console.error('[mailer] sendMembershipCancellationEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };
@@ -612,7 +630,7 @@ export async function sendRefundNotificationEmail(refund) {
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: refund.recipientEmail,
@@ -621,7 +639,7 @@ export async function sendRefundNotificationEmail(refund) {
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
   } catch (error) {
     console.error('[mailer] sendRefundNotificationEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };
@@ -688,7 +706,7 @@ export async function sendPaymentFailedEmail(failure) {
   `;
 
   try {
-    await withTimeout(
+    await withRetry(() => withTimeout(
       transporter.sendMail({
         from: config.mail.from,
         to: failure.recipientEmail,
@@ -697,7 +715,7 @@ export async function sendPaymentFailedEmail(failure) {
         html,
         attachments: signature.attachments,
       }),
-    );
+    ));
   } catch (error) {
     console.error('[mailer] sendPaymentFailedEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };
@@ -757,7 +775,7 @@ export async function sendRefundRequestedEmail(req) {
   `;
 
   try {
-    await withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments }));
+    await withRetry(() => withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments })));
   } catch (error) {
     console.error('[mailer] sendRefundRequestedEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };
@@ -816,7 +834,7 @@ export async function sendRefundApprovedEmail(req) {
   `;
 
   try {
-    await withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments }));
+    await withRetry(() => withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments })));
   } catch (error) {
     console.error('[mailer] sendRefundApprovedEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };
@@ -873,7 +891,7 @@ export async function sendRefundRejectedEmail(req) {
   `;
 
   try {
-    await withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments }));
+    await withRetry(() => withTimeout(transporter.sendMail({ from: config.mail.from, to: req.recipientEmail, subject, text, html, attachments: signature.attachments })));
   } catch (error) {
     console.error('[mailer] sendRefundRejectedEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };

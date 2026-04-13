@@ -90,6 +90,8 @@ export const config = {
     name: requireEnv('DATABASE_NAME', 'city_focus_hub_admin'),
     user: requireEnv('DATABASE_USER', 'root'),
     password: process.env.DATABASE_PASSWORD || '',
+    // P2-110: Enable SSL/TLS for DB connections when DATABASE_SSL=true
+    ssl: process.env.DATABASE_SSL === 'true',
   },
   cors: {
     allowedOrigins: parseList(process.env.FRONTEND_ORIGINS, defaultFrontendOrigins),

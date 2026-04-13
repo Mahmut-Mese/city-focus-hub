@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { loadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@stripe/stripe-js';
+import { lazyLoadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@/lib/stripe-loader';
 import { AlertCircle, ArrowLeft, Check, Clock3, LoaderCircle, X } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -161,7 +161,7 @@ function GuestBookingPaymentCard({
     setReadyCount(0);
     setElementError('');
 
-    void loadStripe(publishableKey)
+    void lazyLoadStripe(publishableKey)
       .then((stripe) => {
         if (!active) return;
 

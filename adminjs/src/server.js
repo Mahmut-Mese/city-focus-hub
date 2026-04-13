@@ -175,6 +175,9 @@ const start = async () => {
     secret: config.memberSession.secret,
     resave: false,
     saveUninitialized: false,
+    // P2-93: Rolling sessions — refresh cookie expiry on every request so
+    // active users are never silently logged out after the 7-day window.
+    rolling: true,
     cookie: {
       httpOnly: true,
       sameSite: config.memberSession.sameSite === 'none' ? 'none' : 'strict',

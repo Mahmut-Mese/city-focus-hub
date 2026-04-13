@@ -97,9 +97,10 @@ import {
 } from './services/validation.js';
 
 // Returns a positive integer ID or 0 (falsy) for missing/invalid input.
+// Used for userId, bookingId, adjustmentId, etc.
 // All callers MUST guard: if (!id) { return 400; }
 // Never passes 0 to DB queries — service layer uses WHERE id = :id which would match nothing for 0.
-function parseUserId(value) {
+function parseEntityId(value) {
   const parsed = Number.parseInt(String(value || ''), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
@@ -209,7 +210,7 @@ function memberAuthMiddleware(request, response, next) {
 }
 
 async function requireAuthenticatedMember(request, response) {
-  const userId = parseUserId(request.session?.memberUserId);
+  const userId = parseEntityId(request.session?.memberUserId);
 
   if (!userId) {
     response.status(401).json({ error: 'Authentication required.' });
@@ -244,6 +245,11 @@ function validateReturnUrl(value, label) {
 
   if (!['http:', 'https:'].includes(url.protocol)) {
     throw new Error(`${label} must use http or https.`);
+  }
+
+  // P2-140: In production, enforce HTTPS-only return URLs
+  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+    throw new Error(`${label} must use https in production.`);
   }
 
   const allowedOrigins = new Set([...config.cors.allowedOrigins, new URL(config.publicOrigin).origin]);
@@ -479,8 +485,11 @@ export function registerStripeWebhook(app) {
 }
 
 export function registerMemberPortalApi(app) {
+  // --- Auth Router: /api/member-auth/* ---
+  const authRouter = express.Router();
+
   // P0-3: CSRF token endpoint — frontend fetches this token and sends it in X-CSRF-Token header
-  app.get('/api/member-auth/csrf-token', (request, response) => {
+  authRouter.get('/csrf-token', (request, response) => {
     if (!request.session) {
       return response.status(401).json({ error: 'No active session.' });
     }
@@ -492,7 +501,7 @@ export function registerMemberPortalApi(app) {
     response.json({ csrfToken: request.session.csrfToken });
   });
 
-  app.get('/api/member-auth/session', async (request, response) => {
+  authRouter.get('/session', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -506,7 +515,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/register', authRateLimiter, validate(registerSchema), async (request, response) => {
+  authRouter.post('/register', authRateLimiter, validate(registerSchema), async (request, response) => {
     try {
       const user = await registerUser(request.body);
       await establishMemberSession(request, user.id);
@@ -516,7 +525,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/login', authRateLimiter, validate(loginSchema), async (request, response) => {
+  authRouter.post('/login', authRateLimiter, validate(loginSchema), async (request, response) => {
     try {
       const user = await authenticateUser(request.body);
       await establishMemberSession(request, user.id);
@@ -526,7 +535,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/logout', async (request, response) => {
+  authRouter.post('/logout', async (request, response) => {
     try {
       await clearMemberSession(request, response);
       response.json({ ok: true });
@@ -535,7 +544,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-auth/change-password', memberAuthMiddleware, validate(changePasswordSchema), async (request, response) => {
+  authRouter.post('/change-password', memberAuthMiddleware, validate(changePasswordSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -551,23 +560,12 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.put('/api/member-portal/profile', memberAuthMiddleware, validate(updateProfileSchema), async (request, response) => {
-    try {
-      const user = request.authenticatedUser;
+  app.use('/api/member-auth', authRouter);
 
-      const updatedUser = await updateUserProfile(user.id, {
-        name: request.body.name,
-        email: request.body.email,
-        phone: request.body.phone,
-      });
+  // --- Guest Booking Router: /api/public/meeting-rooms/* ---
+  const guestBookingRouter = express.Router();
 
-      response.json({ data: updatedUser });
-    } catch (error) {
-      response.status(400).json({ error: String(error?.message ?? error) });
-    }
-  });
-
-  app.get('/api/public/meeting-rooms/resources', validateQuery(resourceQuerySchema), async (request, response) => {
+  guestBookingRouter.get('/resources', validateQuery(resourceQuerySchema), async (request, response) => {
     try {
       const resources = await listAvailableResources({
         type: request.query.type,
@@ -589,7 +587,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/payment-intent', guestBookingRateLimiter, validate(guestBookingPaymentIntentSchema), async (request, response) => {
+  guestBookingRouter.post('/bookings/payment-intent', guestBookingRateLimiter, validate(guestBookingPaymentIntentSchema), async (request, response) => {
     try {
       const draft = await initiateGuestMeetingRoomBookingPayment({
         guestName: request.body.guestName,
@@ -607,7 +605,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/checkout-session', guestBookingRateLimiter, validate(guestBookingCheckoutSessionSchema), async (request, response) => {
+  guestBookingRouter.post('/bookings/checkout-session', guestBookingRateLimiter, validate(guestBookingCheckoutSessionSchema), async (request, response) => {
     try {
       const successUrl = validateReturnUrl(request.body.successUrl, 'Success URL');
       const cancelUrl = validateReturnUrl(request.body.cancelUrl, 'Cancel URL');
@@ -630,7 +628,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/sync-checkout-session', guestBookingRateLimiter, validate(guestBookingSyncCheckoutSchema), async (request, response) => {
+  guestBookingRouter.post('/bookings/sync-checkout-session', guestBookingRateLimiter, validate(guestBookingSyncCheckoutSchema), async (request, response) => {
     try {
       const booking = await syncGuestMeetingRoomBookingCheckout({
         guestEmail: request.body.guestEmail,
@@ -643,9 +641,9 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/:bookingId/confirm', guestBookingRateLimiter, validate(guestBookingConfirmSchema), async (request, response) => {
+  guestBookingRouter.post('/bookings/:bookingId/confirm', guestBookingRateLimiter, validate(guestBookingConfirmSchema), async (request, response) => {
     try {
-      const bookingId = parseUserId(request.params.bookingId);
+      const bookingId = parseEntityId(request.params.bookingId);
 
       if (!bookingId) {
         response.status(400).json({ error: 'Booking ID is required.' });
@@ -664,9 +662,9 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/public/meeting-rooms/bookings/:bookingId/cancel', guestBookingRateLimiter, validate(guestBookingCancelSchema), async (request, response) => {
+  guestBookingRouter.post('/bookings/:bookingId/cancel', guestBookingRateLimiter, validate(guestBookingCancelSchema), async (request, response) => {
     try {
-      const bookingId = parseUserId(request.params.bookingId);
+      const bookingId = parseEntityId(request.params.bookingId);
 
       if (!bookingId) {
         response.status(400).json({ error: 'Booking ID is required.' });
@@ -685,7 +683,12 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.get('/api/member-portal/dashboard', async (request, response) => {
+  app.use('/api/public/meeting-rooms', guestBookingRouter);
+
+  // --- Member Portal Router: /api/member-portal/* ---
+  const portalRouter = express.Router();
+
+  portalRouter.get('/dashboard', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -702,7 +705,7 @@ export function registerMemberPortalApi(app) {
   // P1-50: This endpoint is intentionally unauthenticated.
   // Resource listing (types, names, pricing, availability) is semi-public data needed by both
   // guest booking pages and authenticated member dashboards. No sensitive user data is exposed.
-  app.get('/api/member-portal/resources', validateQuery(resourceQuerySchema), async (request, response) => {
+  portalRouter.get('/resources', validateQuery(resourceQuerySchema), async (request, response) => {
     try {
       const resources = await listAvailableResources({
         type: request.query.type,
@@ -715,7 +718,23 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
+  portalRouter.put('/profile', memberAuthMiddleware, validate(updateProfileSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+
+      const updatedUser = await updateUserProfile(user.id, {
+        name: request.body.name,
+        email: request.body.email,
+        phone: request.body.phone,
+      });
+
+      response.json({ data: updatedUser });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.post('/memberships', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -726,7 +745,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/payment-draft', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
+  portalRouter.post('/memberships/payment-draft', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -737,7 +756,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/confirm-payment', memberAuthMiddleware, validate(confirmPaymentSchema), async (request, response) => {
+  portalRouter.post('/memberships/confirm-payment', memberAuthMiddleware, validate(confirmPaymentSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -748,7 +767,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/confirm-upgrade-payment', memberAuthMiddleware, validate(confirmUpgradePaymentSchema), async (request, response) => {
+  portalRouter.post('/memberships/confirm-upgrade-payment', memberAuthMiddleware, validate(confirmUpgradePaymentSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -759,7 +778,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/checkout-session', memberAuthMiddleware, validate(membershipCheckoutSessionSchema), async (request, response) => {
+  portalRouter.post('/memberships/checkout-session', memberAuthMiddleware, validate(membershipCheckoutSessionSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -784,7 +803,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
+  portalRouter.post('/memberships/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -795,7 +814,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/change-plan', memberAuthMiddleware, validate(changePlanSchema), async (request, response) => {
+  portalRouter.post('/memberships/change-plan', memberAuthMiddleware, validate(changePlanSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -814,7 +833,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/adjustments/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
+  portalRouter.post('/memberships/adjustments/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -825,7 +844,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/adjustments/:adjustmentId/cancel', async (request, response) => {
+  portalRouter.post('/memberships/adjustments/:adjustmentId/cancel', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -833,7 +852,7 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
-      const adjustmentId = parseUserId(request.params.adjustmentId);
+      const adjustmentId = parseEntityId(request.params.adjustmentId);
 
       if (!adjustmentId) {
         response.status(400).json({ error: 'Adjustment ID is required.' });
@@ -847,7 +866,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/change-plan/preview', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
+  portalRouter.post('/memberships/change-plan/preview', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -858,7 +877,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/cancel', async (request, response) => {
+  portalRouter.post('/memberships/cancel', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -873,7 +892,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/memberships/cancel-scheduled-downgrade', async (request, response) => {
+  portalRouter.post('/memberships/cancel-scheduled-downgrade', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -888,7 +907,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings', memberAuthMiddleware, validate(createBookingSchema), async (request, response) => {
+  portalRouter.post('/bookings', memberAuthMiddleware, validate(createBookingSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -908,7 +927,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/payment-intent', memberAuthMiddleware, validate(bookingPaymentIntentSchema), async (request, response) => {
+  portalRouter.post('/bookings/payment-intent', memberAuthMiddleware, validate(bookingPaymentIntentSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -928,7 +947,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/checkout-session', memberAuthMiddleware, validate(bookingCheckoutSessionSchema), async (request, response) => {
+  portalRouter.post('/bookings/checkout-session', memberAuthMiddleware, validate(bookingCheckoutSessionSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -953,7 +972,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
+  portalRouter.post('/bookings/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -964,7 +983,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/adjustments/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
+  portalRouter.post('/bookings/adjustments/sync-checkout-session', memberAuthMiddleware, validate(syncSessionSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -975,7 +994,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/adjustments/:adjustmentId/cancel', async (request, response) => {
+  portalRouter.post('/bookings/adjustments/:adjustmentId/cancel', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -983,7 +1002,7 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
-      const adjustmentId = parseUserId(request.params.adjustmentId);
+      const adjustmentId = parseEntityId(request.params.adjustmentId);
 
       if (!adjustmentId) {
         response.status(400).json({ error: 'Adjustment ID is required.' });
@@ -1001,7 +1020,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/adjustments/confirm-payment', memberAuthMiddleware, validate(confirmBookingAdjustmentPaymentSchema), async (request, response) => {
+  portalRouter.post('/bookings/adjustments/confirm-payment', memberAuthMiddleware, validate(confirmBookingAdjustmentPaymentSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
@@ -1012,7 +1031,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/:bookingId/confirm', async (request, response) => {
+  portalRouter.post('/bookings/:bookingId/confirm', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -1020,7 +1039,7 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
-      const bookingId = parseUserId(request.params.bookingId);
+      const bookingId = parseEntityId(request.params.bookingId);
       const paymentIntentId = String(request.body?.paymentIntentId || '').trim();
 
       if (!bookingId) {
@@ -1040,7 +1059,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/:bookingId/cancel', async (request, response) => {
+  portalRouter.post('/bookings/:bookingId/cancel', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -1048,7 +1067,7 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
-      const bookingId = parseUserId(request.params.bookingId);
+      const bookingId = parseEntityId(request.params.bookingId);
 
       if (!bookingId) {
         response.status(400).json({ error: 'Booking ID is required.' });
@@ -1066,7 +1085,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.post('/api/member-portal/bookings/:bookingId/cancel-and-refund', async (request, response) => {
+  portalRouter.post('/bookings/:bookingId/cancel-and-refund', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -1074,7 +1093,7 @@ export function registerMemberPortalApi(app) {
         return;
       }
 
-      const bookingId = parseUserId(request.params.bookingId);
+      const bookingId = parseEntityId(request.params.bookingId);
 
       if (!bookingId) {
         response.status(400).json({ error: 'Booking ID is required.' });
@@ -1092,11 +1111,11 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.put('/api/member-portal/bookings/:bookingId', memberAuthMiddleware, validate(updateBookingSchema), async (request, response) => {
+  portalRouter.put('/bookings/:bookingId', memberAuthMiddleware, validate(updateBookingSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
 
-      const bookingId = parseUserId(request.params.bookingId);
+      const bookingId = parseEntityId(request.params.bookingId);
 
       if (!bookingId) {
         response.status(400).json({ error: 'Booking ID is required.' });
@@ -1121,7 +1140,7 @@ export function registerMemberPortalApi(app) {
     }
   });
 
-  app.get('/api/member-portal/invoices', async (request, response) => {
+  portalRouter.get('/invoices', async (request, response) => {
     try {
       const user = await requireAuthenticatedMember(request, response);
 
@@ -1134,4 +1153,6 @@ export function registerMemberPortalApi(app) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
   });
+
+  app.use('/api/member-portal', portalRouter);
 }

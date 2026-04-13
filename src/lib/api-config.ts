@@ -1,3 +1,6 @@
+// P2-124: Validate frontend env vars at build/import time
+import './env-validation';
+
 // In dev mode, use relative URLs so requests go through the Vite proxy (see
 // astro.config.mjs) and avoid cross-origin / CORS issues.  In production the
 // env vars are typically empty so we also end up with the relative '/api' path.

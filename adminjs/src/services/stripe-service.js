@@ -157,11 +157,8 @@ export async function attachMockPaymentMethod(customerId) {
     : { id: configuredPaymentMethod };
 
   await stripe.paymentMethods.attach(paymentMethod.id, { customer: customerId }).catch((error) => {
-    // Stripe error code for already-attached payment method — more robust than string matching
-    const isAlreadyAttached =
-      error?.code === 'payment_method_already_attached' ||
-      String(error?.message || '').includes('already been attached');
-    if (!isAlreadyAttached) {
+    // Stripe error code for already-attached payment method
+    if (error?.code !== 'payment_method_already_attached') {
       throw error;
     }
   });

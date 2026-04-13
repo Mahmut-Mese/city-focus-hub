@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { loadStripe, type Stripe, type StripeElements, type StripeCardNumberElement, type StripeCardExpiryElement, type StripeCardCvcElement } from '@stripe/stripe-js';
+import { lazyLoadStripe, type Stripe, type StripeElements, type StripeCardNumberElement, type StripeCardExpiryElement, type StripeCardCvcElement } from '@/lib/stripe-loader';
 import {
   ArrowRight,
   CalendarDays,
@@ -1329,7 +1329,7 @@ function BookingPaymentPanel({
     setReadyCount(0);
     setElementError('');
 
-    void loadStripe(publishableKey)
+    void lazyLoadStripe(publishableKey)
       .then((stripe) => {
         if (!active) {
           return;
@@ -1605,7 +1605,7 @@ function MembershipPaymentPanel({
     setReadyCount(0);
     setElementError('');
 
-    void loadStripe(publishableKey)
+    void lazyLoadStripe(publishableKey)
       .then((stripe) => {
         if (!active) {
           return;
@@ -1960,7 +1960,11 @@ export default function Dashboard() {
     noindex: true,
   });
 
-  const refreshDashboard = async () => {
+  // #81/#119: Scoped dashboard refresh — only replaces the domains that changed,
+  // keeping stable object references for unchanged domains to avoid full re-render cascades.
+  type DashboardScope = 'all' | 'bookings' | 'membership' | 'invoices' | 'profile';
+
+  const refreshDashboard = async (scope: DashboardScope = 'all') => {
     if (!user) {
       return;
     }
@@ -1970,12 +1974,36 @@ export default function Dashboard() {
 
     try {
       const payload = await getMemberDashboard();
-      setDashboardData(payload);
-      setProfileForm({
-        name: payload.user.name || '',
-        email: payload.user.email || '',
-        phone: payload.user.phone || '',
+
+      setDashboardData((prev) => {
+        if (!prev || scope === 'all') {
+          return payload;
+        }
+
+        // Shallow-merge: only replace the domains indicated by `scope`,
+        // preserving previous object references for unchanged data.
+        switch (scope) {
+          case 'bookings':
+            return { ...prev, bookings: payload.bookings, resources: payload.resources, stats: payload.stats, invoices: payload.invoices };
+          case 'membership':
+            return { ...prev, membership: payload.membership, plans: payload.plans, stats: payload.stats, invoices: payload.invoices };
+          case 'invoices':
+            return { ...prev, invoices: payload.invoices };
+          case 'profile':
+            return { ...prev, user: payload.user };
+          default:
+            return payload;
+        }
       });
+
+      // Only reset profile form when profile data was refreshed
+      if (scope === 'all' || scope === 'profile') {
+        setProfileForm({
+          name: payload.user.name || '',
+          email: payload.user.email || '',
+          phone: payload.user.phone || '',
+        });
+      }
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to load dashboard.');
     } finally {
@@ -2010,7 +2038,7 @@ export default function Dashboard() {
     syncFn: (sessionId) => syncMemberMembershipCheckoutSession(sessionId),
     cancelMessage: 'Stripe checkout was canceled before the membership was created.',
     onSuccess: async () => {
-      await refreshDashboard();
+      await refreshDashboard('membership');
       skipNextSectionClear.current = true;
       navigate('/dashboard/billing');
       setSuccessMessage('Membership activated successfully.');
@@ -2035,7 +2063,7 @@ export default function Dashboard() {
       }
     },
     onSuccess: async () => {
-      await refreshDashboard();
+      await refreshDashboard('membership');
       skipNextSectionClear.current = true;
       navigate('/dashboard/billing');
       setSuccessMessage('Membership upgraded and additional payment captured successfully.');
@@ -2060,7 +2088,7 @@ export default function Dashboard() {
       }
     },
     onSuccess: async () => {
-      await refreshDashboard();
+      await refreshDashboard('bookings');
       skipNextSectionClear.current = true;
       navigate('/dashboard/bookings');
       setSuccessMessage('Booking updated and additional payment captured successfully.');
@@ -2085,7 +2113,7 @@ export default function Dashboard() {
       }
     },
     onSuccess: async () => {
-      await refreshDashboard();
+      await refreshDashboard('bookings');
       skipNextSectionClear.current = true;
       navigate('/dashboard/bookings');
       setSuccessMessage('Booking created and paid successfully.');
@@ -2249,7 +2277,7 @@ export default function Dashboard() {
         email: profileForm.email.trim(),
         phone: profileForm.phone.trim(),
       });
-      await refreshDashboard();
+      await refreshDashboard('profile');
       setIsProfileEditing(false);
       setSuccessMessage('Profile updated successfully.');
     } catch (error) {
@@ -2291,7 +2319,7 @@ export default function Dashboard() {
       });
 
       if (!paymentDraft.booking || !paymentDraft.clientSecret) {
-        await refreshDashboard();
+        await refreshDashboard('bookings');
         setIsCreateBookingOpen(false);
         skipNextSectionClear.current = true;
         navigate('/dashboard/bookings');
@@ -2325,7 +2353,7 @@ export default function Dashboard() {
         await confirmMemberBookingAdjustmentPayment(paymentIntentId, pendingBookingAdjustmentId);
         setBookingPaymentDraft(null);
         setPendingBookingAdjustmentId(null);
-        await refreshDashboard();
+        await refreshDashboard('bookings');
         skipNextSectionClear.current = true;
         navigate('/dashboard/bookings');
         setSuccessMessage('Booking updated and payment completed successfully.');
@@ -2336,7 +2364,7 @@ export default function Dashboard() {
           paymentIntentId,
         });
         setBookingPaymentDraft(null);
-        await refreshDashboard();
+        await refreshDashboard('bookings');
         skipNextSectionClear.current = true;
         navigate('/dashboard/bookings');
         setSuccessMessage('Booking created and paid successfully.');
@@ -2371,7 +2399,7 @@ export default function Dashboard() {
 
     setBookingPaymentDraft(null);
     setPendingBookingAdjustmentId(null);
-    await refreshDashboard();
+    await refreshDashboard('bookings');
   };
 
   const handleConfirmMembershipPayment = async (paymentIntentId: string) => {
@@ -2391,7 +2419,7 @@ export default function Dashboard() {
         setPendingUpgradeAdjustmentId(null);
         setPlanChangePreview(null);
         setPendingPlanSlug('');
-        await refreshDashboard();
+        await refreshDashboard('membership');
         skipNextSectionClear.current = true;
         navigate('/dashboard/billing');
         setSuccessMessage('Plan upgraded and payment completed successfully.');
@@ -2399,7 +2427,7 @@ export default function Dashboard() {
         // New membership payment confirmation
         await confirmMemberMembershipPayment(paymentIntentId);
         setMembershipPaymentDraft(null);
-        await refreshDashboard();
+        await refreshDashboard('membership');
         skipNextSectionClear.current = true;
         navigate('/dashboard/billing');
         setSuccessMessage('Membership activated successfully.');
@@ -2450,7 +2478,7 @@ export default function Dashboard() {
         return;
       }
 
-      await refreshDashboard();
+      await refreshDashboard('bookings');
       setIsEditBookingOpen(false);
 
       if (result.refundMinor > 0) {
@@ -2529,7 +2557,7 @@ export default function Dashboard() {
       }
 
       // No payment needed (downgrade scheduled / no-cost switch)
-      await refreshDashboard();
+      await refreshDashboard('membership');
       setIsPlanChangeOpen(false);
       setPlanChangePreview(null);
       setPendingPlanSlug('');
@@ -2568,7 +2596,7 @@ export default function Dashboard() {
 
     try {
       await cancelMemberMembership();
-      await refreshDashboard();
+      await refreshDashboard('membership');
       setSuccessMessage('Membership will cancel at the end of the current billing period.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to cancel membership.');
@@ -2588,7 +2616,7 @@ export default function Dashboard() {
 
     try {
       await cancelMemberScheduledDowngrade();
-      await refreshDashboard();
+      await refreshDashboard('membership');
       setSuccessMessage('Scheduled plan change has been cancelled. You will stay on your current plan.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to cancel scheduled downgrade.');
@@ -2602,7 +2630,7 @@ export default function Dashboard() {
     setSuccessMessage('');
     try {
       await cancelMemberBooking({ bookingId: booking.id });
-      await refreshDashboard();
+      await refreshDashboard('bookings');
       setSuccessMessage('Your refund request has been submitted. Our team will review it and process your refund shortly — you\'ll receive a confirmation email once approved.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to submit refund request.');

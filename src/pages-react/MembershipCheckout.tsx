@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@stripe/stripe-js';
+import { lazyLoadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@/lib/stripe-loader';
 import { AlertCircle, ArrowLeft, Check, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -76,7 +76,7 @@ function MembershipPaymentCard({
     setReadyCount(0);
     setElementError('');
 
-    void loadStripe(publishableKey)
+    void lazyLoadStripe(publishableKey)
       .then((stripe) => {
         if (!active) return;
 

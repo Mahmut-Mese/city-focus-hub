@@ -93,17 +93,17 @@ export function Navbar() {
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <Link to={navigation.ctaPath}>
               <Button className="h-8 rounded-full px-4 text-[11px] bg-black text-white hover:bg-black/90">{navigation.ctaLabel}</Button>
             </Link>
             {authButton}
           </div>
 
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             {authButton}
             <button
-              className="lg:hidden p-2"
+              className="p-2"
               onClick={() => setIsOpen(!isOpen)}
               aria-label="Toggle menu"
             >
