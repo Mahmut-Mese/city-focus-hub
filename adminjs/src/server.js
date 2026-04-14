@@ -459,10 +459,17 @@ const start = async () => {
   app.use(admin.options.rootPath, adminRouter);
 
   if (hasFrontendBuild) {
+    // Astro _astro/ assets have content hashes in filenames — cache aggressively (1 year, immutable).
+    app.use('/_astro', express.static(path.join(frontendDistDirectory, '_astro'), {
+      maxAge: '1y',
+      immutable: true,
+    }));
     app.use(express.static(frontendDistDirectory));
 
     // Astro static build: each route has its own HTML file (e.g. dist/about/index.html).
-    // Try to resolve the correct HTML file for the requested path, fall back to 404.html.
+    // Try to resolve the correct HTML file for the requested path; for React-router pages
+    // (auth, dashboard, meeting-rooms/book, pricing/checkout) walk up the path to find the
+    // nearest index.html so client-side routing works (e.g. /auth/login → dist/auth/index.html).
     app.get(/^\/(?!api(?:\/|$)|admin(?:\/|$)|uploads(?:\/|$)|admin-assets(?:\/|$)|health$).*/, (request, response) => {
       const urlPath = request.path.replace(/\/+$/, '') || '/index';
       const candidates = [
@@ -473,6 +480,18 @@ const start = async () => {
       for (const candidate of candidates) {
         if (existsSync(candidate)) {
           response.sendFile(candidate);
+          return;
+        }
+      }
+
+      // SPA fallback: walk up the directory tree to find the nearest index.html.
+      // This supports React Router sub-routes (e.g. /auth/login, /dashboard/billing).
+      const segments = urlPath.split('/').filter(Boolean);
+      while (segments.length > 0) {
+        segments.pop();
+        const parentIndex = path.join(frontendDistDirectory, ...segments, 'index.html');
+        if (existsSync(parentIndex)) {
+          response.sendFile(parentIndex);
           return;
         }
       }
