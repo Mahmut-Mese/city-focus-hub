@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { lazyLoadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@/lib/stripe-loader';
 import { AlertCircle, ArrowLeft, Check, LoaderCircle, ShieldCheck } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -253,7 +253,8 @@ function MembershipPaymentCard({
 /* ---------- Main checkout page ---------- */
 
 export default function MembershipCheckout() {
-  const { planSlug = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const planSlug = searchParams.get('plan') || '';
   const { user, isReady, isAuthenticated } = useAuth();
   const plansQuery = useDbPlans();
 

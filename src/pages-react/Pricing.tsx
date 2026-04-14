@@ -6,7 +6,7 @@ import { Check, X } from 'lucide-react';
 import { useDbPlans, usePricingPageContent } from '@/hooks/useCmsContent';
 
 function buildCheckoutPath(planSlug: string) {
-  return `/pricing/${encodeURIComponent(planSlug)}/checkout`;
+  return `/pricing/checkout?plan=${encodeURIComponent(planSlug)}`;
 }
 
 export default function Pricing() {

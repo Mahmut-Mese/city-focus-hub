@@ -12,7 +12,7 @@ export default function MembershipCheckoutApp() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/pricing/:planSlug/checkout" element={<MembershipCheckout />} />
+            <Route path="/pricing/checkout" element={<MembershipCheckout />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

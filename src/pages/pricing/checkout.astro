@@ -1,0 +1,7 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import MembershipCheckoutApp from '@/islands/MembershipCheckoutApp';
+---
+<Layout title="Checkout" description="Complete your membership purchase at City Focus Hub." hideNavigation={true} hideFooter={true}>
+  <MembershipCheckoutApp client:only="react" />
+</Layout>

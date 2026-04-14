@@ -183,7 +183,7 @@ export default function VirtualOfficeContent() {
                     </li>
                   ))}
                 </ul>
-                <a href="/pricing/virtual-office/checkout" className="mt-5 block">
+                <a href="/pricing/checkout?plan=virtual-office" className="mt-5 block">
                   <Button className="h-11 w-full rounded-xl bg-black text-sm font-semibold uppercase tracking-[0.02em] text-white hover:bg-black/90">
                     Get Started <ArrowRight size={16} className="ml-1.5" />
                   </Button>

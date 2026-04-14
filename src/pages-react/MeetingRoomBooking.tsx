@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lazyLoadStripe, type Stripe, type StripeCardCvcElement, type StripeCardExpiryElement, type StripeCardNumberElement, type StripeElements } from '@/lib/stripe-loader';
 import { AlertCircle, ArrowLeft, Check, Clock3, LoaderCircle, X } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { CmsNoData } from '@/components/shared/CmsNoData';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -438,7 +438,8 @@ function clearDraftFromStorage() {
 }
 
 export default function MeetingRoomBooking() {
-  const { roomSlug = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const roomSlug = searchParams.get('room') || '';
   const [availabilityResources, setAvailabilityResources] = useState<MemberResource[]>([]);
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [availabilityError, setAvailabilityError] = useState('');

@@ -84,6 +84,63 @@ const COLLECTION_DEFINITIONS = [
       ['isPopular'],
     ],
   },
+  {
+    name: 'db-meeting-rooms',
+    label: 'Meeting Room',
+    pluralLabel: 'Meeting Rooms (DB)',
+    icon: 'Users',
+    table: 'resources',
+    titleField: 'name',
+    kind: 'db-meeting-rooms',
+    listColumns: ['name', 'capacity', 'hourlyRate', 'active'],
+    filterFields: ['active'],
+    sortableFields: ['name', 'capacity', 'hourlyRate', 'updatedAt', 'active'],
+    editLayout: [
+      ['name', 'slug'],
+      ['capacity', 'hourlyRate'],
+      ['description'],
+      ['features'],
+      ['badges'],
+      ['image'],
+      ['active'],
+    ],
+    editableFields: ['name', 'capacity', 'hourlyRate', 'description', 'features', 'badges', 'image', 'active'],
+    createFields: ['name', 'capacity', 'hourlyRate', 'description', 'features', 'badges', 'image', 'active'],
+    showVersionTabs: false,
+    allowPublish: false,
+  },
+  {
+    name: 'db-membership-plans',
+    label: 'Coworking Plan',
+    pluralLabel: 'Coworking Plans',
+    icon: 'CreditCard',
+    table: 'membership_plans',
+    titleField: 'name',
+    kind: 'db-membership-plans',
+    listColumns: ['name', 'monthlyPrice', 'sortOrder', 'isPopular', 'active'],
+    filterFields: ['isPopular', 'active'],
+    sortableFields: ['name', 'monthlyPrice', 'sortOrder', 'isPopular', 'updatedAt', 'active'],
+    editLayout: [
+      ['name', 'slug'],
+      ['monthlyPrice', 'currency'],
+      ['intervalName', 'sortOrder'],
+      ['description'],
+      ['features'],
+      ['isPopular', 'active'],
+    ],
+    editableFields: ['name', 'monthlyPrice', 'currency', 'intervalName', 'sortOrder', 'description', 'features', 'isPopular', 'active'],
+    createFields: ['name', 'monthlyPrice', 'currency', 'intervalName', 'sortOrder', 'description', 'features', 'isPopular', 'active'],
+    selectFields: {
+      currency: [
+        { value: 'gbp', label: 'GBP' },
+      ],
+      intervalName: [
+        { value: 'month', label: 'Month' },
+      ],
+    },
+    showVersionTabs: false,
+    allowPublish: false,
+  },
 ];
 
 const COLLECTION_MAP = Object.fromEntries(
@@ -116,6 +173,10 @@ function parseJson(value, fallback) {
   return value;
 }
 
+function isVersionedDefinition(definition) {
+  return ['blog-posts', 'faq-items', 'meeting-rooms', 'pricing-plans'].includes(definition?.kind);
+}
+
 function slugify(value) {
   const normalized = String(value ?? '')
     .toLowerCase()
@@ -141,6 +202,15 @@ function getAutoSlug(definition, content) {
   }
 
   return slugify(`${definition.kind}-${randomUUID().slice(0, 8)}`);
+}
+
+function getStableSlug(definition, content) {
+  const existingSlug = slugify(content.slug);
+  if (existingSlug) {
+    return existingSlug;
+  }
+
+  return getAutoSlug(definition, content);
 }
 
 function getCurrentPublishedDate() {
@@ -306,6 +376,39 @@ function mapRowFromTable(definition, row) {
         publishedAt: row.published_at,
         updatedAt: row.updated_at,
       };
+    case 'db-meeting-rooms': {
+      const metadata = parseJson(row.metadata, {});
+      return {
+        id: row.id,
+        documentId: row.document_id,
+        name: row.name ?? '',
+        slug: row.slug ?? '',
+        description: row.description ?? '',
+        capacity: Number(row.capacity ?? 1),
+        hourlyRate: Number(row.hourly_rate_minor ?? 0) / 100,
+        image: typeof metadata.image === 'string' ? metadata.image : '',
+        features: Array.isArray(metadata.features) ? metadata.features.map(String) : [],
+        badges: Array.isArray(metadata.badges) ? metadata.badges.map(String) : [],
+        active: Boolean(row.active),
+        updatedAt: row.updated_at,
+      };
+    }
+    case 'db-membership-plans':
+      return {
+        id: row.id,
+        documentId: row.document_id,
+        name: row.name ?? '',
+        slug: row.slug ?? '',
+        description: row.description ?? '',
+        monthlyPrice: Number(row.monthly_price_minor ?? 0) / 100,
+        currency: row.currency ?? 'gbp',
+        intervalName: row.interval_name ?? 'month',
+        features: parseJson(row.features, []).map(String),
+        isPopular: Boolean(row.is_popular),
+        sortOrder: Number(row.sort_order ?? 0),
+        active: Boolean(row.active),
+        updatedAt: row.updated_at,
+      };
     default:
       return row;
   }
@@ -322,7 +425,7 @@ function mapListValue(definition, field, value) {
     return Boolean(value) ? 'Hidden' : 'Visible';
   }
 
-  if (field === 'featured' || field === 'isFeatured' || field === 'isPopular') {
+  if (field === 'featured' || field === 'isFeatured' || field === 'isPopular' || field === 'active') {
     return Boolean(value) ? 'Yes' : 'No';
   }
 
@@ -340,7 +443,9 @@ function mapListValue(definition, field, value) {
 function getAvailableFields(definition) {
   const flattened = definition.editLayout.flat();
   const seen = new Set();
-  const ordered = ['id', ...definition.listColumns, ...flattened, 'updatedAt', 'status'];
+  const ordered = isVersionedDefinition(definition)
+    ? ['id', ...definition.listColumns, ...flattened, 'updatedAt', 'status']
+    : ['id', ...definition.listColumns, ...flattened, 'updatedAt'];
 
   return ordered.filter((field) => {
     if (seen.has(field)) {
@@ -394,7 +499,7 @@ function getFilterOptions(definition, records) {
     });
   }
 
-  ['featured', 'isFeatured', 'isPopular'].forEach((field) => {
+  ['featured', 'isFeatured', 'isPopular', 'active'].forEach((field) => {
     if (definition.filterFields.includes(field)) {
       filters.push({
         field,
@@ -490,7 +595,9 @@ async function syncTextItems({ linkTable, entityId, field, items, transaction })
 
 async function loadCollectionList(definition, query = {}) {
   const rows = await selectRows(
-    `SELECT * FROM ${definition.table} ORDER BY updated_at DESC, id DESC`,
+    definition.kind === 'db-meeting-rooms'
+      ? `SELECT * FROM ${definition.table} WHERE type = 'meeting_room' ORDER BY updated_at DESC, id DESC`
+      : `SELECT * FROM ${definition.table} ORDER BY updated_at DESC, id DESC`,
   );
 
   const groups = new Map();
@@ -520,14 +627,17 @@ async function loadCollectionList(definition, query = {}) {
     featured: String(query.featured ?? '').trim(),
     isFeatured: String(query.isFeatured ?? '').trim(),
     isPopular: String(query.isPopular ?? '').trim(),
+    active: String(query.active ?? '').trim(),
   };
 
   const list = Array.from(groups.values())
     .map((groupRows) => {
       const editableRow = pickEditableRow(groupRows);
       const mapped = mapRowFromTable(definition, editableRow);
-      const hasPublished = groupRows.some((row) => Boolean(row.published_at));
-      const status = hasPublished ? 'Published' : 'Draft';
+      const hasPublished = isVersionedDefinition(definition) && groupRows.some((row) => Boolean(row.published_at));
+      const status = isVersionedDefinition(definition)
+        ? (hasPublished ? 'Published' : 'Draft')
+        : '';
       const raw = {
         ...mapped,
         status,
@@ -562,10 +672,10 @@ async function loadCollectionList(definition, query = {}) {
     .filter((item) => !activeFilters.category || String(item.raw.category ?? '') === activeFilters.category)
     .filter((item) => !activeFilters.planType || String(item.raw.planType ?? '') === activeFilters.planType)
     .filter((item) => {
-      return ['featured', 'isFeatured', 'isPopular'].every((field) => {
-        if (!activeFilters[field]) {
-          return true;
-        }
+        return ['featured', 'isFeatured', 'isPopular', 'active'].every((field) => {
+          if (!activeFilters[field]) {
+            return true;
+          }
 
         return Boolean(item.raw[field]) === (activeFilters[field] === 'Yes');
       });
@@ -608,7 +718,9 @@ async function loadCollectionList(definition, query = {}) {
 
 async function loadCollectionRecord(definition, recordId, transaction) {
   const seedRow = await selectOne(
-    `SELECT * FROM ${definition.table} WHERE id = :id LIMIT 1`,
+    definition.kind === 'db-meeting-rooms'
+      ? `SELECT * FROM ${definition.table} WHERE id = :id AND type = 'meeting_room' LIMIT 1`
+      : `SELECT * FROM ${definition.table} WHERE id = :id LIMIT 1`,
     { id: recordId },
     transaction,
   );
@@ -618,7 +730,7 @@ async function loadCollectionRecord(definition, recordId, transaction) {
   }
 
   const key = seedRow.document_id || seedRow.id;
-  const rows = seedRow.document_id
+  const rows = isVersionedDefinition(definition) && seedRow.document_id
     ? await selectRows(
       `SELECT * FROM ${definition.table} WHERE document_id = :documentId ORDER BY updated_at DESC, id DESC`,
       { documentId: seedRow.document_id },
@@ -649,13 +761,13 @@ async function loadCollectionRecord(definition, recordId, transaction) {
       mapped.features = await loadTextItems('pricing_plans_cmps', row.id, 'features', transaction);
     }
 
-    return {
-      ...mapped,
-      id: row.id,
-      documentId: row.document_id || key,
-      status: row.published_at ? 'Published' : 'Draft',
-    };
-  }
+      return {
+        ...mapped,
+        id: row.id,
+        documentId: row.document_id || key,
+        status: isVersionedDefinition(definition) ? (row.published_at ? 'Published' : 'Draft') : '',
+      };
+    }
 
   return {
     draftRecord: await hydrate(editableRow),
@@ -709,6 +821,34 @@ function mapPayloadForTable(definition, content) {
         is_popular: content.isPopular ? 1 : 0,
         sort_order: Number(content.sortOrder ?? 1),
       };
+    case 'db-meeting-rooms':
+      return {
+        slug: getStableSlug({ ...definition, kind: 'meeting-rooms' }, content),
+        type: 'meeting_room',
+        name: content.name ?? '',
+        description: content.description ?? '',
+        capacity: Number(content.capacity ?? 1),
+        hourly_rate_minor: Math.round(Number(content.hourlyRate ?? 0) * 100),
+        active: content.active === false ? 0 : 1,
+        metadata: JSON.stringify({
+          image: content.image ?? '',
+          features: (content.features ?? []).map((item) => typeof item === 'string' ? item : item?.text ?? '').filter(Boolean),
+          badges: (content.badges ?? []).map((item) => typeof item === 'string' ? item : item?.text ?? '').filter(Boolean),
+        }),
+      };
+    case 'db-membership-plans':
+      return {
+        slug: getStableSlug({ ...definition, kind: 'meeting-rooms' }, content),
+        name: content.name ?? '',
+        description: content.description ?? '',
+        monthly_price_minor: Math.round(Number(content.monthlyPrice ?? 0) * 100),
+        currency: content.currency ?? 'gbp',
+        interval_name: content.intervalName ?? 'month',
+        features: JSON.stringify((content.features ?? []).map((item) => typeof item === 'string' ? item : item?.text ?? '').filter(Boolean)),
+        is_popular: content.isPopular ? 1 : 0,
+        sort_order: Number(content.sortOrder ?? 0),
+        active: content.active === false ? 0 : 1,
+      };
     default:
       return {};
   }
@@ -753,8 +893,13 @@ function getInsertId(primaryResult, secondaryResult) {
 async function insertCollectionDraft(definition, content, transaction) {
   const documentId = randomUUID();
   const mapped = mapPayloadForTable(definition, normalizeForSave(content));
-  const columns = ['document_id', ...Object.keys(mapped), 'created_at', 'updated_at', 'locale'];
-  const values = [':documentId', ...Object.keys(mapped).map((column) => `:${column}`), 'NOW(6)', 'NOW(6)', 'NULL'];
+  const versioned = isVersionedDefinition(definition);
+  const columns = versioned
+    ? ['document_id', ...Object.keys(mapped), 'created_at', 'updated_at', 'locale']
+    : ['document_id', ...Object.keys(mapped), 'created_at', 'updated_at'];
+  const values = versioned
+    ? [':documentId', ...Object.keys(mapped).map((column) => `:${column}`), 'NOW(6)', 'NOW(6)', 'NULL']
+    : [':documentId', ...Object.keys(mapped).map((column) => `:${column}`), 'NOW(6)', 'NOW(6)'];
   const [insertId, metadata] = await sequelize.query(
     `INSERT INTO ${definition.table} (${columns.join(', ')}) VALUES (${values.join(', ')})`,
     {
@@ -840,8 +985,13 @@ async function duplicateCollectionRecord(definition, recordId) {
 
     const documentId = randomUUID();
     const mapped = mapPayloadForTable(definition, duplicated);
-    const columns = ['document_id', ...Object.keys(mapped), 'created_at', 'updated_at', 'locale'];
-    const values = [':documentId', ...Object.keys(mapped).map((column) => `:${column}`), 'NOW(6)', 'NOW(6)', 'NULL'];
+    const versioned = isVersionedDefinition(definition);
+    const columns = versioned
+      ? ['document_id', ...Object.keys(mapped), 'created_at', 'updated_at', 'locale']
+      : ['document_id', ...Object.keys(mapped), 'created_at', 'updated_at'];
+    const values = versioned
+      ? [':documentId', ...Object.keys(mapped).map((column) => `:${column}`), 'NOW(6)', 'NOW(6)', 'NULL']
+      : [':documentId', ...Object.keys(mapped).map((column) => `:${column}`), 'NOW(6)', 'NOW(6)'];
     const [insertId, metadata] = await sequelize.query(
       `INSERT INTO ${definition.table} (${columns.join(', ')}) VALUES (${values.join(', ')})`,
       {
@@ -1273,9 +1423,58 @@ function mapPublicCollectionRecord(definition, record) {
         isPopular: Boolean(record.isPopular),
         sortOrder: Number(record.sortOrder ?? 1),
       };
+    case 'db-meeting-rooms':
+      return {
+        id: record.id,
+        documentId: record.documentId,
+        name: record.name,
+        slug: record.slug,
+        description: record.description,
+        capacity: Number(record.capacity ?? 1),
+        hourlyRate: Number(record.hourlyRate ?? 0),
+        image: record.image,
+        features: (record.features ?? []).map((item) => typeof item === 'string' ? item : item?.text ?? '').filter(Boolean),
+        badges: (record.badges ?? []).map((item) => typeof item === 'string' ? item : item?.text ?? '').filter(Boolean),
+        active: Boolean(record.active),
+      };
+    case 'db-membership-plans':
+      return {
+        id: record.id,
+        documentId: record.documentId,
+        name: record.name,
+        slug: record.slug,
+        description: record.description,
+        monthlyPrice: Number(record.monthlyPrice ?? 0),
+        currency: record.currency,
+        intervalName: record.intervalName,
+        features: (record.features ?? []).map((item) => typeof item === 'string' ? item : item?.text ?? '').filter(Boolean),
+        isPopular: Boolean(record.isPopular),
+        sortOrder: Number(record.sortOrder ?? 0),
+        active: Boolean(record.active),
+      };
     default:
       return record;
   }
+}
+
+function buildCollectionDefinitionPayload(definition) {
+  return {
+    name: definition.name,
+    label: definition.label,
+    pluralLabel: definition.pluralLabel,
+    titleField: definition.titleField,
+    listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
+    editLayout: definition.editLayout,
+    showVersionTabs: definition.showVersionTabs,
+    allowPublish: definition.allowPublish,
+    allowCreate: definition.allowCreate,
+    allowSave: definition.allowSave,
+    allowDuplicate: definition.allowDuplicate,
+    allowDelete: definition.allowDelete,
+    editableFields: definition.editableFields || [],
+    createFields: definition.createFields || [],
+    selectFields: definition.selectFields || {},
+  };
 }
 
 export async function getCollectionPublicData(pageName, options = {}) {
@@ -1403,14 +1602,7 @@ export async function handleCollectionPage(pageName, request) {
     const result = await createCollectionRecord(definition);
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       ...result,
       notice: {
         message: `${definition.label} created.`,
@@ -1423,14 +1615,7 @@ export async function handleCollectionPage(pageName, request) {
     const result = await saveCollectionRecord(definition, recordId, request.payload?.record ?? {});
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       ...result,
       notice: {
         message: `${definition.label} saved.`,
@@ -1454,14 +1639,7 @@ export async function handleCollectionPage(pageName, request) {
     await exportPublishedSnapshots();
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       ...result,
       notice: {
         message: `${definition.label} published.`,
@@ -1477,14 +1655,7 @@ export async function handleCollectionPage(pageName, request) {
     await exportPublishedSnapshots();
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       ...result,
       notice: {
         message: `${definition.label} unpublished.`,
@@ -1497,14 +1668,7 @@ export async function handleCollectionPage(pageName, request) {
     const result = await duplicateCollectionRecord(definition, recordId);
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       ...result,
       notice: {
         message: `${definition.label} duplicated.`,
@@ -1517,14 +1681,7 @@ export async function handleCollectionPage(pageName, request) {
     await deleteCollectionRecord(definition, recordId);
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       deleted: true,
       notice: {
         message: `${definition.label} deleted.`,
@@ -1542,14 +1699,7 @@ export async function handleCollectionPage(pageName, request) {
       };
 
     return {
-      definition: {
-        name: definition.name,
-        label: definition.label,
-        pluralLabel: definition.pluralLabel,
-        titleField: definition.titleField,
-        listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-        editLayout: definition.editLayout,
-      },
+      definition: buildCollectionDefinitionPayload(definition),
       ...result,
     };
   }
@@ -1557,14 +1707,7 @@ export async function handleCollectionPage(pageName, request) {
   const listResult = await loadCollectionList(definition, request.query ?? {});
 
   return {
-    definition: {
-      name: definition.name,
-      label: definition.label,
-      pluralLabel: definition.pluralLabel,
-      titleField: definition.titleField,
-      listColumns: definition.listColumns.map((field) => ({ field, label: getFieldLabel(definition, field) })),
-      editLayout: definition.editLayout,
-    },
+    definition: buildCollectionDefinitionPayload(definition),
     records: listResult.records,
     controls: listResult.controls,
   };

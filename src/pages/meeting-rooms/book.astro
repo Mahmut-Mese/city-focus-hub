@@ -1,0 +1,7 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import MeetingRoomBookingApp from '@/islands/MeetingRoomBookingApp';
+---
+<Layout title="Book a Meeting Room" description="Reserve a meeting room at City Focus Hub." hideNavigation={true} hideFooter={true}>
+  <MeetingRoomBookingApp client:only="react" />
+</Layout>

@@ -18,7 +18,7 @@ export default function MeetingRoomBookingApp() {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
-              <Route path="/meeting-rooms/:roomSlug/book" element={<MeetingRoomBooking />} />
+              <Route path="/meeting-rooms/book" element={<MeetingRoomBooking />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

@@ -5,7 +5,7 @@ import { useNotice } from 'adminjs';
 
 const MULTILINE_FIELD_PATTERN = /(description|content|message|body|subtitle|excerpt|intro|hours|address|text|paragraph|overview|challenge|result|answer|notes)/i;
 const IMAGE_FIELD_PATTERN = /(image|coverImage|contentImages)/i;
-const BOOLEAN_FIELD_PATTERN = /^(featured|isFeatured|isPopular)$/i;
+const BOOLEAN_FIELD_PATTERN = /^(featured|isFeatured|isPopular|active|cancelAtPeriodEnd)$/i;
 const FULL_WIDTH_FIELD_PATTERN = /(description|content|answer|excerpt|contentImages|coverImage|image|features|badges|tags)$/i;
 
 const STYLES = `
@@ -934,7 +934,7 @@ function toComparableValue(value) {
   if (value && typeof value === 'object') {
     return Object.keys(value)
       .sort()
-      .filter((key) => !['updatedAt', 'publishedAt', 'status'].includes(key))
+      .filter((key) => !['updatedAt', 'publishedAt'].includes(key))
       .reduce((accumulator, key) => {
         accumulator[key] = toComparableValue(value[key]);
         return accumulator;
@@ -991,12 +991,8 @@ function parseDisplayedFields(value) {
 }
 
 function parseInputValue(nextRawValue, currentValue) {
-  if (typeof currentValue === 'number') {
-    if (nextRawValue === '') {
-      return 0;
-    }
-    const parsed = Number(nextRawValue);
-    return Number.isNaN(parsed) ? currentValue : parsed;
+  if (typeof currentValue === 'number' && nextRawValue === '') {
+    return '';
   }
   return nextRawValue;
 }
@@ -2147,7 +2143,7 @@ function ListView({
   );
 }
 
-function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab, saving, error, onBack, onChange, onAddItem, onRemoveItem, onMoveItem, onSave, onPublish, onDelete, onDiscardChanges, onUnpublish, canSave, canPublish, canDiscard, canUnpublish, replyDraft, onReplyChange, onSendReply, sendingReply, isCreateMode }) {
+function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab, saving, error, onBack, onChange, onAddItem, onRemoveItem, onMoveItem, onSave, onPublish, onDelete, onDiscardChanges, onUnpublish, canSave, canPublish, canDiscard, canUnpublish, replyDraft, onReplyChange, onSendReply, sendingReply, isCreateMode, onCancelMembership, cancellingMembership }) {
   const displayedRecord = activeTab === 'published' && publishedRecord ? publishedRecord : record;
   const isPublishedView = activeTab === 'published' && publishedRecord;
   const isManualEntry = displayedRecord?.entrySource === 'manual' || displayedRecord?.manualTag === 'Manual';
@@ -2336,6 +2332,36 @@ function EditView({ definition, record, publishedRecord, activeTab, onSwitchTab,
                     </div>
                   </div>
                 ) : null}
+
+                {definition.name === 'memberships' && !isCreateMode && onCancelMembership ? (() => {
+                  const cancelableStatuses = new Set(['active', 'trialing', 'past_due', 'unpaid']);
+                  const currentStatus = String(record?.status || '');
+                  const canCancel = cancelableStatuses.has(currentStatus);
+                  return (
+                    <div className="admin-side-card">
+                      <div className="admin-side-card__head">Membership</div>
+                      <div className="admin-side-card__body">
+                        <div className="admin-side-note" style={{ marginBottom: '10px' }}>
+                          Cancel this membership immediately via Stripe. The member will receive a cancellation email.
+                        </div>
+                        <button
+                          className="admin-side-button--secondary"
+                          type="button"
+                          style={{ borderColor: '#d02b20', color: '#d02b20' }}
+                          disabled={!canCancel || cancellingMembership || saving}
+                          onClick={onCancelMembership}
+                        >
+                          {cancellingMembership ? 'Cancelling...' : 'Cancel Membership'}
+                        </button>
+                        {!canCancel ? (
+                          <div style={{ marginTop: '6px', color: '#8e8ea9', fontSize: '.75rem' }}>
+                            Membership is already {currentStatus || 'not active'}.
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })() : null}
               </>
             )}
           </aside>
@@ -2353,6 +2379,7 @@ export default function CollectionManager() {
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cancellingMembership, setCancellingMembership] = useState(false);
   const [definition, setDefinition] = useState(null);
   const [records, setRecords] = useState([]);
   const [controls, setControls] = useState(null);
@@ -2640,6 +2667,39 @@ export default function CollectionManager() {
     }
   };
 
+  const handleCancelMembership = async () => {
+    if (!record?.id) {
+      return;
+    }
+
+    setCancellingMembership(true);
+    setError('');
+    try {
+      const payload = await requestPage(pageName, {
+        method: 'POST',
+        body: {
+          intent: 'cancelMembership',
+          recordId: record.id,
+        },
+      });
+
+      if (payload.draftRecord) {
+        const nextDraftRecord = cloneValue(payload.draftRecord);
+        setRecord(nextDraftRecord);
+        setOriginalRecord(cloneValue(nextDraftRecord));
+      }
+
+      if (payload.notice) {
+        addNotice({ message: payload.notice.message, type: payload.notice.type });
+      }
+    } catch (requestError) {
+      setError(requestError.message);
+      addNotice({ message: requestError.message, type: 'error' });
+    } finally {
+      setCancellingMembership(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -2737,6 +2797,8 @@ export default function CollectionManager() {
         onSendReply={handleSendReply}
         sendingReply={sendingReply}
         isCreateMode={isNew}
+        onCancelMembership={pageName === 'memberships' ? handleCancelMembership : undefined}
+        cancellingMembership={cancellingMembership}
       />
   );
 }

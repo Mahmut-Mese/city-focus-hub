@@ -115,7 +115,7 @@ export default function MeetingRoomsContent() {
                         variant="default"
                         className="h-11 rounded-xl border border-black px-5 text-sm font-medium !bg-black !text-white shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:!bg-black/90"
                       >
-                        <a href={`/meeting-rooms/${encodeURIComponent(room.slug)}/book`}>
+                        <a href={`/meeting-rooms/book?room=${encodeURIComponent(room.slug)}`}>
                           {content.bookNowLabel}
                         </a>
                       </Button>

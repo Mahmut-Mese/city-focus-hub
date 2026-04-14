@@ -21,6 +21,7 @@ const BlogDetail = lazy(() => import("./pages-react/BlogDetail"));
 const PrivacyPolicy = lazy(() => import("./pages-react/PrivacyPolicy"));
 const Terms = lazy(() => import("./pages-react/Terms"));
 const Dashboard = lazy(() => import("./pages-react/Dashboard"));
+const MembershipCheckout = lazy(() => import("./pages-react/MembershipCheckout"));
 const Auth = lazy(() => import("./pages-react/Auth"));
 const ResetPassword = lazy(() => import("./pages-react/ResetPassword"));
 const NotFound = lazy(() => import("./pages-react/NotFound"));
@@ -62,8 +63,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/pricing/checkout" element={<MembershipCheckout />} />
               <Route path="/meeting-rooms" element={<MeetingRooms />} />
-              <Route path="/meeting-rooms/:roomSlug/book" element={<MeetingRoomBooking />} />
+              <Route path="/meeting-rooms/book" element={<MeetingRoomBooking />} />
               <Route path="/virtual-office" element={<VirtualOffice />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />

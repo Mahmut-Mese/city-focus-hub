@@ -3,6 +3,7 @@ import { sequelize } from './database.js';
 import { createLocalInvoice } from './services/invoices-service.js';
 import { calculateVat } from './services/payments-service.js';
 import { registerUser, updateUserAccessStatus } from './services/users-service.js';
+import { cancelMembership } from './services/memberships-service.js';
 import { config } from './config.js';
 import { sendContactReplyEmail } from './mailer.js';
 
@@ -133,6 +134,107 @@ const OPERATION_DEFINITIONS = [
     `,
     idColumn: 'm.id',
     dateFields: ['createdAt', 'updatedAt'],
+  },
+  {
+    name: 'memberships',
+    label: 'Memberships',
+    pluralLabel: 'Memberships',
+    icon: 'CreditCard',
+    metaLabel: 'Memberships',
+    titleField: 'customerName',
+    infoCardTitleField: 'customerName',
+    infoCardFields: [
+      'id',
+      'customerName',
+      'customerEmail',
+      'planName',
+      'status',
+      'cancelAtPeriodEnd',
+      'failedPaymentCount',
+      'currentPeriodStart',
+      'currentPeriodEnd',
+      'suspendedAt',
+      'createdAt',
+    ],
+    optionalInfoCardFields: ['suspendedAt'],
+    listColumns: ['customerName', 'planName', 'status', 'currentPeriodEnd', 'updatedAt'],
+    sortableFields: ['customerName', 'planName', 'status', 'currentPeriodEnd', 'updatedAt', 'createdAt'],
+    defaultSortBy: 'updatedAt',
+    defaultSortOrder: 'desc',
+    createLayout: [
+      ['userId', 'planId'],
+      ['status', 'cancelAtPeriodEnd'],
+      ['currentPeriodStart', 'currentPeriodEnd'],
+      ['failedPaymentCount'],
+      ['suspendedAt'],
+    ],
+    editLayout: [
+      ['id'],
+      ['customerName', 'customerEmail'],
+      ['planName', 'status'],
+      ['cancelAtPeriodEnd', 'failedPaymentCount'],
+      ['currentPeriodStart', 'currentPeriodEnd'],
+      ['stripeSubscriptionId', 'stripePriceId'],
+      ['suspendedAt'],
+      ['createdAt'],
+    ],
+    manualEditLayout: [
+      ['userId', 'planId'],
+      ['status', 'cancelAtPeriodEnd'],
+      ['currentPeriodStart', 'currentPeriodEnd'],
+      ['failedPaymentCount'],
+      ['suspendedAt'],
+    ],
+    readOnly: false,
+    allowCreate: true,
+    allowSave: true,
+    allowPublish: false,
+    allowDuplicate: false,
+    allowDelete: false,
+    showVersionTabs: false,
+    createFields: ['userId', 'planId', 'status', 'cancelAtPeriodEnd', 'currentPeriodStart', 'currentPeriodEnd', 'failedPaymentCount', 'suspendedAt'],
+    editableFields: ['userId', 'planId', 'status', 'cancelAtPeriodEnd', 'currentPeriodStart', 'currentPeriodEnd', 'failedPaymentCount', 'suspendedAt'],
+    manualEditableFields: ['userId', 'planId', 'status', 'cancelAtPeriodEnd', 'currentPeriodStart', 'currentPeriodEnd', 'failedPaymentCount', 'suspendedAt'],
+    inputTypes: {
+      currentPeriodStart: 'datetime-local',
+      currentPeriodEnd: 'datetime-local',
+      suspendedAt: 'datetime-local',
+    },
+    selectFields: {
+      status: [
+        { value: 'inactive', label: 'Inactive' },
+        { value: 'active', label: 'Active' },
+        { value: 'trialing', label: 'Trialing' },
+        { value: 'past_due', label: 'Past Due' },
+        { value: 'canceled', label: 'Canceled' },
+        { value: 'unpaid', label: 'Unpaid' },
+      ],
+    },
+    baseQuery: `
+      SELECT
+        m.id,
+        m.document_id AS documentId,
+        m.user_id AS userId,
+        u.name AS customerName,
+        u.email AS customerEmail,
+        m.plan_id AS planId,
+        mp.name AS planName,
+        m.status,
+        m.stripe_subscription_id AS stripeSubscriptionId,
+        m.stripe_price_id AS stripePriceId,
+        m.cancel_at_period_end AS cancelAtPeriodEnd,
+        m.current_period_start AS currentPeriodStart,
+        m.current_period_end AS currentPeriodEnd,
+        m.suspended_at AS suspendedAt,
+        m.failed_payment_count AS failedPaymentCount,
+        m.created_at AS createdAt,
+        m.updated_at AS updatedAt
+      FROM memberships m
+      LEFT JOIN member_users u ON u.id = m.user_id
+      LEFT JOIN membership_plans mp ON mp.id = m.plan_id
+    `,
+    idColumn: 'm.id',
+    dateFields: ['currentPeriodStart', 'currentPeriodEnd', 'suspendedAt', 'createdAt', 'updatedAt'],
   },
   {
     name: 'orders',
@@ -729,6 +831,37 @@ async function buildDefinitionPayloadWithOptions(definition) {
     ];
   }
 
+  if (definition.name === 'memberships') {
+    const [users, plans] = await Promise.all([
+      selectRows(
+        `SELECT id, name, email
+           FROM member_users
+          ORDER BY name ASC, email ASC, id ASC`,
+      ),
+      selectRows(
+        `SELECT id, name, active
+           FROM membership_plans
+          ORDER BY active DESC, sort_order ASC, name ASC, id ASC`,
+      ),
+    ]);
+
+    selectFields.userId = [
+      { value: '', label: 'Select a customer' },
+      ...users.map((user) => ({
+        value: String(user.id),
+        label: `${user.name || 'Customer'} (${user.email || 'no-email'})`,
+      })),
+    ];
+
+    selectFields.planId = [
+      { value: '', label: 'Select a plan' },
+      ...plans.map((plan) => ({
+        value: String(plan.id),
+        label: `${plan.name || 'Plan'}${Number(plan.active) ? '' : ' (inactive)'}`,
+      })),
+    ];
+  }
+
   if (definition.name === 'orders') {
     const resources = await selectRows(
       `SELECT id, name, type
@@ -808,6 +941,19 @@ async function buildEmptyOperationsRecord(definition) {
       taxMinor: 0,
       totalMinor: 0,
       paidAt: '',
+    };
+  }
+
+  if (definition.name === 'memberships') {
+    return {
+      userId: '',
+      planId: '',
+      status: 'inactive',
+      cancelAtPeriodEnd: false,
+      currentPeriodStart: '',
+      currentPeriodEnd: '',
+      failedPaymentCount: 0,
+      suspendedAt: '',
     };
   }
 
@@ -1166,6 +1312,176 @@ export async function handleOperationsPage(pageName, request) {
     };
   }
 
+  if (method === 'post' && pageName === 'memberships' && intent === 'save') {
+    const userId = Number(request.payload?.record?.userId ?? 0);
+    const planId = Number(request.payload?.record?.planId ?? 0);
+    const status = String(request.payload?.record?.status ?? 'inactive').trim().toLowerCase();
+    const cancelAtPeriodEnd = Boolean(request.payload?.record?.cancelAtPeriodEnd);
+    const currentPeriodStartInput = String(request.payload?.record?.currentPeriodStart ?? '').trim();
+    const currentPeriodEndInput = String(request.payload?.record?.currentPeriodEnd ?? '').trim();
+    const suspendedAtInput = String(request.payload?.record?.suspendedAt ?? '').trim();
+    const failedPaymentCount = Math.max(0, Math.round(Number(request.payload?.record?.failedPaymentCount ?? 0) || 0));
+    const allowedStatuses = new Set(['inactive', 'active', 'trialing', 'past_due', 'canceled', 'unpaid']);
+
+    if (!Number.isFinite(userId) || userId <= 0) {
+      throw new Error('Customer is required.');
+    }
+
+    if (!Number.isFinite(planId) || planId <= 0) {
+      throw new Error('Plan is required.');
+    }
+
+    if (!allowedStatuses.has(status)) {
+      throw new Error('Membership status is invalid.');
+    }
+
+    const currentPeriodStart = currentPeriodStartInput ? new Date(currentPeriodStartInput) : null;
+    const currentPeriodEnd = currentPeriodEndInput ? new Date(currentPeriodEndInput) : null;
+    const suspendedAt = suspendedAtInput ? new Date(suspendedAtInput) : null;
+
+    if (currentPeriodStartInput && Number.isNaN(currentPeriodStart?.getTime())) {
+      throw new Error('Current period start is invalid.');
+    }
+
+    if (currentPeriodEndInput && Number.isNaN(currentPeriodEnd?.getTime())) {
+      throw new Error('Current period end is invalid.');
+    }
+
+    if (suspendedAtInput && Number.isNaN(suspendedAt?.getTime())) {
+      throw new Error('Suspended at is invalid.');
+    }
+
+    if (currentPeriodStart && currentPeriodEnd && currentPeriodEnd.getTime() < currentPeriodStart.getTime()) {
+      throw new Error('Current period end must be after the start date.');
+    }
+
+    const [user, plan] = await Promise.all([
+      selectOne(
+        `SELECT id
+           FROM member_users
+          WHERE id = :userId
+          LIMIT 1`,
+        { userId },
+      ),
+      selectOne(
+        `SELECT id
+           FROM membership_plans
+          WHERE id = :planId
+          LIMIT 1`,
+        { planId },
+      ),
+    ]);
+
+    if (!user) {
+      throw new Error('Customer not found.');
+    }
+
+    if (!plan) {
+      throw new Error('Plan not found.');
+    }
+
+    if (recordId) {
+      const existingMembership = await selectOne(
+        `SELECT id
+           FROM memberships
+          WHERE id = :recordId
+          LIMIT 1`,
+        { recordId },
+      );
+
+      if (!existingMembership) {
+        throw new Error('Membership not found.');
+      }
+
+      await sequelize.query(
+        `UPDATE memberships
+            SET user_id = :userId,
+                plan_id = :planId,
+                status = :status,
+                cancel_at_period_end = :cancelAtPeriodEnd,
+                current_period_start = :currentPeriodStart,
+                current_period_end = :currentPeriodEnd,
+                suspended_at = :suspendedAt,
+                failed_payment_count = :failedPaymentCount,
+                updated_at = :updatedAt
+          WHERE id = :recordId`,
+        {
+          replacements: {
+            recordId,
+            userId,
+            planId,
+            status,
+            cancelAtPeriodEnd: cancelAtPeriodEnd ? 1 : 0,
+            currentPeriodStart,
+            currentPeriodEnd,
+            suspendedAt,
+            failedPaymentCount,
+            updatedAt: new Date(),
+          },
+        },
+      );
+
+      const result = await loadOperationsRecord(definition, recordId);
+
+      return {
+        definition: await buildDefinitionPayloadWithOptions(definition),
+        ...result,
+        notice: {
+          message: 'Membership updated.',
+          type: 'success',
+        },
+      };
+    }
+
+    const documentId = randomUUID();
+    const now = new Date();
+    await sequelize.query(
+      `INSERT INTO memberships
+        (document_id, user_id, plan_id, status, stripe_subscription_id, stripe_price_id, cancel_at_period_end, current_period_start, current_period_end, suspended_at, failed_payment_count, created_at, updated_at)
+       VALUES
+        (:documentId, :userId, :planId, :status, NULL, NULL, :cancelAtPeriodEnd, :currentPeriodStart, :currentPeriodEnd, :suspendedAt, :failedPaymentCount, :createdAt, :updatedAt)`,
+      {
+        replacements: {
+          documentId,
+          userId,
+          planId,
+          status,
+          cancelAtPeriodEnd: cancelAtPeriodEnd ? 1 : 0,
+          currentPeriodStart,
+          currentPeriodEnd,
+          suspendedAt,
+          failedPaymentCount,
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+    );
+
+    const createdMembership = await selectOne(
+      `SELECT id
+         FROM memberships
+        WHERE document_id = :documentId
+        LIMIT 1`,
+      { documentId },
+    );
+    const createdMembershipId = Number(createdMembership?.id || 0);
+
+    if (!createdMembershipId) {
+      throw new Error('Membership was created but could not be reloaded.');
+    }
+
+    const result = await loadOperationsRecord(definition, createdMembershipId);
+
+    return {
+      definition: await buildDefinitionPayloadWithOptions(definition),
+      ...result,
+      notice: {
+        message: 'Membership created.',
+        type: 'success',
+      },
+    };
+  }
+
   if (method === 'post' && pageName === 'orders' && intent === 'save') {
     const userId = Number(request.payload?.record?.userId ?? 0);
     const resourceId = Number(request.payload?.record?.resourceId ?? 0);
@@ -1508,6 +1824,42 @@ export async function handleOperationsPage(pageName, request) {
       ...result,
       notice: {
         message: 'Invoice created.',
+        type: 'success',
+      },
+    };
+  }
+
+  if (method === 'post' && pageName === 'memberships' && intent === 'cancelMembership') {
+    if (!recordId) {
+      throw new Error('Membership record not found.');
+    }
+
+    const membershipRow = await selectOne(
+      `SELECT id, user_id AS userId, status
+         FROM memberships
+        WHERE id = :recordId
+        LIMIT 1`,
+      { recordId },
+    );
+
+    if (!membershipRow) {
+      throw new Error('Membership not found.');
+    }
+
+    const cancelableStatuses = new Set(['active', 'trialing', 'past_due', 'unpaid']);
+    if (!cancelableStatuses.has(String(membershipRow.status || ''))) {
+      throw new Error(`Membership cannot be cancelled — current status is "${membershipRow.status}".`);
+    }
+
+    await cancelMembership({ userId: Number(membershipRow.userId) });
+
+    const result = await loadOperationsRecord(definition, recordId);
+
+    return {
+      definition: await buildDefinitionPayloadWithOptions(definition),
+      ...result,
+      notice: {
+        message: 'Membership cancelled successfully.',
         type: 'success',
       },
     };

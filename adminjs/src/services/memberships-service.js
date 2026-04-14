@@ -1469,15 +1469,22 @@ export async function previewMembershipPlanChange({ userId, planSlug }) {
     priceId,
   });
 
-  // DEBUG: Log all invoice lines to understand Stripe's response structure
   const prorationLines = Array.isArray(upcomingInvoice.lines?.data)
     ? upcomingInvoice.lines.data.filter((line) => Boolean(line?.proration || line?.parent?.subscription_item_details?.proration))
     : [];
-  const prorationSubtotalMinor = prorationLines.reduce(
+  
+  // Stripe proration line.amount is the gross (tax-inclusive) amount because our
+  // prices are created with `tax_behavior: 'inclusive'` (see ensurePlanStripePrice).
+  // When Stripe has no tax configuration on the product, tax_amounts will be empty
+  // and we need to extract the 20% UK VAT from the inclusive amount rather than
+  // adding it on top.
+  
+  const prorationGrossMinor = prorationLines.reduce(
     (sum, line) => sum + Number(line?.amount ?? line?.subtotal ?? 0),
     0,
   );
-  const prorationTaxMinor = prorationLines.reduce(
+  
+  let stripeTaxMinor = prorationLines.reduce(
     (sum, line) => {
       // Support both legacy line.taxes and newer line.tax_amounts
       const taxes = Array.isArray(line?.tax_amounts) ? line.tax_amounts
@@ -1487,7 +1494,29 @@ export async function previewMembershipPlanChange({ userId, planSlug }) {
     },
     0,
   );
-  const prorationTotalMinor = prorationSubtotalMinor + prorationTaxMinor;
+
+  let prorationSubtotalMinor;
+  let prorationTaxMinor;
+  let prorationTotalMinor;
+
+  if (stripeTaxMinor !== 0) {
+    // Stripe returned real tax figures — use them as-is
+    prorationSubtotalMinor = prorationGrossMinor - stripeTaxMinor;
+    prorationTaxMinor = stripeTaxMinor;
+    prorationTotalMinor = prorationGrossMinor;
+  } else if (prorationGrossMinor > 0) {
+    // Stripe returned 0 tax (no tax config on product). Prices are tax-inclusive,
+    // so the gross amount already contains VAT. Extract 20% UK VAT from the inclusive total.
+    const netMinor = Math.round(prorationGrossMinor / 1.20);
+    prorationTaxMinor = prorationGrossMinor - netMinor;
+    prorationSubtotalMinor = netMinor;
+    prorationTotalMinor = prorationGrossMinor;
+  } else {
+    // Zero or negative proration (downgrade credit or no change)
+    prorationSubtotalMinor = prorationGrossMinor;
+    prorationTaxMinor = 0;
+    prorationTotalMinor = prorationGrossMinor;
+  }
 
   const preview = {
     currency: upcomingInvoice.currency || plan.currency || 'gbp',
@@ -1765,6 +1794,11 @@ export async function cancelMembership({ userId }) {
       updatedAt: new Date(),
     },
   );
+
+  // Suspend the user immediately so they cannot log in or use the portal.
+  // This mirrors what the webhook does on subscription.deleted, but takes
+  // effect right away rather than waiting for Stripe to fire the event.
+  await updateUserAccessStatus(userId, 'suspended');
 
   const cancelledMembership = await getUserMembership(userId);
 

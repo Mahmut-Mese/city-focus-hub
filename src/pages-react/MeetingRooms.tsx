@@ -170,7 +170,7 @@ export default function MeetingRooms() {
                         variant="default"
                         className="h-11 rounded-xl border border-black px-5 text-sm font-medium !bg-black !text-white shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:!bg-black/90"
                       >
-                        <Link to={`/meeting-rooms/${encodeURIComponent(room.id)}/book`}>
+                        <Link to={`/meeting-rooms/book?room=${encodeURIComponent(room.id)}`}>
                           {content.bookNowLabel}
                         </Link>
                       </Button>
