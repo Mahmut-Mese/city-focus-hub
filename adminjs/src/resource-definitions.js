@@ -20,8 +20,16 @@ export const ADMIN_RESOURCE_DEFINITIONS = [
     label: 'Meeting Rooms',
     sidebarLabel: 'Meeting Room',
     navigation: null,
-    sidebarSection: 'collections',
+    sidebarSection: null,
     sidebarHref: '/admin/pages/meeting-rooms',
+  },
+  {
+    table: 'pricing_plans',
+    label: 'Pricing Plans',
+    sidebarLabel: 'Pricing Plan',
+    navigation: null,
+    sidebarSection: null,
+    sidebarHref: '/admin/pages/pricing-plans',
   },
   {
     table: 'pricing_plans',
