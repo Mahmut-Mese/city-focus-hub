@@ -238,7 +238,7 @@ async function defineModelForTable(definition) {
     resource: model,
     options: {
       id: definition.table,
-      navigation: {
+      navigation: definition.navigation == null ? false : {
         name: definition.navigation,
         icon: definition.navigation === 'Media' ? 'Image' : 'Document',
       },
