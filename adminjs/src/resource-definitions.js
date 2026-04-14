@@ -32,14 +32,6 @@ export const ADMIN_RESOURCE_DEFINITIONS = [
     sidebarHref: '/admin/pages/pricing-plans',
   },
   {
-    table: 'pricing_plans',
-    label: 'Pricing Plans',
-    sidebarLabel: 'Pricing Plan',
-    navigation: null,
-    sidebarSection: 'collections',
-    sidebarHref: '/admin/pages/pricing-plans',
-  },
-  {
     table: 'files',
     label: 'Media Library',
     sidebarLabel: 'Media Library',
