@@ -1,8 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { getContentPagePublicData } from './content-pages.js';
 import { getCollectionPublicData } from './collection-pages.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const legacyOutputDirectory = path.join(__dirname, '..', '..', 'public', 'cms');
 
 const PAGE_NAMES = [
   'site-setting',
@@ -56,9 +61,20 @@ async function writeSnapshotFile(directory, name, payload) {
   return filePath;
 }
 
+async function writeSnapshotFileToDirectories(directories, name, payload) {
+  const writtenFiles = [];
+
+  for (const directory of directories) {
+    await mkdir(directory, { recursive: true });
+    writtenFiles.push(await writeSnapshotFile(directory, name, payload));
+  }
+
+  return writtenFiles;
+}
+
 export async function exportPublishedSnapshots() {
   const outputDirectory = config.staticSnapshots.directory;
-  await mkdir(outputDirectory, { recursive: true });
+  const directories = Array.from(new Set([outputDirectory, legacyOutputDirectory]));
 
   const writtenFiles = [];
 
@@ -66,7 +82,7 @@ export async function exportPublishedSnapshots() {
     const sourceName = pageName === 'site-setting' ? 'site-settings' : pageName;
     const data = await getContentPagePublicData(sourceName, 'published');
     writtenFiles.push(
-      await writeSnapshotFile(outputDirectory, pageName, {
+      ...await writeSnapshotFileToDirectories(directories, pageName, {
         data: normalizePageData(pageName, data),
       }),
     );
@@ -77,14 +93,14 @@ export async function exportPublishedSnapshots() {
       status: 'published',
     });
     writtenFiles.push(
-      await writeSnapshotFile(outputDirectory, collectionName, {
+      ...await writeSnapshotFileToDirectories(directories, collectionName, {
         data,
       }),
     );
   }
 
   writtenFiles.push(
-    await writeSnapshotFile(outputDirectory, '_meta', {
+    ...await writeSnapshotFileToDirectories(directories, '_meta', {
       generatedAt: new Date().toISOString(),
       pages: PAGE_NAMES,
       collections: COLLECTION_NAMES,

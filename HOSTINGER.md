@@ -42,6 +42,7 @@ DATABASE_PASSWORD=your-db-password
 
 UPLOADS_DIR=/home/your-hostinger-user/app-storage/uploads
 UPLOADS_PUBLIC_PATH=/uploads
+STATIC_SNAPSHOT_DIR=/home/your-hostinger-user/app-storage/cms
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -68,8 +69,10 @@ The backend bootstraps required tables automatically on startup, including the p
 - The frontend uses same-origin `/api` in production.
 - Uploaded images are served from `/uploads`.
 - Set `UPLOADS_DIR` to a writable folder outside the deployed app bundle so uploads survive deploys and restarts.
+- Set `STATIC_SNAPSHOT_DIR` to a writable folder outside the deployed app bundle so generated `/cms/*.json` snapshots survive deploys and can be rebuilt from MySQL on app start.
 - Admin sessions are stored in MySQL table `admin_sessions`, so admin logins persist across Node restarts.
 - The Hostinger build step also loads the production env because `npm run build` prebundles AdminJS components. Make sure the required runtime env vars above are present during both build and start.
+- On startup, the Node app re-exports the published CMS snapshots from MySQL into `STATIC_SNAPSHOT_DIR`, so live CMS JSON stays in sync after restarts and deployments.
 
 ## URLs
 

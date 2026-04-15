@@ -113,6 +113,7 @@ const start = async () => {
     { ensureCommerceSchema },
     { config },
     { sequelize },
+    { exportPublishedSnapshots },
     { createMediaAssetFromUpload },
     { buildResources },
     { registerPublicApi },
@@ -126,6 +127,7 @@ const start = async () => {
     import('./bootstrap-commerce.js'),
     import('./config.js'),
     import('./database.js'),
+    import('./export-static-cms.js'),
     import('./media-pages.js'),
     import('./models.js'),
     import('./public-api.js'),
@@ -137,6 +139,7 @@ const start = async () => {
   await ensureContentDatabase();
   await ensureCommerceSchema();
   await ensureAdminAccount();
+  await exportPublishedSnapshots();
   const { resources, resourceDefinitions } = await buildResources();
   const admin = createAdmin(resources);
   const app = express();
