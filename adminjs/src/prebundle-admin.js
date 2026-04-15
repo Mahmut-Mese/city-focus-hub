@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './load-env.js';
 import { createAdmin } from './admin.js';
 import { ensureContentDatabase } from './bootstrap-content.js';
 import { sequelize } from './database.js';

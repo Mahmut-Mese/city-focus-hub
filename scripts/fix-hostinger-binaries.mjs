@@ -3,6 +3,9 @@ import path from 'node:path';
 
 const candidates = [
   'node_modules/@esbuild/linux-x64/bin/esbuild',
+  'node_modules/astro/node_modules/@esbuild/linux-x64/bin/esbuild',
+  'node_modules/.bin/astro',
+  'node_modules/astro/bin/astro.mjs',
   'node_modules/vite/bin/vite.js',
   'adminjs/node_modules/@esbuild/linux-x64/bin/esbuild',
   'adminjs/node_modules/vite/bin/vite.js',

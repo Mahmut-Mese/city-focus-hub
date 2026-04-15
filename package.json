@@ -8,7 +8,7 @@
     "adminjs:dev": "npm run dev --prefix adminjs",
     "adminjs:start": "npm run start --prefix adminjs",
     "fix:hostinger-binaries": "node scripts/fix-hostinger-binaries.mjs",
-    "postinstall": "npm install --prefix adminjs && npm run fix:hostinger-binaries",
+    "postinstall": "node scripts/hostinger-postinstall.mjs",
     "start": "npm run adminjs:start",
     "build": "npm run fix:hostinger-binaries && astro build && npm run bundle:components --prefix adminjs",
     "build:frontend": "npm run fix:hostinger-binaries && astro build",

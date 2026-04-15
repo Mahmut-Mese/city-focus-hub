@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './load-env.js';
 import AdminJSExpress from '@adminjs/express';
 import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
