@@ -79,8 +79,10 @@ export const ADMIN_RESOURCE_DEFINITIONS = [
     navigation: 'Operations',
     sidebarSection: 'orders',
     sidebarHref: '/admin/pages/orders',
-    listProperties: ['id', 'user_id', 'resource_id', 'status', 'refund_request_status', 'start_at', 'total_minor', 'updated_at'],
+    listProperties: ['id', 'user_id', 'resource_id', 'status', 'refund_request_status', 'start_at', 'total_minor', 'created_at'],
     filterProperties: ['id', 'user_id', 'resource_id', 'status', 'refund_request_status', 'start_at', 'stripe_payment_status'],
+    defaultSortBy: 'created_at',
+    defaultSortDirection: 'desc',
     readOnly: true,
   },
   {
@@ -101,8 +103,10 @@ export const ADMIN_RESOURCE_DEFINITIONS = [
     navigation: 'Operations',
     sidebarSection: 'orders',
     sidebarHref: '/admin/pages/invoices',
-    listProperties: ['id', 'user_id', 'membership_id', 'booking_id', 'status', 'total_minor', 'paid_at'],
+    listProperties: ['id', 'user_id', 'membership_id', 'booking_id', 'status', 'total_minor', 'created_at'],
     filterProperties: ['id', 'user_id', 'membership_id', 'booking_id', 'status', 'stripe_invoice_id'],
+    defaultSortBy: 'created_at',
+    defaultSortDirection: 'desc',
     readOnly: true,
   },
   {
@@ -114,6 +118,8 @@ export const ADMIN_RESOURCE_DEFINITIONS = [
     sidebarHref: '/admin/pages/messages',
     listProperties: ['id', 'name', 'email', 'source_page', 'created_at'],
     filterProperties: ['id', 'name', 'email', 'source_page'],
+    defaultSortBy: 'created_at',
+    defaultSortDirection: 'desc',
     readOnly: true,
   },
 ];

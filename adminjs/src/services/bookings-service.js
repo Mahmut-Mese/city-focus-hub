@@ -163,15 +163,15 @@ export async function listUserBookings(userId) {
  */
 export async function listPendingRefundRequests() {
   const rows = await queryAll(
-    `SELECT bookings.*, resources.name AS resource_name, resources.type AS resource_type, resources.capacity AS resource_capacity, resources.metadata AS resource_metadata,
-            member_users.name AS user_name, member_users.email AS user_email
-       FROM bookings
-       INNER JOIN resources ON resources.id = bookings.resource_id
-       INNER JOIN member_users ON member_users.id = bookings.user_id
-      WHERE bookings.refund_request_status = 'pending'
-      ORDER BY bookings.refund_requested_at ASC`,
-    {},
-  );
+      `SELECT bookings.*, resources.name AS resource_name, resources.type AS resource_type, resources.capacity AS resource_capacity, resources.metadata AS resource_metadata,
+              member_users.name AS user_name, member_users.email AS user_email
+         FROM bookings
+         INNER JOIN resources ON resources.id = bookings.resource_id
+         INNER JOIN member_users ON member_users.id = bookings.user_id
+        WHERE bookings.refund_request_status = 'pending'
+        ORDER BY bookings.refund_requested_at DESC, bookings.id DESC`,
+      {},
+    );
 
   return rows.map((row) => ({
     ...toBooking(row),
@@ -183,16 +183,16 @@ export async function listPendingRefundRequests() {
 
 export async function listProcessedRefundRequests() {
   const rows = await queryAll(
-    `SELECT bookings.*, resources.name AS resource_name, resources.type AS resource_type, resources.capacity AS resource_capacity, resources.metadata AS resource_metadata,
-            member_users.name AS user_name, member_users.email AS user_email
-       FROM bookings
-       INNER JOIN resources ON resources.id = bookings.resource_id
-       INNER JOIN member_users ON member_users.id = bookings.user_id
-      WHERE bookings.refund_request_status IN ('approved', 'rejected')
-      ORDER BY bookings.updated_at DESC
-      LIMIT 100`,
-    {},
-  );
+      `SELECT bookings.*, resources.name AS resource_name, resources.type AS resource_type, resources.capacity AS resource_capacity, resources.metadata AS resource_metadata,
+              member_users.name AS user_name, member_users.email AS user_email
+         FROM bookings
+         INNER JOIN resources ON resources.id = bookings.resource_id
+         INNER JOIN member_users ON member_users.id = bookings.user_id
+        WHERE bookings.refund_request_status IN ('approved', 'rejected')
+        ORDER BY bookings.refund_requested_at DESC, bookings.id DESC
+        LIMIT 100`,
+      {},
+    );
 
   return rows.map((row) => ({
     ...toBooking(row),

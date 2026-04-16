@@ -233,6 +233,12 @@ async function defineModelForTable(definition) {
     ...BASE_HIDDEN_PROPERTIES,
     ...(definition.hiddenColumns || []),
   ];
+  const sortBy = columns.includes(definition.defaultSortBy)
+    ? definition.defaultSortBy
+    : (columns.includes('updated_at') ? 'updated_at' : 'id');
+  const sortDirection = String(definition.defaultSortDirection || 'desc').toLowerCase() === 'asc'
+    ? 'asc'
+    : 'desc';
 
   return {
     resource: model,
@@ -249,8 +255,8 @@ async function defineModelForTable(definition) {
       editProperties,
       showProperties: columns,
       sort: {
-        sortBy: columns.includes('updated_at') ? 'updated_at' : 'id',
-        direction: 'desc',
+        sortBy,
+        direction: sortDirection,
       },
       actions: buildActionOptions(definition),
       properties: buildPropertyOptions(columns, titleColumn, hiddenColumns),
