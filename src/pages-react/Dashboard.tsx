@@ -2590,6 +2590,10 @@ export default function Dashboard() {
       return;
     }
 
+    if (!window.confirm('Are you sure you want to cancel your membership at the end of the current billing period?')) {
+      return;
+    }
+
     setIsSaving(true);
     setActionError('');
     setSuccessMessage('');

@@ -449,6 +449,9 @@ export default function MeetingRoomBooking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState<BookingPaymentDraft | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<ConfirmedBookingInfo | null>(null);
+  const [draftGuestName, setDraftGuestName] = useState('');
+  const [draftGuestEmail, setDraftGuestEmail] = useState('');
+  const [availabilityWindowKey, setAvailabilityWindowKey] = useState('');
   const paymentCardRef = useRef<HTMLDivElement | null>(null);
   const bookingErrorRef = useRef<HTMLDivElement | null>(null);
 
@@ -491,6 +494,14 @@ export default function MeetingRoomBooking() {
     if (Number.isNaN(startDate.getTime())) return '';
     return formatDateTimeInputValue(new Date(startDate.getTime() + durationMinutes * 60 * 1000));
   }, [bookingStartAt, durationMinutes]);
+
+  const selectionWindowKey = useMemo(() => {
+    if (!bookingStartAt || !bookingEndAt) {
+      return '';
+    }
+
+    return `${new Date(bookingStartAt).toISOString()}|${new Date(bookingEndAt).toISOString()}`;
+  }, [bookingEndAt, bookingStartAt]);
 
   // Calendar selected date as Date object
   const selectedCalendarDate = useMemo(() => {
@@ -581,15 +592,19 @@ export default function MeetingRoomBooking() {
   // This is a local estimate; the actual tax is computed by Stripe on the checkout page.
   const estimatedVatMinor = useMemo(() => Math.round(totalMinor * 0.2), [totalMinor]);
   const estimatedTotalWithVatMinor = useMemo(() => totalMinor + estimatedVatMinor, [totalMinor, estimatedVatMinor]);
+  const isSelectionAvailabilityReady = Boolean(selectionWindowKey) && availabilityWindowKey === selectionWindowKey && !isAvailabilityLoading;
 
   // Fetch availability for the selected booking window (for submit validation)
   useEffect(() => {
     if (!bookingStartAt || !bookingEndAt) {
+      setAvailabilityWindowKey('');
       return;
     }
 
+    const requestWindowKey = `${new Date(bookingStartAt).toISOString()}|${new Date(bookingEndAt).toISOString()}`;
     let active = true;
     setIsAvailabilityLoading(true);
+    setAvailabilityWindowKey('');
     setAvailabilityError('');
 
     void listPublicMeetingRoomResources({
@@ -599,6 +614,7 @@ export default function MeetingRoomBooking() {
       .then((payload) => {
         if (active) {
           setAvailabilityResources(payload.resources);
+          setAvailabilityWindowKey(requestWindowKey);
           setStripePublishableKey(payload.stripe.publishableKey || '');
         }
       })
@@ -682,7 +698,7 @@ export default function MeetingRoomBooking() {
 
   // Handle clicking an hour slot: toggle, and ensure selection stays consecutive
   const handleHourClick = useCallback((clickedTime: string, slotAvailable: boolean) => {
-    if (!slotAvailable) return;
+    if (!slotAvailable || paymentDraft) return;
 
     setSelectedHours((prev) => {
       const isAlreadySelected = prev.includes(clickedTime);
@@ -742,17 +758,22 @@ export default function MeetingRoomBooking() {
 
       return allHours.slice(start, end + 1);
     });
-  }, []);
+  }, [paymentDraft]);
 
   const isRoomUnavailable = selectedResource ? selectedResource.available === false : true;
   const hasSelection = selectedHours.length > 0;
+  const isBookingDraftActive = Boolean(paymentDraft);
 
   const handleFieldChange = (field: keyof GuestBookingPageFormState, value: string) => {
+    if (paymentDraft) {
+      return;
+    }
+
     setFormState((current) => ({ ...current, [field]: value }));
   };
 
   const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
+    if (!date || paymentDraft) return;
     handleFieldChange('date', formatDateInputValue(date));
   };
 
@@ -806,11 +827,16 @@ export default function MeetingRoomBooking() {
         notes: formState.notes.trim(),
       });
 
-      if (!draft.booking || !draft.clientSecret) {
-        setBookingSuccess('Meeting room booked successfully.');
-        return;
+      if (!draft.booking) {
+        throw new Error('Booking could not be created. Please try again.');
       }
 
+      if (!draft.clientSecret) {
+        throw new Error('Payment could not be initialized. Please try again.');
+      }
+
+      setDraftGuestName(formState.guestName.trim());
+      setDraftGuestEmail(formState.guestEmail.trim());
       setPaymentDraft(draft);
       saveDraftToStorage(draft, formState.guestEmail.trim());
     } catch (error) {
@@ -832,7 +858,7 @@ export default function MeetingRoomBooking() {
     try {
       await confirmGuestMeetingRoomBookingPayment({
         bookingId: paymentDraft.booking.id,
-        guestEmail: formState.guestEmail.trim(),
+        guestEmail: draftGuestEmail || formState.guestEmail.trim(),
         paymentIntentId,
       });
 
@@ -848,12 +874,14 @@ export default function MeetingRoomBooking() {
         taxMinor: booking.taxMinor,
         currency: booking.currency || 'gbp',
         bookingId: booking.id,
-        guestName: formState.guestName.trim(),
-        guestEmail: formState.guestEmail.trim(),
+        guestName: draftGuestName || formState.guestName.trim(),
+        guestEmail: draftGuestEmail || formState.guestEmail.trim(),
       };
 
       clearDraftFromStorage();
       setPaymentDraft(null);
+      setDraftGuestName('');
+      setDraftGuestEmail('');
       setSelectedHours([]);
       setConfirmedBooking(confirmed);
     } catch (error) {
@@ -875,7 +903,7 @@ export default function MeetingRoomBooking() {
     try {
       await cancelGuestMeetingRoomBookingPayment({
         bookingId: paymentDraft.booking.id,
-        guestEmail: formState.guestEmail.trim(),
+        guestEmail: draftGuestEmail || formState.guestEmail.trim(),
         paymentIntentId: paymentDraft.paymentIntentId || '',
       });
     } catch {
@@ -883,6 +911,8 @@ export default function MeetingRoomBooking() {
     } finally {
       clearDraftFromStorage();
       setPaymentDraft(null);
+      setDraftGuestName('');
+      setDraftGuestEmail('');
       setIsSubmitting(false);
     }
   };
@@ -1094,12 +1124,18 @@ export default function MeetingRoomBooking() {
                       size="large"
                       selected={selectedCalendarDate}
                       onSelect={handleDateSelect}
-                      disabled={{ before: today }}
+                      disabled={isBookingDraftActive ? true : { before: today }}
                       fromMonth={today}
                       className="w-full"
                     />
                   </div>
                 </div>
+
+                {isBookingDraftActive ? (
+                  <p className="text-sm text-[#10153f]/70">
+                    Cancel the current payment before changing the booking date, time, or guest details.
+                  </p>
+                ) : null}
 
                 {/* Time Slots - Vertical list, multi-select consecutive hours */}
                 <div className="space-y-3">
@@ -1160,7 +1196,7 @@ export default function MeetingRoomBooking() {
                           key={slot.time}
                           type="button"
                           onClick={() => handleHourClick(slot.time, slot.available)}
-                          disabled={isUnavailable}
+                          disabled={isUnavailable || isBookingDraftActive}
                           className={[
                             'group flex items-center justify-between px-3 py-2.5 text-left transition-all',
                             roundedClass,
@@ -1253,6 +1289,7 @@ export default function MeetingRoomBooking() {
                       id="booking-name"
                       value={formState.guestName}
                       onChange={(event) => handleFieldChange('guestName', event.target.value)}
+                      disabled={isBookingDraftActive}
                       className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
                     />
                   </div>
@@ -1266,6 +1303,7 @@ export default function MeetingRoomBooking() {
                       type="email"
                       value={formState.guestEmail}
                       onChange={(event) => handleFieldChange('guestEmail', event.target.value)}
+                      disabled={isBookingDraftActive}
                       className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
                     />
                   </div>
@@ -1275,26 +1313,28 @@ export default function MeetingRoomBooking() {
                   <Label htmlFor="booking-purpose" className="text-sm font-medium text-[#10153f]">
                     Meeting purpose
                   </Label>
-                  <Input
-                    id="booking-purpose"
-                    value={formState.purpose}
-                    onChange={(event) => handleFieldChange('purpose', event.target.value)}
-                    placeholder="Client presentation, workshop, team sync..."
-                    className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
-                  />
+                    <Input
+                      id="booking-purpose"
+                      value={formState.purpose}
+                      onChange={(event) => handleFieldChange('purpose', event.target.value)}
+                      disabled={isBookingDraftActive}
+                      placeholder="Client presentation, workshop, team sync..."
+                      className="h-10 rounded-2xl border-[#10153f]/15 bg-white px-3 text-sm text-[#10153f]"
+                    />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="booking-notes" className="text-sm font-medium text-[#10153f]">
                     Required facilities / requests
                   </Label>
-                  <Textarea
-                    id="booking-notes"
-                    value={formState.notes}
-                    onChange={(event) => handleFieldChange('notes', event.target.value)}
-                    placeholder="E.g. We need a whiteboard and TV"
-                    className="min-h-[80px] rounded-2xl border-[#10153f]/15 bg-white px-3 py-2.5 text-sm text-[#10153f]"
-                  />
+                    <Textarea
+                      id="booking-notes"
+                      value={formState.notes}
+                      onChange={(event) => handleFieldChange('notes', event.target.value)}
+                      disabled={isBookingDraftActive}
+                      placeholder="E.g. We need a whiteboard and TV"
+                      className="min-h-[80px] rounded-2xl border-[#10153f]/15 bg-white px-3 py-2.5 text-sm text-[#10153f]"
+                    />
                 </div>
 
                 <div className="space-y-2 pt-1 text-[#10153f]">
@@ -1322,7 +1362,7 @@ export default function MeetingRoomBooking() {
                 <Button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || isAvailabilityLoading || isRoomUnavailable || !hasSelection || !!paymentDraft}
+                  disabled={isSubmitting || !isSelectionAvailabilityReady || isRoomUnavailable || !hasSelection || isBookingDraftActive}
                   className="h-11 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-primary/45 disabled:text-primary-foreground"
                 >
                   {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}

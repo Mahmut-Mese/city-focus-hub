@@ -15,6 +15,15 @@ const SIGNATURE_WEBSITE = process.env.SIGNATURE_WEBSITE || 'www.theleadenhallwor
 const SIGNATURE_WEBSITE_URL = process.env.SIGNATURE_WEBSITE_URL || 'https://www.theleadenhallworks.co.uk';
 const SIGNATURE_LOGO_PATH = path.join(__dirname, '..', 'public', 'logo-email.png');
 const SIGNATURE_LOGO_CID = 'leadenhall-works-signature-logo';
+const LONDON_TIME_ZONE = 'Europe/London';
+
+function formatLondonDateTime(value) {
+  if (!value) {
+    return '-';
+  }
+
+  return new Date(value).toLocaleString('en-GB', { timeZone: LONDON_TIME_ZONE });
+}
 
 function createTransport() {
   if (!config.mail.enabled) {
@@ -287,8 +296,8 @@ export async function sendBookingConfirmationEmail(booking) {
 
   const name = String(booking.recipientName ?? '').trim() || 'Member';
   const resourceName = String(booking.resourceName ?? 'Room');
-  const startAt = booking.startAt ? new Date(booking.startAt).toLocaleString('en-GB', { timeZone: 'UTC' }) : '-';
-  const endAt = booking.endAt ? new Date(booking.endAt).toLocaleString('en-GB', { timeZone: 'UTC' }) : '-';
+  const startAt = formatLondonDateTime(booking.startAt);
+  const endAt = formatLondonDateTime(booking.endAt);
   const total = formatCurrencyAmount(booking.totalMinor, booking.currency);
   const ref = String(booking.bookingId ?? '-');
 
@@ -302,8 +311,8 @@ export async function sendBookingConfirmationEmail(booking) {
     '',
     `Reference: #${ref}`,
     `Resource: ${resourceName}`,
-    `From: ${startAt} UTC`,
-    `To:   ${endAt} UTC`,
+    `From: ${startAt}`,
+    `To:   ${endAt}`,
     `Total paid: ${total}`,
     '',
     'If you need to make changes, please log in to your member dashboard.',
@@ -321,8 +330,8 @@ export async function sendBookingConfirmationEmail(booking) {
       <table style="border-collapse:collapse; margin:16px 0;">
         <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Reference</td><td>#${escapeHtml(ref)}</td></tr>
         <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Resource</td><td>${escapeHtml(resourceName)}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">From</td><td>${escapeHtml(startAt)} UTC</td></tr>
-        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">To</td><td>${escapeHtml(endAt)} UTC</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">From</td><td>${escapeHtml(startAt)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">To</td><td>${escapeHtml(endAt)}</td></tr>
         <tr><td style="padding:4px 12px 4px 0; font-weight:bold;">Total paid</td><td>${escapeHtml(total)}</td></tr>
       </table>
       <p>If you need to make changes, please log in to your <a href="${escapeHtml(SIGNATURE_WEBSITE_URL)}">member dashboard</a>.</p>
@@ -344,7 +353,7 @@ export async function sendBookingConfirmationEmail(booking) {
     ));
 
     // Send admin notification copy
-    void sendAdminNotificationCopy(subject, `Booking confirmed for ${name} (${booking.recipientEmail}).\n\nRef: #${ref}\nResource: ${resourceName}\nFrom: ${startAt} UTC\nTo: ${endAt} UTC\nTotal: ${total}`);
+    void sendAdminNotificationCopy(subject, `Booking confirmed for ${name} (${booking.recipientEmail}).\n\nRef: #${ref}\nResource: ${resourceName}\nFrom: ${startAt}\nTo: ${endAt}\nTotal: ${total}`);
   } catch (error) {
     console.error('[mailer] sendBookingConfirmationEmail failed:', error?.message || error);
     return { ok: false, reason: String(error?.message ?? error) };

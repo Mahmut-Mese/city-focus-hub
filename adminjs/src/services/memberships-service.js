@@ -1795,11 +1795,6 @@ export async function cancelMembership({ userId }) {
     },
   );
 
-  // Suspend the user immediately so they cannot log in or use the portal.
-  // This mirrors what the webhook does on subscription.deleted, but takes
-  // effect right away rather than waiting for Stripe to fire the event.
-  await updateUserAccessStatus(userId, 'suspended');
-
   const cancelledMembership = await getUserMembership(userId);
 
   // Fire-and-forget: send membership cancellation email

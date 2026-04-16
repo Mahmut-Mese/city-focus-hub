@@ -20,10 +20,10 @@ import {
 } from './stripe-service.js';
 import { createOrGetGuestUser, findUserByEmail, findUserById } from './users-service.js';
 import { sequelize } from '../database.js';
-import { sendBookingConfirmationEmail, sendPaymentReceiptEmail, sendRefundNotificationEmail, sendRefundRequestedEmail, sendRefundApprovedEmail, sendRefundRejectedEmail } from '../mailer.js';
+import { sendBookingConfirmationEmail, sendRefundNotificationEmail, sendRefundRequestedEmail, sendRefundApprovedEmail, sendRefundRejectedEmail } from '../mailer.js';
 
 /**
- * Fire-and-forget email sender for booking events.
+ * Fire-and-forget email sender for booking confirmations.
  * Errors are logged but never propagated — emails must not block API responses.
  */
 function fireBookingEmails(user, booking) {
@@ -42,17 +42,6 @@ function fireBookingEmails(user, booking) {
     totalMinor: booking.totalMinor ?? booking.total_minor ?? 0,
     currency: booking.currency || 'gbp',
   }).catch((err) => console.error('[bookings-service] Booking confirmation email failed:', err?.message || err));
-
-  void sendPaymentReceiptEmail({
-    recipientName,
-    recipientEmail,
-    invoiceId: `BKG-${booking.id}`,
-    description: `${booking.resourceName || booking.resource_name || 'Room'} booking`,
-    amountMinor: booking.totalMinor ?? booking.total_minor ?? 0,
-    taxMinor: booking.taxMinor ?? booking.tax_minor ?? 0,
-    currency: booking.currency || 'gbp',
-    paidAt: new Date(),
-  }).catch((err) => console.error('[bookings-service] Payment receipt email failed:', err?.message || err));
 }
 
 const BOOKING_SELECT_QUERY = `SELECT bookings.*, resources.name AS resource_name, resources.type AS resource_type, resources.capacity AS resource_capacity, resources.metadata AS resource_metadata
@@ -1121,7 +1110,7 @@ export async function createBooking({
     const bookings = await listUserBookings(userId);
     const confirmedBooking = bookings.find((booking) => booking.id === Number(bookingId)) || null;
 
-    // Fire-and-forget: send booking confirmation + payment receipt emails
+    // Direct-card bookings are confirmed exactly once in this flow.
     if (confirmedBooking) {
       const user = await findUserById(userId);
       fireBookingEmails(user, confirmedBooking);
@@ -1195,39 +1184,18 @@ export async function initiateBookingPayment({
   if (!isStripeEnabled()) {
     await execute(
       `UPDATE bookings
-          SET status = 'confirmed',
-              stripe_payment_intent_id = :stripePaymentIntentId,
-              stripe_payment_status = 'succeeded',
+          SET status = 'canceled',
+              stripe_payment_status = 'payment_unavailable',
               payment_hold_expires_at = NULL,
               updated_at = :updatedAt
         WHERE id = :bookingId`,
       {
         bookingId,
-        stripePaymentIntentId: `mock_pi_${bookingId}`,
         updatedAt: new Date(),
       },
     );
 
-    await createLocalInvoice({
-      userId,
-      membershipId: membership?.id || null,
-      bookingId,
-      stripePaymentIntentId: `mock_pi_${bookingId}`,
-      invoiceNumber: `BK-${bookingId}`,
-      status: 'paid',
-      description: `${resource.name} booking`,
-      currency: 'gbp',
-      subtotalMinor,
-      taxMinor,
-      totalMinor,
-      paidAt: new Date(),
-    });
-
-    return {
-      booking: (await listUserBookings(userId)).find((entry) => entry.id === Number(bookingId)) || null,
-      clientSecret: null,
-      paymentIntentId: `mock_pi_${bookingId}`,
-    };
+    throw new Error('Card payments are currently unavailable. Please try again later.');
   }
 
   const user = await findUserById(userId);
@@ -1329,39 +1297,18 @@ export async function initiateBookingCheckout({
   if (!isStripeEnabled()) {
     await execute(
       `UPDATE bookings
-          SET status = 'confirmed',
-              stripe_payment_intent_id = :stripePaymentIntentId,
-              stripe_payment_status = 'succeeded',
+          SET status = 'canceled',
+              stripe_payment_status = 'payment_unavailable',
               payment_hold_expires_at = NULL,
               updated_at = :updatedAt
         WHERE id = :bookingId`,
       {
         bookingId,
-        stripePaymentIntentId: `mock_pi_${bookingId}`,
         updatedAt: new Date(),
       },
     );
 
-    await createLocalInvoice({
-      userId,
-      membershipId: membership?.id || null,
-      bookingId,
-      stripePaymentIntentId: `mock_pi_${bookingId}`,
-      invoiceNumber: `BK-${bookingId}`,
-      status: 'paid',
-      description: `${resource.name} booking`,
-      currency: 'gbp',
-      subtotalMinor,
-      taxMinor,
-      totalMinor,
-      paidAt: new Date(),
-    });
-
-    return {
-      booking: (await listUserBookings(userId)).find((entry) => entry.id === Number(bookingId)) || null,
-      sessionId: null,
-      url: null,
-    };
+    throw new Error('Card payments are currently unavailable. Please try again later.');
   }
 
   const user = await findUserById(userId);
@@ -1435,7 +1382,7 @@ export async function syncBookingCheckoutSession({ userId, sessionId }) {
     throw new Error('Stripe checkout payment intent is missing.');
   }
 
-  await finalizeBookingAfterSuccessfulPayment(
+  const outcome = await finalizeBookingAfterSuccessfulPayment(
     bookingRow,
     paymentIntentId,
     session.payment_status,
@@ -1445,8 +1392,8 @@ export async function syncBookingCheckoutSession({ userId, sessionId }) {
   const bookings = await listUserBookings(userId);
   const confirmedBooking = bookings.find((booking) => booking.id === Number(bookingId)) || null;
 
-  // Fire-and-forget: send booking confirmation + payment receipt emails
-  if (confirmedBooking) {
+  // Only notify when this call actually moved the booking into confirmed state.
+  if (confirmedBooking && outcome?.outcome === 'confirmed' && bookingRow.status !== 'confirmed') {
     const user = await findUserById(userId);
     fireBookingEmails(user, confirmedBooking);
   }
@@ -1502,13 +1449,13 @@ export async function confirmBookingPayment({ userId, bookingId, paymentIntentId
     ? { hostedInvoiceUrl: chargeReceiptUrl, invoicePdf: chargeReceiptUrl }
     : null;
 
-  await finalizeBookingAfterSuccessfulPayment(bookingRow, resolvedPaymentIntentId, paymentIntentStatus, invoiceFinancials);
+  const outcome = await finalizeBookingAfterSuccessfulPayment(bookingRow, resolvedPaymentIntentId, paymentIntentStatus, invoiceFinancials);
 
   const bookings = await listUserBookings(userId);
   const confirmedBooking = bookings.find((booking) => booking.id === Number(bookingId)) || null;
 
-  // Fire-and-forget: send booking confirmation + payment receipt emails
-  if (confirmedBooking) {
+  // Only notify when this call actually moved the booking into confirmed state.
+  if (confirmedBooking && outcome?.outcome === 'confirmed' && bookingRow.status !== 'confirmed') {
     const user = await findUserById(userId);
     fireBookingEmails(user, confirmedBooking);
   }
@@ -2060,7 +2007,7 @@ export async function confirmBookingAdjustmentPayment({ userId, paymentIntentId,
   const bookings = await listUserBookings(userId);
   const updatedBooking = bookings.find((booking) => booking.id === Number(bookingRow.id)) || null;
 
-  // Fire-and-forget: send booking update confirmation + payment receipt emails
+  // Fire-and-forget: send booking update confirmation email
   if (updatedBooking) {
     fireBookingEmails(user, updatedBooking);
   }
@@ -2197,7 +2144,7 @@ export async function syncBookingAdjustmentCheckoutSession({ userId, sessionId }
   const bookings = await listUserBookings(userId);
   const updatedBooking = bookings.find((booking) => booking.id === Number(adjustmentRow.booking_id)) || null;
 
-  // Fire-and-forget: send booking update confirmation + payment receipt emails
+  // Fire-and-forget: send booking update confirmation email
   if (updatedBooking) {
     const adjUser = await findUserById(userId);
     fireBookingEmails(adjUser, updatedBooking);

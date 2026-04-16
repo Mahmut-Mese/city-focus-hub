@@ -8,8 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..', '..');
 const projectEnvPath = path.join(projectRoot, '.env');
+const adminEnvPath = path.join(projectRoot, 'adminjs', '.env');
 const fallbackEnvPath = process.env.APP_ENV_FILE || path.join(os.homedir(), 'city-focus-hub.env');
+const resolvedEnvPath = [projectEnvPath, adminEnvPath, fallbackEnvPath].find((candidate) => existsSync(candidate));
 
 dotenv.config({
-  path: existsSync(projectEnvPath) ? projectEnvPath : fallbackEnvPath,
+  path: resolvedEnvPath,
 });
