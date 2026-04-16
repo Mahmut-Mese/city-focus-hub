@@ -2179,6 +2179,20 @@ export default function Dashboard() {
   const membership = dashboardData?.membership || null;
   const plans = dashboardData?.plans || [];
   const bookings = dashboardData?.bookings || [];
+  const upcomingBookings = useMemo(() => {
+    const now = Date.now();
+
+    return bookings
+      .filter((booking) => {
+        if (booking.status === 'canceled') {
+          return false;
+        }
+
+        const startAtMs = new Date(booking.startAt).getTime();
+        return Number.isFinite(startAtMs) && startAtMs > now;
+      })
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+  }, [bookings]);
   const invoices = dashboardData?.invoices || [];
   const stats = dashboardData?.stats || {
     daysCheckedIn: 0,
@@ -2730,7 +2744,7 @@ export default function Dashboard() {
             <Link to="/dashboard/bookings" className="text-sm font-medium text-black/50 transition-colors hover:text-black">View all</Link>
           </div>
           <div className="mt-5 space-y-4">
-            {bookings.slice(0, 3).map((booking) => {
+            {upcomingBookings.slice(0, 3).map((booking) => {
               const dateCard = formatBookingDateCard(booking.startAt);
               return (
                 <div key={booking.id} className="flex flex-col gap-4 rounded-[24px] border border-black/10 bg-[#fcfcfb] p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -2760,9 +2774,9 @@ export default function Dashboard() {
                 </div>
               );
             })}
-            {bookings.length === 0 ? (
+            {upcomingBookings.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-black/10 bg-[#fcfcfb] p-6 text-sm text-black/50">
-                No bookings yet. Use the booking page to reserve a desk or meeting room.
+                No upcoming bookings. Use the booking page to reserve a desk or meeting room.
               </div>
             ) : null}
           </div>
