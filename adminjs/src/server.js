@@ -105,6 +105,9 @@ async function normalizeUploadedImage(file) {
 }
 
 const start = async () => {
+  const { ensureAdminRuntimeBinaries } = await import('./runtime-binaries.js');
+  await ensureAdminRuntimeBinaries();
+
   const [
     { createAdmin },
     { authenticateAdmin, ensureAdminAccount },
