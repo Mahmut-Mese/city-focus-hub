@@ -852,3 +852,59 @@ export function constructStripeWebhookEvent(payload, signature) {
 
   return stripe.webhooks.constructEvent(payload, signature, config.stripe.webhookSecret);
 }
+
+export async function retrieveStripeSetupIntent(setupIntentId) {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+  return stripe.setupIntents.retrieve(setupIntentId);
+}
+
+export async function createStripeSubscriptionWithPaymentMethod({ customerId, priceId, paymentMethodId, userId, membershipId, planSlug }) {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+  return stripe.subscriptions.create({
+    customer: customerId,
+    items: [{ price: priceId }],
+    collection_method: 'charge_automatically',
+    default_payment_method: paymentMethodId,
+    payment_settings: {
+      payment_method_types: ['card'],
+      save_default_payment_method: 'on_subscription',
+    },
+    metadata: {
+      app_user_id: String(userId),
+      membership_id: String(membershipId),
+      plan_slug: String(planSlug),
+    },
+    expand: ['latest_invoice'],
+  });
+}
+
+/**
+ * Creates a Stripe SetupIntent for saving a card for future off-session use.
+ * Used by the mobile PaymentSheet membership flow.
+ * Does NOT create or activate a subscription or membership row.
+ * client_secret must never be logged.
+ */
+export async function createStripeSetupIntent({ customerId, userId, planSlug }) {
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured.');
+  }
+
+  return stripe.setupIntents.create({
+    customer: customerId,
+    usage: 'off_session',
+    payment_method_types: ['card'],
+    metadata: {
+      app_user_id: String(userId),
+      plan_slug: String(planSlug),
+      source: 'mobile_membership_setup',
+    },
+  });
+}

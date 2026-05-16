@@ -1,0 +1,6 @@
+appId: com.leadenhallworks.mobile
+---
+# Requires an authenticated simulator/device state.
+- launchApp
+- assertVisible:
+    text: "Dashboard|Bookings|Membership"

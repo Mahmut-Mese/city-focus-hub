@@ -72,12 +72,12 @@ import {
   type BookingPaymentDraft,
   type MemberBooking,
   type MemberDashboardPayload,
-  type MemberMembership,
+
   type MemberResource,
   type MembershipPaymentDraft,
   type MembershipPlanChangePreview,
   type MembershipPlan,
-  type MemberUser,
+
 } from '@/lib/member-api';
 import { downloadInvoicePdf } from '@/lib/generate-invoice-pdf';
 import { useSeo } from '@/lib/seo';
@@ -2623,7 +2623,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleCancelScheduledDowngrade = async () => {
+  const _handleCancelScheduledDowngrade = async () => {
     if (!user) {
       return;
     }

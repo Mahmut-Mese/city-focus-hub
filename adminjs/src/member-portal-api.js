@@ -22,6 +22,8 @@ import {
   createMembership,
   createMembershipCheckout,
   createMembershipPaymentDraft,
+  createMembershipSetupIntent,
+  createMembershipSubscriptionFromSetupIntent,
   getUserMembership,
   handleMembershipAdjustmentCheckoutExpired,
   handleMembershipAdjustmentInvoicePaid,
@@ -62,6 +64,17 @@ import {
   updateBooking,
 } from './services/bookings-service.js';
 import { listUserInvoices } from './services/invoices-service.js';
+import {
+  getNotificationPreferences,
+  registerPushToken,
+  revokePushToken,
+  updateNotificationPreferences,
+} from './services/push-service.js';
+import {
+  cancelAccountDeletionRequest,
+  getAccountDeletionStatus,
+  requestAccountDeletion,
+} from './account-deletion-service.js';
 import { handleChargeRefunded, handleStripeRefundUpdated } from './services/refunds-service.js';
 import {
   constructStripeWebhookEvent,
@@ -70,7 +83,7 @@ import {
   isMockStripePaymentsEnabled,
   isStripeEnabled,
 } from './services/stripe-service.js';
-import { createRateLimitMiddleware } from './security.js';
+import { createRateLimitMiddleware, authenticateMobileBearerRequest, getBearerTokenFromRequest } from './security.js';
 import { sendPasswordResetEmail } from './mailer.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -92,6 +105,7 @@ import {
   updateBookingSchema,
   planSlugSchema,
   membershipCheckoutSessionSchema,
+  membershipSubscriptionSchema,
   changePlanSchema,
   confirmPaymentSchema,
   confirmUpgradePaymentSchema,
@@ -99,6 +113,11 @@ import {
   confirmBookingAdjustmentPaymentSchema,
   resourceQuerySchema,
   updateProfileSchema,
+  pushTokenSchema,
+  deletePushTokenSchema,
+  notificationPreferencesSchema,
+  accountDeletionRequestSchema,
+  accountDeletionCancelSchema,
 } from './services/validation.js';
 
 // Returns a positive integer ID or 0 (falsy) for missing/invalid input.
@@ -215,6 +234,22 @@ function memberAuthMiddleware(request, response, next) {
 }
 
 async function requireAuthenticatedMember(request, response) {
+  if (getBearerTokenFromRequest(request)) {
+    if (request.mobileAuthenticatedUser) {
+      request.authenticatedUser = request.mobileAuthenticatedUser;
+      return request.authenticatedUser;
+    }
+    
+    try {
+      const verified = await authenticateMobileBearerRequest(request);
+      request.authenticatedUser = verified.user;
+      return verified.user;
+    } catch (error) {
+      response.status(401).json({ error: 'Authentication required.' });
+      return null;
+    }
+  }
+
   const userId = parseEntityId(request.session?.memberUserId);
 
   if (!userId) {
@@ -777,6 +812,57 @@ export function registerMemberPortalApi(app) {
     }
   });
 
+  portalRouter.post('/push-tokens', memberAuthMiddleware, validate(pushTokenSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+      await registerPushToken({
+        userId: user.id,
+        token: request.body.token,
+        platform: request.body.platform,
+        deviceId: request.body.deviceId,
+        sessionId: request.body.sessionId,
+      });
+      response.json({ ok: true });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.delete('/push-tokens', memberAuthMiddleware, validate(deletePushTokenSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+      await revokePushToken({
+        userId: user.id,
+        token: request.body.token,
+        deviceId: request.body.deviceId,
+        sessionId: request.body.sessionId,
+      });
+      response.status(204).send();
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.get('/notification-preferences', memberAuthMiddleware, async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+      const preferences = await getNotificationPreferences(user.id);
+      response.json({ data: preferences });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.put('/notification-preferences', memberAuthMiddleware, validate(notificationPreferencesSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+      const preferences = await updateNotificationPreferences(user.id, request.body);
+      response.json({ data: preferences });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
   portalRouter.post('/memberships', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
     try {
       const user = request.authenticatedUser;
@@ -794,6 +880,32 @@ export function registerMemberPortalApi(app) {
 
       const draft = await createMembershipPaymentDraft({ userId: user.id, planSlug: request.body.planSlug });
       response.status(201).json({ data: draft });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.post('/memberships/setup-intent', memberAuthMiddleware, validate(planSlugSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+
+      const setupIntent = await createMembershipSetupIntent({ userId: user.id, planSlug: request.body.planSlug });
+      response.status(201).json({ data: setupIntent });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.post('/memberships/subscription', memberAuthMiddleware, validate(membershipSubscriptionSchema), async (request, response) => {
+    try {
+      const user = request.authenticatedUser;
+
+      const result = await createMembershipSubscriptionFromSetupIntent({
+        userId: user.id,
+        planSlug: request.body.planSlug,
+        setupIntentId: request.body.setupIntentId,
+      });
+      response.status(202).json({ data: result });
     } catch (error) {
       response.status(400).json({ error: String(error?.message ?? error) });
     }
@@ -1197,5 +1309,31 @@ export function registerMemberPortalApi(app) {
     }
   });
 
+  portalRouter.get('/account-deletion', memberAuthMiddleware, async (request, response) => {
+    try {
+      const status = await getAccountDeletionStatus(request.authenticatedUser.id);
+      response.json({ data: status });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.post('/account-deletion/request', memberAuthMiddleware, validate(accountDeletionRequestSchema), async (request, response) => {
+    try {
+      const result = await requestAccountDeletion({ userId: request.authenticatedUser.id, reason: request.body.reason });
+      response.status(202).json({ data: result });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  portalRouter.post('/account-deletion/cancel', memberAuthMiddleware, validate(accountDeletionCancelSchema), async (request, response) => {
+    try {
+      const result = await cancelAccountDeletionRequest({ userId: request.authenticatedUser.id, reason: request.body.reason });
+      response.json({ data: result });
+    } catch (error) {
+      response.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
   app.use('/api/member-portal', portalRouter);
 }

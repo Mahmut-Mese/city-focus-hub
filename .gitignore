@@ -39,6 +39,8 @@ mobile/ios/build/
 mobile/ios/.xcode.env.local
 mobile/ios/*.xcodeproj/project.xcworkspace/
 mobile/ios/DerivedData/
+# Expo local state
+mobile/.expo/
 
 # Editor directories and files
 .vscode/*

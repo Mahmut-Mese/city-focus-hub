@@ -6,7 +6,7 @@ import {
   appendStatusParam,
   getBoolean,
   getString,
-  isRecord,
+
   toAmenityItems,
   toStringArray,
   usePreviewStatus,

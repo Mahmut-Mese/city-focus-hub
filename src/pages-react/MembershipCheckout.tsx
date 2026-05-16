@@ -261,7 +261,7 @@ export default function MembershipCheckout() {
   const [dashboardData, setDashboardData] = useState<MemberDashboardPayload | null>(null);
   const [paymentDraft, setPaymentDraft] = useState<MembershipPaymentDraft | null>(null);
   const [pendingUpgradeAdjustmentId, setPendingUpgradeAdjustmentId] = useState<number | null>(null);
-  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+  const [, setIsDashboardLoading] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');

@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "The Leadenhall Works",
+    "slug": "the-leadenhall-works",
+    "scheme": "leadenhallworks",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "icon": "./assets/icon.png",
+      "bundleIdentifier": "com.leadenhallworks.mobile",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "com.leadenhallworks.mobile",
+            "CFBundleURLSchemes": ["leadenhallworks"]
+          }
+        ]
+      }
+    },
+    "android": {
+      "package": "com.leadenhallworks.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#141414",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "leadenhallworks"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.leadenhallworks.mobile"
+        }
+      ],
+      "@sentry/react-native"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:3001",
+      "stagingApiUrl": "https://staging-api.leadenhallworks.com"
+    }
+  }
+}

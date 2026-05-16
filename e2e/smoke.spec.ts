@@ -241,7 +241,7 @@ test.describe('Frontend Pages — HTTP 200 & No Console Errors', () => {
 
   // Meeting room booking pages
   for (const slug of ROOM_SLUGS) {
-    const path = `/meeting-rooms/${slug}/book`;
+    const path = `/meeting-rooms/book?room=${encodeURIComponent(slug)}`;
     test(`Room booking: ${slug} → 200, no console errors`, async ({ page: browserPage }) => {
       const { status, consoleErrors } = await navigateAndCollectErrors(
         browserPage,
@@ -258,7 +258,7 @@ test.describe('Frontend Pages — HTTP 200 & No Console Errors', () => {
 
   // Pricing checkout pages — verify at least one real purchasable route per current plan
   for (const slug of PLAN_SLUGS) {
-    const path = `/pricing/${slug}/checkout`;
+    const path = `/pricing/checkout?plan=${encodeURIComponent(slug)}`;
     test(`Pricing checkout: ${slug} → 200, no console errors`, async ({ page: browserPage }) => {
       const { status, consoleErrors } = await navigateAndCollectErrors(
         browserPage,

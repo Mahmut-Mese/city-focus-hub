@@ -53,7 +53,7 @@ export default function Blog() {
     featured: post.featured,
   }));
 
-  const hasSearchQuery = searchQuery.trim().length > 0;
+
   const categorySourcePosts = allPosts;
   const categories = ['All', ...Array.from(new Set(categorySourcePosts.map((post) => post.category)))];
   const tags = getPopularTags(allPosts);

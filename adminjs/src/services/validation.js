@@ -182,6 +182,10 @@ export const planSlugSchema = z.object({
   planSlug: requiredTrimmedString.min(1, 'Plan slug is required').max(64),
 });
 
+export const membershipSubscriptionSchema = planSlugSchema.extend({
+  setupIntentId: requiredTrimmedString.min(1, 'SetupIntent ID is required').max(255),
+});
+
 export const membershipCheckoutSessionSchema = z.object({
   planSlug: requiredTrimmedString.min(1, 'Plan slug is required').max(64),
   successUrl: urlField,
@@ -210,6 +214,39 @@ export const syncSessionSchema = z.object({
 export const confirmBookingAdjustmentPaymentSchema = z.object({
   paymentIntentId: requiredTrimmedString.min(1, 'Payment intent ID is required'),
   adjustmentId: positiveInt,
+});
+
+export const pushTokenSchema = z.object({
+  token: requiredTrimmedString.min(1, 'Push token is required').max(512),
+  platform: z.enum(['ios', 'android']),
+  deviceId: trimmedString.max(255).optional().default(''),
+  sessionId: trimmedString.max(64).optional().default(''),
+});
+
+export const deletePushTokenSchema = z.object({
+  token: trimmedString.max(512).optional().default(''),
+  deviceId: trimmedString.max(255).optional().default(''),
+  sessionId: trimmedString.max(64).optional().default(''),
+}).refine((value) => Boolean(value.token || value.deviceId || value.sessionId), {
+  message: 'Token, device ID, or session ID is required',
+});
+
+export const notificationPreferencesSchema = z.object({
+  booking: z.boolean().default(true),
+  payments: z.boolean().default(true),
+  membership: z.boolean().default(true),
+  access: z.boolean().default(true),
+  marketing: z.boolean().default(false),
+  quietHoursStart: trimmedString.max(5).nullable().optional().default(null),
+  quietHoursEnd: trimmedString.max(5).nullable().optional().default(null),
+});
+
+export const accountDeletionRequestSchema = z.object({
+  reason: trimmedString.max(1000).optional().default(''),
+});
+
+export const accountDeletionCancelSchema = z.object({
+  reason: trimmedString.max(255).optional().default(''),
 });
 
 // ──────────────────────────────────────────────

@@ -1167,7 +1167,7 @@ export default function MeetingRoomBooking() {
                   </p>
 
                   <div className="flex flex-col gap-1 rounded-2xl border border-[#10153f]/15 bg-white p-2.5 sm:p-3">
-                    {hourSlots.map((slot, index) => {
+                    {hourSlots.map((slot) => {
                       const isSelected = selectedHours.includes(slot.time);
                       const isUnavailable = !slot.available;
 

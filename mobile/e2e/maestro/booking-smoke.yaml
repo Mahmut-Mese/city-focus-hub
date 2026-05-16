@@ -1,0 +1,5 @@
+appId: com.leadenhallworks.mobile
+---
+- launchApp
+- assertVisible:
+    text: "Book Room|Room|Date|Booking"

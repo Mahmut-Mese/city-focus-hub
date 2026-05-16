@@ -20,6 +20,10 @@ const frontendDistDirectory = path.join(projectRoot, 'dist');
 const frontendIndexFile = path.join(frontendDistDirectory, 'index.html');
 const MySQLStore = MySQLStoreFactory(session);
 
+const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/;
+const ANDROID_SHA256_FINGERPRINT_PATTERN = /^(?:[A-F0-9]{2}:){31}[A-F0-9]{2}$/;
+const DEFAULT_ASSOCIATED_DOMAIN_PATHS = ['/reset-password/*', '/notifications/*', '/dashboard/*'];
+
 function getApiErrorMessage(error) {
   const sequelizeMessage = error?.parent?.sqlMessage
     || error?.parent?.message
@@ -31,6 +35,36 @@ function getApiErrorMessage(error) {
   }
 
   return String(error?.message || 'Request failed.');
+}
+
+/**
+ * Parse iOS associated domain paths from a comma‑separated string.
+ * Returns DEFAULT_ASSOCIATED_DOMAIN_PATHS when the value is unset or empty.
+ */
+function parseAssociatedDomainPaths(value) {
+  // Convert the input to a string (handles undefined/null) and split on commas.
+  // Trim each entry and filter out empty strings. If the resulting array is empty,
+  // fall back to the default associated domain paths.
+  const paths = String(value || '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+  return paths.length > 0 ? paths : DEFAULT_ASSOCIATED_DOMAIN_PATHS;
+}
+
+/**
+ * Parse Android SHA‑256 certificate fingerprints from a comma‑separated string.
+ * Returns an empty array when the value is unset.
+ * Only fingerprints matching ANDROID_SHA256_FINGERPRINT_PATTERN are kept and normalized to uppercase.
+ */
+function parseAndroidSha256Fingerprints(value) {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(',')
+    .map((v) => v.trim().toUpperCase())
+    .filter((v) => ANDROID_SHA256_FINGERPRINT_PATTERN.test(v));
 }
 
 function detectImageFormat(buffer) {
@@ -121,6 +155,7 @@ const start = async () => {
     { buildResources },
     { registerPublicApi },
     { registerMemberPortalApi, registerStripeWebhook },
+    { registerMobileAuthApi },
     { approveBookingRefund, listPendingRefundRequests, listProcessedRefundRequests, rejectBookingRefund },
   ] = await Promise.all([
     import('./admin.js'),
@@ -135,6 +170,7 @@ const start = async () => {
     import('./models.js'),
     import('./public-api.js'),
     import('./member-portal-api.js'),
+    import('./mobile-auth-api.js'),
     import('./services/bookings-service.js'),
   ]);
 
@@ -299,9 +335,54 @@ const start = async () => {
   app.use('/cms', express.static(config.staticSnapshots.directory));
   registerPublicApi(app);
   registerMemberPortalApi(app);
+  registerMobileAuthApi(app);
 
   app.get('/health', (_request, response) => {
     response.json({ ok: true });
+  });
+
+  // Version Policy endpoint for mobile apps (Phase 14 T140)
+  // Returns minSupportedVersion, recommendedVersion, optional message and storeUrl.
+  // Platform-specific overrides are read from environment variables.
+  function getVersionPolicy(platform) {
+    const genericMin = String(process.env.MOBILE_APP_MIN_SUPPORTED_VERSION || '').trim() || '0.1.0';
+    const genericRec = String(process.env.MOBILE_APP_RECOMMENDED_VERSION || '').trim() || genericMin;
+    const genericStore = String(process.env.MOBILE_APP_STORE_URL || '').trim();
+    const message = String(process.env.MOBILE_APP_VERSION_POLICY_MESSAGE || '').trim();
+
+    let minSupported = genericMin;
+    let recommended = genericRec;
+    let storeUrl = genericStore;
+
+    if (platform === 'ios') {
+      minSupported = String(process.env.MOBILE_IOS_MIN_SUPPORTED_VERSION || '').trim() || genericMin;
+      recommended = String(process.env.MOBILE_IOS_RECOMMENDED_VERSION || '').trim() || genericRec;
+      storeUrl = String(process.env.MOBILE_IOS_STORE_URL || '').trim() || genericStore;
+    } else if (platform === 'android') {
+      minSupported = String(process.env.MOBILE_ANDROID_MIN_SUPPORTED_VERSION || '').trim() || genericMin;
+      recommended = String(process.env.MOBILE_ANDROID_RECOMMENDED_VERSION || '').trim() || genericRec;
+      storeUrl = String(process.env.MOBILE_ANDROID_STORE_URL || '').trim() || genericStore;
+    }
+
+    const result = {
+      minSupportedVersion: minSupported,
+      recommendedVersion: recommended,
+    };
+    if (message) {
+      result.message = message;
+    }
+    if (storeUrl) {
+      result.storeUrl = storeUrl;
+    }
+    return result;
+  }
+
+  app.get('/api/mobile-app/version-policy', (request, response) => {
+    const platform = String(request.query.platform || '').toLowerCase();
+    // version query param is currently unused but retained for future compatibility
+    // const version = String(request.query.version || '').trim();
+    const policy = getVersionPolicy(platform);
+    response.json(policy);
   });
 
   const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
@@ -463,6 +544,41 @@ const start = async () => {
 
   app.post(`${config.rootPath}/api/media/upload`, adminSessionMiddleware, requireAdminAuthentication, handleMediaUpload);
   app.use(admin.options.rootPath, adminRouter);
+
+app.get('/.well-known/apple-app-site-association', (_request, response) => {
+  const teamId = String(process.env.MOBILE_APPLE_TEAM_ID || '').trim();
+  if (!APPLE_TEAM_ID_PATTERN.test(teamId)) {
+    response.type('application/json').json({ applinks: { apps: [], details: [] } });
+    return;
+  }
+  const bundleIdentifier = String(process.env.MOBILE_IOS_BUNDLE_IDENTIFIER || 'com.leadenhallworks.mobile').trim() || 'com.leadenhallworks.mobile';
+  const paths = parseAssociatedDomainPaths(process.env.MOBILE_ASSOCIATED_DOMAIN_PATHS);
+  response.type('application/json').json({
+    applinks: {
+      apps: [],
+      details: [{ appID: `${teamId}.${bundleIdentifier}`, paths }],
+    },
+  });
+});
+
+app.get('/.well-known/assetlinks.json', (_request, response) => {
+  const packageName = String(process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.leadenhallworks.mobile').trim() || 'com.leadenhallworks.mobile';
+  const fingerprints = parseAndroidSha256Fingerprints(process.env.MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS);
+  if (!fingerprints.length) {
+    response.type('application/json').json([]);
+    return;
+  }
+  response.type('application/json').json([
+    {
+      relation: ['delegate_permission/common.handle_all_urls'],
+      target: {
+        namespace: 'android_app',
+        package_name: packageName,
+        sha256_cert_fingerprints: fingerprints,
+      },
+    },
+  ]);
+});
 
   if (hasFrontendBuild) {
     // Astro _astro/ assets have content hashes in filenames — cache aggressively (1 year, immutable).
