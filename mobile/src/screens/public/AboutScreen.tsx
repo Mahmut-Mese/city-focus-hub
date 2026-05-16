@@ -6,6 +6,7 @@ import { type ContentPage, fetchContentPage, getMediaUrl } from '../../api/conte
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 function getString(source: ContentPage | null, key: string, fallback: string): string {
@@ -73,6 +74,7 @@ function parseMixedItems(source: ContentPage | null, key: string): ListItem[] {
 }
 
 export function AboutScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const apiBaseUrl = getApiBaseUrl();
   const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
   const [content, setContent] = useState<ContentPage | null>(null);
@@ -121,7 +123,7 @@ export function AboutScreen(): JSX.Element {
   const amenitiesImage = content?.amenitiesImage ? getMediaUrl(content.amenitiesImage, apiBaseUrl) : undefined;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       {heroBackgroundImage ? (
         <ImageBackground
           source={{ uri: heroBackgroundImage }}

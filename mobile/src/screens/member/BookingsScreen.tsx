@@ -12,6 +12,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { BookingPaymentVerificationError, useBookingPaymentSheet } from '../../payments/useBookingPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 function formatWhen(value: string): string {
@@ -48,6 +49,7 @@ function getBookingNumber(b: unknown, key: string): number | null {
 }
 
 export function BookingsScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const [bookings, setBookings] = useState<MemberBooking[]>([]);
   const [resources, setResources] = useState<MemberResource[]>([]);
@@ -207,7 +209,7 @@ export function BookingsScreen(): JSX.Element {
   if (error) return <ErrorState message={error} onRetry={loadData} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>My bookings</Text>
         <Text style={styles.title}>Bookings</Text>

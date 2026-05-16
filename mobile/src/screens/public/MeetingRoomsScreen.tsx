@@ -12,6 +12,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 const DEFAULT_ROOM_IMAGE = 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800';
 
@@ -144,6 +145,7 @@ function getResourceStringArray(resource: MemberResource, key: string): string[]
 }
 
 export function MeetingRoomsScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
   const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const [page, setPage] = useState<ContentPage | null>(null);
@@ -206,7 +208,7 @@ export function MeetingRoomsScreen(): JSX.Element {
 
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <ImageBackground source={{ uri: heroBackgroundImage }} style={styles.heroBackground} imageStyle={styles.heroBackgroundImage}>
         <View style={styles.heroOverlay} />
         <View style={styles.heroContent}>

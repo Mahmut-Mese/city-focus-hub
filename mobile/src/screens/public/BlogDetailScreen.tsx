@@ -16,6 +16,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type BlogDetailScreenProps = NativeStackScreenProps<PublicStackParamList, 'BlogDetail'>;
@@ -52,6 +53,7 @@ function formatDate(value: string): string {
 }
 
 export function BlogDetailScreen({ navigation, route }: BlogDetailScreenProps): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const [post, setPost] = useState<ContentCollectionItem | null>(null);
   const [page, setPage] = useState<ContentPage | null>(null);
@@ -139,7 +141,7 @@ export function BlogDetailScreen({ navigation, route }: BlogDetailScreenProps): 
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Pressable accessibilityRole="button" onPress={handleBackPress} style={styles.backButton}>
           <Text style={styles.backButtonText}>{backLabel}</Text>

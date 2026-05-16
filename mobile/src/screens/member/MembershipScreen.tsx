@@ -17,6 +17,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { useMembershipPaymentSheet } from '../../payments/useMembershipPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 function formatMoney(minor?: number, currency = 'GBP'): string {
@@ -36,6 +37,7 @@ function getPlanFeatures(plan?: MembershipPlan): string[] {
 }
 
 export function MembershipScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const { presentMembershipPaymentSheet, presentMembershipPlanChangeSheet, isPresenting } = useMembershipPaymentSheet();
   const [dashboard, setDashboard] = useState<MemberDashboardPayload | null>(null);
@@ -71,8 +73,10 @@ export function MembershipScreen(): JSX.Element {
   }, [loadMembership]);
 
   const handleJoinPlan = useCallback(async (planSlug: string) => {
+    if (isPresenting || isMutatingMembership || selectedPlanSlug) return;
+
     setSelectedPlanSlug(planSlug);
-    setPaymentMessage(null);
+    setPaymentMessage('Preparing secure payment...');
     setError(null);
 
     try {
@@ -81,12 +85,15 @@ export function MembershipScreen(): JSX.Element {
         setPaymentMessage('Payment method saved. Your membership is pending activation while Stripe confirms the subscription.');
       }
       await loadMembership();
-    } catch {
-      setError('Membership payment was not completed. Please try again.');
+    } catch (paymentError) {
+      const message = paymentError instanceof Error && paymentError.message
+        ? paymentError.message
+        : 'Membership payment was not completed. Please try again.';
+      setPaymentMessage(message);
     } finally {
       setSelectedPlanSlug(null);
     }
-  }, [loadMembership, presentMembershipPaymentSheet]);
+  }, [isMutatingMembership, isPresenting, loadMembership, presentMembershipPaymentSheet, selectedPlanSlug]);
 
   const handleChangePlan = useCallback(async (plan: MembershipPlan) => {
     if (isPresenting || isMutatingMembership || selectedPlanSlug) return;
@@ -197,7 +204,7 @@ export function MembershipScreen(): JSX.Element {
 
   if (!membership) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
         <View style={styles.heroCard}>
           <Text style={styles.eyebrow}>Membership</Text>
           <Text style={styles.title}>Choose your plan</Text>
@@ -225,7 +232,7 @@ export function MembershipScreen(): JSX.Element {
                 onPress={() => { void handleJoinPlan(plan.slug); }}
                 style={({ pressed }) => [styles.primaryButton, (pressed || isSelected) && styles.primaryButtonPressed, (isPresenting || isSelected) && styles.disabledButton]}
               >
-                <Text style={styles.primaryButtonText}>{isSelected ? 'Preparing…' : 'Join with PaymentSheet'}</Text>
+                <Text style={styles.primaryButtonText}>{isSelected ? 'Preparing payment...' : 'Purchase now'}</Text>
               </Pressable>
             </View>
           );
@@ -244,7 +251,7 @@ export function MembershipScreen(): JSX.Element {
   const features = getPlanFeatures(currentPlan);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Membership</Text>
         <Text style={styles.title}>{planName}</Text>

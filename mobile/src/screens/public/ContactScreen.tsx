@@ -6,6 +6,7 @@ import { type ContentPage, fetchContentPage, fetchSiteSetting, getMediaUrl, subm
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type UnknownRecord = Record<string, unknown>;
@@ -55,6 +56,7 @@ function isValidEmail(value: string): boolean {
 }
 
 export function ContactScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const apiBaseUrl = getApiBaseUrl();
   const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
   const [content, setContent] = useState<ContentPage | null>(null);
@@ -146,7 +148,7 @@ export function ContactScreen(): JSX.Element {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, scrollBottomPadding]}>
         {heroImageUrl ? (
           <ImageBackground source={{ uri: heroImageUrl }} resizeMode="cover" style={styles.heroCard}>
             <View style={styles.heroOverlay}>

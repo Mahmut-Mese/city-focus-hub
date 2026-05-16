@@ -13,9 +13,11 @@ import { getStoredSession } from '../../auth/secure-storage';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 export function AccountDeletionScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const [status, setStatus] = useState<AccountDeletionStatus | null>(null);
   const [reason, setReason] = useState('');
@@ -99,7 +101,7 @@ export function AccountDeletionScreen(): JSX.Element {
   const canCancel = status?.status === 'requested';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <Text style={styles.eyebrow}>Privacy</Text>
       <Text style={styles.title}>Account deletion</Text>
       <Text style={styles.subtitle}>Request deletion of your account data. Requests are processed within 30 days.</Text>

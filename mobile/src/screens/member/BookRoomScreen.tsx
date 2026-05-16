@@ -12,6 +12,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { BookingPaymentVerificationError, useBookingPaymentSheet } from '../../payments/useBookingPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 // Type safety helpers
@@ -64,6 +65,7 @@ function isPastDate(dateStr: string): boolean {
 }
 
 export function BookRoomScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const [resources, setResources] = useState<MemberResource[]>([]);
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(null);
@@ -259,7 +261,7 @@ export function BookRoomScreen(): JSX.Element {
   if (resources.length === 0) return <EmptyState title="No rooms available" message="Bookable meeting rooms will appear here once available." />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Book a room</Text>
         <Text style={styles.title}>Choose room and time</Text>

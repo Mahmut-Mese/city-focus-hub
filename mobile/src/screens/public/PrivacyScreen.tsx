@@ -9,6 +9,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;
@@ -49,6 +50,7 @@ function getSections(source: ContentPage | null): Array<{ title?: string; body?:
 }
 
 export function PrivacyScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
   const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const [content, setContent] = useState<ContentPage | null>(null);
@@ -88,7 +90,7 @@ export function PrivacyScreen(): JSX.Element {
   const body = getString(content, 'body', getString(content, 'content', 'Privacy policy content is being prepared. Please contact the team if you need a copy of our current privacy information.'));
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Legal</Text>
         <Text style={styles.title}>{heroTitle}</Text>

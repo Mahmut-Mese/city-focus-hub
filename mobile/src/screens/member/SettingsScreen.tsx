@@ -6,9 +6,11 @@ import { changeMobilePassword } from '../../api/mobile-auth-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { getStoredSession } from '../../auth/secure-storage';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 export function SettingsScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { logout, refreshSession } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -80,7 +82,7 @@ export function SettingsScreen(): JSX.Element {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.card}>
         <Text style={styles.title}>Account settings</Text>
         <Text style={styles.subtitle}>Update your password securely.</Text>

@@ -17,6 +17,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 const HOURS = Array.from({ length: 15 }, (_, index) => `${String(index + 7).padStart(2, '0')}:00`);
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -190,6 +191,7 @@ function updateConsecutiveHours(current: string[], nextHour: string): string[] {
 }
 
 export function MeetingRoomBookingScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const route = useRoute<BookingRoute>();
   const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const todayValue = useMemo(() => formatDateValue(new Date()), []);
@@ -488,7 +490,7 @@ useEffect(() => {
 
   if (confirmedBooking) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
         <View style={styles.confirmedCard}>
           <Text style={styles.title}>Booking confirmed</Text>
           <Text style={styles.subtitle}>We have emailed your confirmation.</Text>
@@ -521,7 +523,7 @@ useEffect(() => {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>BOOKING</Text>
         <Text style={styles.title}>Book this room</Text>

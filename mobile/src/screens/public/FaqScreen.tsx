@@ -9,6 +9,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;
@@ -38,6 +39,7 @@ function getNested(source: unknown, key: string): unknown {
 }
 
 export function FaqScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
   const apiBaseUrl = getApiBaseUrl();
   const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
@@ -93,7 +95,7 @@ export function FaqScreen(): JSX.Element {
     : rows;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       {heroImageUrl ? (
         <ImageBackground source={{ uri: heroImageUrl }} resizeMode="cover" style={styles.heroCard}>
           <View style={styles.heroOverlay}>

@@ -9,6 +9,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;
@@ -51,6 +52,7 @@ function getGalleryImages(source: unknown, apiBaseUrl: string): GalleryImage[] {
 }
 
 export function VirtualOfficeScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
   const apiBaseUrl = getApiBaseUrl();
   const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
@@ -121,7 +123,7 @@ export function VirtualOfficeScreen(): JSX.Element {
   const submitLabel = getString(contactForm, 'submitLabel', 'Submit');
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       {heroImageUrl ? (
         <ImageBackground source={{ uri: heroImageUrl }} resizeMode="cover" style={styles.heroCard}><View style={styles.heroOverlay}><Text style={styles.eyebrow}>Virtual office</Text><Text style={styles.title}>{heroTitle}</Text><Text style={styles.subtitleOnImage}>{heroSubtitle}</Text></View></ImageBackground>
       ) : (

@@ -12,6 +12,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { MemberTabsParamList } from '../../navigation/MemberTabs';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 function getStringValue(source: unknown, key: string, fallback = ''): string {
   if (source && typeof source === 'object' && key in source) {
@@ -60,6 +61,7 @@ function formatTimeRange(startAt: unknown, endAt: unknown): string {
 type MemberNavigation = BottomTabNavigationProp<MemberTabsParamList>;
 
 export function DashboardScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<MemberNavigation>();
   const { refreshSession, logout } = useAuth();
   const [dashboard, setDashboard] = useState<MemberDashboardPayload | null>(null);
@@ -128,7 +130,7 @@ export function DashboardScreen(): JSX.Element {
   const features = activePlan && Array.isArray(activePlan.features) ? activePlan.features : [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Member dashboard</Text>
         <Text style={styles.titleSmall}>Welcome back, {userName}</Text>

@@ -12,6 +12,7 @@ import { getStoredSession } from '../../auth/secure-storage';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type ToggleKey = 'booking' | 'payments' | 'membership' | 'access' | 'marketing';
@@ -31,6 +32,7 @@ const TOGGLES: ToggleRow[] = [
 ];
 
 export function NotificationPreferencesScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +91,7 @@ export function NotificationPreferencesScreen(): JSX.Element {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Notifications</Text>
         <Text style={styles.title}>Notification preferences</Text>

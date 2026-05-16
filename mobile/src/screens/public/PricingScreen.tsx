@@ -12,6 +12,7 @@ import type { PublicStackParamList } from '../../navigation/PublicStack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { useMembershipPaymentSheet } from '../../payments/useMembershipPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type PlanLike = PublicPlan;
@@ -154,6 +155,7 @@ function getPlanSlug(source: PlanLike): string | null {
 }
 
 export function PricingScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
   const { isAuthenticated } = useAuth();
   const { presentMembershipPaymentSheet, isPresenting } = useMembershipPaymentSheet();
@@ -238,7 +240,7 @@ export function PricingScreen(): JSX.Element {
   const faqItems = getFaqItems(page);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Membership</Text>
         <Text style={styles.title}>{heroTitle}</Text>

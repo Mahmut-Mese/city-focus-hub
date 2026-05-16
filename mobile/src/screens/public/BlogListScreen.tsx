@@ -8,6 +8,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type BlogListScreenProps = NativeStackScreenProps<PublicStackParamList, 'BlogList'>;
@@ -25,6 +26,7 @@ function getPostId(post: ContentCollectionItem, index: number): string {
 }
 
 export function BlogListScreen({ navigation }: BlogListScreenProps): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const [page, setPage] = useState<ContentPage | null>(null);
   const [posts, setPosts] = useState<ContentCollectionItem[]>([]);
@@ -117,7 +119,7 @@ export function BlogListScreen({ navigation }: BlogListScreenProps): JSX.Element
   const recentPosts = posts.slice(0, 3);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Blog</Text>
         <Text style={styles.title}>{heroTitle}</Text>

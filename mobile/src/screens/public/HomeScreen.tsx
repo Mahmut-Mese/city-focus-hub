@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ImageBackground, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import { createApiClient } from '../../api/client';
 import { getApiBaseUrl } from '../../config/api';
 import { fetchContentPage, fetchSiteSetting, submitContactSubmission } from '../../api/content-api';
@@ -13,6 +15,7 @@ import { parseHomeContent, parseSiteSettings } from '../../utils/home-content-pa
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;
@@ -51,6 +54,98 @@ async function openExternalUrl(url: string): Promise<void> {
     }
   } catch {
     // External links are best-effort only.
+  }
+}
+
+function getUrlOrigin(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return '';
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function buildVideoHtml(embedUrl: string, title: string): string {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; overflow: hidden; }
+      iframe { border: 0; width: 100%; height: 100%; display: block; }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="${escapeHtml(embedUrl)}"
+      title="${escapeHtml(title)}"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+  </body>
+</html>`;
+}
+
+function withEmbedOrigin(url: URL, siteOrigin: string): string {
+  if (siteOrigin && url.hostname.includes('youtube.com')) {
+    url.searchParams.set('origin', siteOrigin);
+    url.searchParams.set('playsinline', '1');
+    url.searchParams.set('rel', '0');
+  }
+
+  return url.toString();
+}
+
+function toVideoEmbedUrl(value: string, siteOrigin: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const iframeMatch = trimmed.match(/src=["']([^"']+)["']/i);
+  const rawUrl = iframeMatch?.[1] ?? trimmed;
+
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+
+    if (url.hostname.includes('youtube.com')) {
+      if (url.pathname === '/watch') {
+        const videoId = url.searchParams.get('v');
+        if (!videoId) return '';
+
+        const embedUrl = new URL(`https://www.youtube.com/embed/${encodeURIComponent(videoId)}`);
+        return withEmbedOrigin(embedUrl, siteOrigin);
+      }
+
+      if (url.pathname.startsWith('/embed/')) {
+        return withEmbedOrigin(url, siteOrigin);
+      }
+    }
+
+    if (url.hostname === 'youtu.be') {
+      const videoId = url.pathname.replace(/^\/+/, '');
+      if (!videoId) return '';
+
+      const embedUrl = new URL(`https://www.youtube.com/embed/${encodeURIComponent(videoId)}`);
+      return withEmbedOrigin(embedUrl, siteOrigin);
+    }
+
+    if (url.hostname.includes('vimeo.com') && !url.hostname.includes('player.vimeo.com')) {
+      const videoId = url.pathname.replace(/^\/+/, '');
+      return videoId ? `https://player.vimeo.com/video/${encodeURIComponent(videoId)}` : '';
+    }
+
+    return url.toString();
+  } catch {
+    return '';
   }
 }
 
@@ -146,9 +241,12 @@ function LeadenhallLogo({ inverted = false }: { inverted?: boolean }): JSX.Eleme
 }
 
 export function HomeScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
+  const insets = useSafeAreaInsets();
   const { isAuthenticated } = useAuth();
-  const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
+  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+  const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
   const [homeSource, setHomeSource] = useState<Record<string, unknown> | null>(null);
   const [siteSource, setSiteSource] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +254,7 @@ export function HomeScreen(): JSX.Element {
   const [formState, setFormState] = useState<ContactFormState>(EMPTY_FORM);
   const [formMessage, setFormMessage] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadContent = useCallback(async () => {
@@ -239,7 +338,10 @@ export function HomeScreen(): JSX.Element {
 
   const home = parseHomeContent(homeSource);
   const siteSettings = parseSiteSettings(siteSource);
-  const videoAvailable = home.hero.videoUrl.length > 0;
+  const siteOrigin = getUrlOrigin(apiBaseUrl);
+  const heroVideoUrl = toVideoEmbedUrl(home.hero.videoUrl, siteOrigin);
+  const heroVideoHtml = buildVideoHtml(heroVideoUrl, home.hero.secondaryCtaLabel);
+  const videoAvailable = heroVideoUrl.length > 0;
   const mapAvailable = home.visit.mapUrl.length > 0;
 
   const fallbackMenu: MenuLink[] = [
@@ -284,8 +386,8 @@ export function HomeScreen(): JSX.Element {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
+      <View style={[styles.header, { minHeight: 58 + Math.max(insets.top, spacing.sm), paddingTop: Math.max(insets.top, spacing.md) }]}>
         <LeadenhallLogo />
         <View style={styles.headerSpacer} />
         <Pressable
@@ -342,7 +444,7 @@ export function HomeScreen(): JSX.Element {
             <Pressable
               style={[styles.secondaryButton, !videoAvailable ? styles.disabledButton : null]}
               disabled={!videoAvailable}
-              onPress={() => void openExternalUrl(home.hero.videoUrl)}
+              onPress={() => setIsVideoOpen(true)}
               accessibilityRole="button"
               accessibilityState={{ disabled: !videoAvailable }}
             >
@@ -350,11 +452,44 @@ export function HomeScreen(): JSX.Element {
               <Text style={styles.secondaryButtonText}>{home.hero.secondaryCtaLabel}</Text>
             </Pressable>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <View style={styles.chipRow}>
             {home.featureChips.map((chip) => <HomeChip key={`${chip.icon}-${chip.text}`} icon={chip.icon} label={chip.text} inverted />)}
-          </ScrollView>
+          </View>
         </View>
       </ImageBackground>
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isVideoOpen}
+        onRequestClose={() => setIsVideoOpen(false)}
+        statusBarTranslucent
+      >
+        <View style={[styles.videoModalBackdrop, { paddingTop: Math.max(insets.top, spacing.xl), paddingBottom: Math.max(insets.bottom, spacing.xl) }]}>
+          <View style={styles.videoModalPanel}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close video"
+              style={styles.videoCloseButton}
+              onPress={() => setIsVideoOpen(false)}
+            >
+              <Text style={styles.videoCloseText}>Close</Text>
+            </Pressable>
+            {heroVideoUrl ? (
+              <WebView
+                source={{ html: heroVideoHtml, baseUrl: siteOrigin || undefined }}
+                allowsFullscreenVideo
+                domStorageEnabled
+                javaScriptEnabled
+                mediaPlaybackRequiresUserAction={false}
+                originWhitelist={['*']}
+                thirdPartyCookiesEnabled
+                style={styles.videoWebView}
+              />
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.graySection} testID="home-services-section">
         <HomeSectionHeader eyebrow={home.servicesEyebrow} kicker={home.servicesKicker} />
@@ -397,8 +532,10 @@ export function HomeScreen(): JSX.Element {
         <HomeSectionHeader eyebrow={home.whyChooseEyebrow} kicker={home.whyChooseKicker} title={home.whyChooseTitle} centeredTitle />
         {home.whyChooseItems.map((item) => (
           <HomeCard key={item.title}>
-            <HomeIcon name={item.icon} size={16} color={colors.primaryForeground} backgroundColor={colors.primary} style={styles.featureIcon} />
-            <Text style={styles.featureTitle}>{item.title}</Text>
+            <View style={styles.featureHeader}>
+              <HomeIcon name={item.icon} size={15} color={colors.primaryForeground} backgroundColor={colors.primary} style={styles.featureIcon} />
+              <Text style={styles.featureTitle}>{item.title}</Text>
+            </View>
             <Text style={styles.cardDescription}>{item.description}</Text>
           </HomeCard>
         ))}
@@ -507,30 +644,35 @@ function FooterLinks({ title, links, onPress, horizontal = false }: { title: str
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: spacing['2xl'] },
-  header: { alignItems: 'center', backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  header: { alignItems: 'center', backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: spacing.sm, minHeight: 60, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   brandRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
   logoMarkTile: { position: 'relative' },
   logoOuterRect: { position: 'absolute' },
   logoStroke: { position: 'absolute' },
   brandWordmark: { justifyContent: 'center' },
   headerSpacer: { flex: 1 },
-  headerIcon: { alignItems: 'center', backgroundColor: '#f7f7f6', borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
+  headerIcon: { alignItems: 'center', backgroundColor: '#f7f7f6', borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
   menuPanel: { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   menuItem: { alignItems: 'center', borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   menuItemText: { color: colors.foreground, fontSize: typography.fontSize.sm, fontWeight: '600' },
-  hero: { minHeight: 560, justifyContent: 'center' },
+  hero: { minHeight: 520, justifyContent: 'center' },
   heroImage: { backgroundColor: colors.primary },
   heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.58)' },
-  heroInner: { gap: spacing.lg, padding: spacing.xl },
-  heroTitle: { color: colors.primaryForeground, fontSize: 34, fontWeight: '700', lineHeight: 36 },
-  heroSubtitle: { color: 'rgba(255,255,255,0.82)', fontSize: typography.fontSize.base, lineHeight: typography.lineHeight.normal },
-  heroButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  primaryButton: { backgroundColor: colors.primaryForeground, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  heroInner: { gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.xl },
+  heroTitle: { color: colors.primaryForeground, fontSize: 30, fontWeight: '700', lineHeight: 34 },
+  heroSubtitle: { color: 'rgba(255,255,255,0.82)', fontSize: 15, lineHeight: 23 },
+  heroButtons: { alignItems: 'flex-start', gap: spacing.sm },
+  primaryButton: { backgroundColor: colors.primaryForeground, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center', minHeight: 42 },
   primaryButtonText: { color: colors.primary, fontSize: typography.fontSize.xs, fontWeight: '700', lineHeight: 16 },
-  secondaryButton: { alignItems: 'center', justifyContent: 'center', borderColor: 'rgba(255,255,255,0.75)', borderRadius: radius.full, borderWidth: 1, flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minHeight: 44 },
+  secondaryButton: { alignItems: 'center', justifyContent: 'center', borderColor: 'rgba(255,255,255,0.75)', borderRadius: radius.full, borderWidth: 1, flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minHeight: 42 },
   secondaryButtonText: { color: colors.primaryForeground, fontSize: typography.fontSize.xs, fontWeight: '700', lineHeight: 16 },
   disabledButton: { opacity: 0.45 },
-  chipRow: { gap: spacing.sm, paddingRight: spacing.xl },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.xs },
+  videoModalBackdrop: { backgroundColor: 'rgba(0,0,0,0.76)', flex: 1, justifyContent: 'center', paddingHorizontal: spacing.lg },
+  videoModalPanel: { backgroundColor: colors.primary, borderRadius: radius.lg, gap: spacing.sm, overflow: 'hidden', padding: spacing.sm },
+  videoCloseButton: { alignSelf: 'flex-end', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  videoCloseText: { color: colors.primaryForeground, fontSize: typography.fontSize.xs, fontWeight: '700' },
+  videoWebView: { aspectRatio: 16 / 9, backgroundColor: colors.primary, width: '100%' },
   graySection: { backgroundColor: '#EFEFEF', gap: spacing.lg, padding: spacing.lg },
   whiteSection: { backgroundColor: colors.background, gap: spacing.lg, padding: spacing.lg },
   serviceImageWrap: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, height: 180 },
@@ -550,8 +692,9 @@ const styles = StyleSheet.create({
   lightSmallButton: { alignItems: 'center', justifyContent: 'center', borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minHeight: 40 },
   lightSmallButtonText: { color: colors.foreground, fontSize: typography.fontSize.xs, fontWeight: '700', lineHeight: 16 },
   aboutImage: { height: 220 },
-  featureIcon: { marginBottom: spacing.md },
-  featureTitle: { color: colors.foreground, fontSize: typography.fontSize.lg, fontWeight: '700', marginBottom: spacing.xs },
+  featureHeader: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  featureIcon: { borderRadius: radius.md },
+  featureTitle: { color: colors.foreground, flex: 1, fontSize: typography.fontSize.lg, fontWeight: '700', lineHeight: 23 },
   stars: { flexDirection: 'row', gap: 2, marginBottom: spacing.sm },
   quoteText: { color: colors.foreground, fontSize: typography.fontSize.sm, lineHeight: typography.lineHeight.normal, marginBottom: spacing.md },
   testimonialName: { color: colors.foreground, fontSize: typography.fontSize.sm, fontWeight: '700' },

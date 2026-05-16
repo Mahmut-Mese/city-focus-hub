@@ -9,9 +9,11 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 export function ProfileScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const [profile, setProfile] = useState<MemberUser | null>(null);
   const [dashboard, setDashboard] = useState<MemberDashboardPayload | null>(null);
@@ -97,7 +99,7 @@ export function ProfileScreen(): JSX.Element {
   if (!profile) return <EmptyState title="No profile data" message="Your member profile will appear here once available." />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Profile</Text>
         <Text style={styles.title}>{profile.name}</Text>

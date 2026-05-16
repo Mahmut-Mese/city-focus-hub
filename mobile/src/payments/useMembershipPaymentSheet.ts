@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useStripe } from '@stripe/stripe-react-native';
+import { initStripe, useStripe } from '@stripe/stripe-react-native';
 import { createApiClient } from '../api/client';
 import { getApiBaseUrl } from '../config/api';
 import {
@@ -8,6 +8,7 @@ import {
   confirmMemberMembershipUpgradePayment,
   createMembershipSetupIntent,
   createMembershipSubscriptionFromSetupIntent,
+  fetchMemberDashboard,
   type MemberMembership,
   type MembershipSubscriptionResult,
 } from '../api/member-api';
@@ -31,6 +32,14 @@ function normaliseStatus(value: unknown): string {
 function isMembershipActivationPending(status: unknown): boolean {
   const normalised = normaliseStatus(status);
   return normalised.length === 0 || NON_ACTIVE_MEMBERSHIP_STATUSES.has(normalised);
+}
+
+function getStripePublishableKey(source: unknown): string {
+  if (!source || typeof source !== 'object') return '';
+  const stripe = (source as { stripe?: unknown }).stripe;
+  if (!stripe || typeof stripe !== 'object') return '';
+  const publishableKey = (stripe as { publishableKey?: unknown }).publishableKey;
+  return typeof publishableKey === 'string' ? publishableKey.trim() : '';
 }
 
 export type MembershipPaymentSheetResult = {
@@ -71,11 +80,23 @@ export function useMembershipPaymentSheet(): {
     setIsPresenting(true);
 
     try {
+      const dashboard = await fetchMemberDashboard(apiClient);
+      const publishableKey = getStripePublishableKey(dashboard);
+
+      if (!publishableKey) {
+        throw new Error('Membership payments are temporarily unavailable.');
+      }
+
       const setupDraft = await createMembershipSetupIntent(apiClient, planSlug);
 
       if (!setupDraft.clientSecret) {
         throw new Error('Membership payment could not be prepared.');
       }
+
+      await initStripe({
+        publishableKey,
+        urlScheme: 'leadenhallworks',
+      });
 
       const initResult = await initPaymentSheet({
         merchantDisplayName: 'The Leadenhall Works',
@@ -114,9 +135,21 @@ export function useMembershipPaymentSheet(): {
     setIsPresenting(true);
 
     try {
+      const dashboard = await fetchMemberDashboard(apiClient);
+      const publishableKey = getStripePublishableKey(dashboard);
       const result = await changeMemberPlan(apiClient, planSlug);
 
       if (result.action === 'payment_required' && result.clientSecret && result.paymentIntentId && result.adjustmentId) {
+        if (!publishableKey) {
+          await cancelMemberMembershipAdjustment(apiClient, { adjustmentId: result.adjustmentId }).catch(() => undefined);
+          throw new Error('Membership payments are temporarily unavailable.');
+        }
+
+        await initStripe({
+          publishableKey,
+          urlScheme: 'leadenhallworks',
+        });
+
         const initResult = await initPaymentSheet({
           merchantDisplayName: 'The Leadenhall Works',
           paymentIntentClientSecret: result.clientSecret,

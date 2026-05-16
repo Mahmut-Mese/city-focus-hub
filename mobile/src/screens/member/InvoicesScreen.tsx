@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useScrollBottomPadding } from '../../utils/use-scroll-padding';
 
 
 function formatMoney(minor?: number, currency = 'GBP'): string {
@@ -30,6 +31,7 @@ function getInvoiceUrl(invoice: MemberInvoice): { url: string | null; type: 'pdf
 }
 
 export function InvoicesScreen(): JSX.Element {
+  const scrollBottomPadding = useScrollBottomPadding();
   const { refreshSession } = useAuth();
   const [invoices, setInvoices] = useState<MemberInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,7 +85,7 @@ export function InvoicesScreen(): JSX.Element {
   if (invoices.length === 0) return <EmptyState title="No invoices yet" message="Your invoices will appear here once payments are created." />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, scrollBottomPadding]}>
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Billing</Text>
         <Text style={styles.title}>Invoices</Text>
