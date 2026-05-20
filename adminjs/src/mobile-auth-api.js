@@ -7,9 +7,16 @@ import {
   revokeMobileSession,
   verifyMobileAccessToken,
 } from './services/mobile-auth-service.js';
+import { changeUserPassword, createPasswordResetToken, resetPasswordWithToken } from './services/users-service.js';
+import { sendPasswordResetEmail } from './mailer.js';
+import { resetPasswordSchema, validate } from './services/validation.js';
 
 function getString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function isBasicEmailShape(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function getClientContext(request) {
@@ -93,6 +100,87 @@ export function registerMobileAuthApi(app) {
       response.status(201).json(result);
     } catch (error) {
       response.status(400).json({ error: getSafeRegistrationError(error) });
+    }
+  });
+
+  router.post('/forgot-password', authRateLimiter, async (request, response) => {
+    const email = getString(request.body?.email);
+
+    if (!email || !isBasicEmailShape(email)) {
+      response.status(200).json({ ok: true });
+      return;
+    }
+
+    try {
+      const result = await createPasswordResetToken(email);
+
+      if (result) {
+        const resetUrl = `leadenhallworks://reset-password?token=${encodeURIComponent(result.token)}`;
+
+        void sendPasswordResetEmail({
+          recipientName: result.user.name,
+          recipientEmail: result.user.email,
+          resetUrl,
+        });
+      }
+    } catch {
+      // Always return success to avoid user enumeration.
+    }
+
+    response.status(200).json({ ok: true });
+  });
+
+  router.post('/reset-password', authRateLimiter, validate(resetPasswordSchema), async (request, response) => {
+    try {
+      await resetPasswordWithToken(request.body.token, request.body.newPassword);
+      response.status(200).json({ ok: true });
+    } catch {
+      response.status(400).json({ error: 'Reset link is invalid or has expired. Please request a new password reset.' });
+    }
+  });
+
+  router.post('/change-password', authRateLimiter, async (request, response) => {
+    try {
+      const accessToken = getBearerToken(request);
+
+      if (!accessToken) {
+        response.status(401).json({ error: 'Authentication required.' });
+        return;
+      }
+
+      const verified = await verifyMobileAccessToken(accessToken);
+      const currentPassword = getString(request.body?.currentPassword);
+      const newPassword = getString(request.body?.newPassword);
+
+      if (!currentPassword) {
+        response.status(400).json({ error: 'Current password is required.' });
+        return;
+      }
+
+      if (!newPassword) {
+        response.status(400).json({ error: 'New password is required.' });
+        return;
+      }
+
+      if (newPassword.length < 6 || newPassword.length > 128) {
+        response.status(400).json({ error: 'New password must be between 6 and 128 characters.' });
+        return;
+      }
+
+      await changeUserPassword({
+        userId: verified.user.id,
+        currentPassword,
+        newPassword,
+      });
+
+      response.status(200).json({ ok: true });
+    } catch (error) {
+      if (error && typeof error.message === 'string' && /incorrect|required|least|long|found/i.test(error.message)) {
+        response.status(400).json({ error: 'Unable to change password. Please check your inputs.' });
+        return;
+      }
+
+      response.status(401).json({ error: 'Authentication required.' });
     }
   });
 

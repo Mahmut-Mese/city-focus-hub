@@ -178,6 +178,22 @@ Body: { refreshToken?: string, sessionId?: string }
 GET /session
 Auth: Bearer access token
 200: { user: MobileMember, sessionId: string }
+
+POST /change-password
+Auth: Bearer access token
+Body: { currentPassword: string, newPassword: string }
+200: { ok: true }
+400: { error: string }
+401: { error: string }
+
+POST /forgot-password
+Body: { email: string }
+200: { ok: true }
+
+POST /reset-password
+Body: { token: string, newPassword: string }
+200: { ok: true }
+400: { error: string }
 ```
 
 ## Backend Mobile Auth Service

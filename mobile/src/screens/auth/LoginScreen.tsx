@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/AuthProvider';
+import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
 
+type AuthNavigation = NativeStackNavigationProp<AuthStackParamList>;
+
 export function LoginScreen(): JSX.Element {
+  const navigation = useNavigation<AuthNavigation>();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,6 +77,15 @@ export function LoginScreen(): JSX.Element {
           />
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          disabled={isSubmitting}
+          onPress={() => navigation.navigate('ForgotPassword')}
+          style={styles.textLinkButton}
+        >
+          <Text style={styles.textLink}>Forgot password?</Text>
+        </Pressable>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable
@@ -84,6 +99,18 @@ export function LoginScreen(): JSX.Element {
         >
           <Text style={styles.buttonText}>{isSubmitting ? 'Signing in…' : 'Sign in'}</Text>
         </Pressable>
+
+        <View style={styles.registerRow}>
+          <Text style={styles.registerPrompt}>No account yet?</Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSubmitting}
+            onPress={() => navigation.navigate('Register')}
+            style={styles.registerLinkButton}
+          >
+            <Text style={styles.registerLink}>Create account</Text>
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -141,6 +168,17 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: spacing.md,
   },
+  textLinkButton: {
+    alignSelf: 'flex-start',
+  },
+  textLink: {
+    color: colors.foreground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    lineHeight: typography.lineHeight.tight,
+    textDecorationLine: 'underline',
+  },
   error: {
     color: colors.destructive,
     fontFamily: typography.fontFamily.sans,
@@ -165,5 +203,30 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: '700',
     lineHeight: typography.lineHeight.normal,
+  },
+  registerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  registerPrompt: {
+    color: colors.mutedForeground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.tight,
+  },
+  registerLinkButton: {
+    paddingVertical: spacing.xs,
+  },
+  registerLink: {
+    color: colors.foreground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    lineHeight: typography.lineHeight.tight,
+    textDecorationLine: 'underline',
   },
 });

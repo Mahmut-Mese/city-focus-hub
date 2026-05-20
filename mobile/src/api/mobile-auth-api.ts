@@ -53,6 +53,24 @@ export type MobileLogoutInput = {
   sessionId?: string;
 };
 
+export type MobileForgotPasswordInput = {
+  email: string;
+};
+
+export type MobileResetPasswordInput = {
+  token: string;
+  newPassword: string;
+};
+
+export type MobileForgotResetResponse = {
+  ok: true;
+};
+
+export type MobileChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export function loginMobile(apiClient: ApiClient, input: MobileLoginInput): Promise<MobileAuthSessionResponse> {
   return apiClient.request<MobileAuthSessionResponse>('/api/v1/mobile-auth/login', {
     method: 'POST',
@@ -87,4 +105,36 @@ export async function logoutMobile(apiClient: ApiClient, input: MobileLogoutInpu
 
 export function getMobileSession(apiClient: ApiClient): Promise<MobileSessionResponse> {
   return apiClient.request<MobileSessionResponse>('/api/v1/mobile-auth/session');
+}
+
+export function forgotMobilePassword(
+  apiClient: ApiClient,
+  input: MobileForgotPasswordInput,
+): Promise<MobileForgotResetResponse> {
+  return apiClient.request<MobileForgotResetResponse>('/api/v1/mobile-auth/forgot-password', {
+    method: 'POST',
+    body: input,
+    skipAuth: true,
+  });
+}
+
+export function resetMobilePassword(
+  apiClient: ApiClient,
+  input: MobileResetPasswordInput,
+): Promise<MobileForgotResetResponse> {
+  return apiClient.request<MobileForgotResetResponse>('/api/v1/mobile-auth/reset-password', {
+    method: 'POST',
+    body: input,
+    skipAuth: true,
+  });
+}
+
+export function changeMobilePassword(
+  apiClient: ApiClient,
+  input: MobileChangePasswordInput,
+): Promise<MobileForgotResetResponse> {
+  return apiClient.request<MobileForgotResetResponse>('/api/v1/mobile-auth/change-password', {
+    method: 'POST',
+    body: input,
+  });
 }

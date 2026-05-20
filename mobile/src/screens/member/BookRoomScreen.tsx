@@ -2,12 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { createApiClient } from '../../api/client';
 import { fetchBookingResources } from '../../api/booking-api';
+import type { BookingDraftInput } from '../../api/booking-api';
+import type { MemberBooking } from '../../api/member-api';
 import type { MemberResource } from '../../api/member-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { getStoredSession } from '../../auth/secure-storage';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { BookingPaymentVerificationError, useBookingPaymentSheet } from '../../payments/useBookingPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
 
 const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
@@ -48,9 +51,11 @@ export function BookRoomScreen(): JSX.Element {
   const [endTime, setEndTime] = useState('');
   const [purpose, setPurpose] = useState('');
   const [notes, setNotes] = useState('');
-  const [validation, setValidation] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { presentBookingPaymentSheet, isPresenting } = useBookingPaymentSheet();
 
   const apiClient = useMemo(() => createApiClient({
     baseUrl: getApiBaseUrl(),
@@ -91,16 +96,46 @@ export function BookRoomScreen(): JSX.Element {
   } : null;
   const priceEstimate = formatEstimate(getHourlyRateMinor(selectedResource), getDurationHours(startTime, endTime));
 
-  const validateInput = () => {
+  const validateInput = (): BookingDraftInput | null => {
     if (!bookingInput) {
-      setValidation('Select a room, date, start time, and end time to continue.');
-      return;
+      setMessage('Select a room, date, start time, and end time to continue.');
+      return null;
     }
     if (!purpose.trim()) {
-      setValidation('Enter a purpose before reviewing the booking.');
-      return;
+      setMessage('Enter a purpose before continuing to payment.');
+      return null;
     }
-    setValidation(`Ready for review: ${selectedResource?.name ?? 'Room'} from ${bookingInput.startAt} to ${bookingInput.endAt}.`);
+    setMessage(null);
+    return bookingInput;
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting || isPresenting) return;
+    const validInput = validateInput();
+    if (!validInput) return;
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      const result = await presentBookingPaymentSheet(validInput);
+      const booking: MemberBooking = result.booking;
+      const startsAt = new Date(booking.startAt);
+      const endsAt = new Date(booking.endAt);
+      const timeSummary = Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())
+        ? `${booking.startAt} - ${booking.endAt}`
+        : `${startsAt.toLocaleDateString()} ${startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${endsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+      setMessage(`Booking confirmed: ${booking.resourceName || selectedResource?.name || 'Room'} • ${timeSummary} • Ref #${booking.id}`);
+    } catch (submitError) {
+      if (submitError instanceof BookingPaymentVerificationError) {
+        setMessage(submitError.message);
+      } else {
+        setMessage('We could not complete this booking. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) return <LoadingState message="Loading rooms…" />;
@@ -134,9 +169,9 @@ export function BookRoomScreen(): JSX.Element {
           <Text style={styles.optionTitle}>Price review</Text>
           <Text style={styles.optionMeta}>{priceEstimate}</Text>
         </View>
-        {validation ? <Text style={styles.message}>{validation}</Text> : null}
-        <Pressable accessibilityRole="button" onPress={validateInput} style={styles.button}>
-          <Text style={styles.buttonText}>Validate booking input</Text>
+        {message ? <Text style={styles.message}>{message}</Text> : null}
+        <Pressable accessibilityRole="button" disabled={isSubmitting || isPresenting} onPress={() => void handleSubmit()} style={[styles.button, (isSubmitting || isPresenting) && styles.buttonDisabled]}>
+          <Text style={styles.buttonText}>{isSubmitting || isPresenting ? 'Processing…' : 'Pay & confirm booking'}</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -161,5 +196,6 @@ const styles = StyleSheet.create({
   reviewCard: { backgroundColor: colors.secondary, borderRadius: radius.md, gap: spacing.xs, padding: spacing.md },
   message: { color: colors.mutedForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.sm, lineHeight: typography.lineHeight.normal },
   button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.lg },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.primaryForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.base, fontWeight: '700', lineHeight: typography.lineHeight.normal },
 });

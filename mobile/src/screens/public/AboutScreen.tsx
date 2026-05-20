@@ -13,6 +13,65 @@ function getString(source: ContentPage | null, key: string, fallback: string): s
   return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
+function getParagraphs(source: ContentPage | null): string[] {
+  const value = source?.storyParagraphs;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+type ListItem = {
+  title: string;
+  description: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+}
+
+function getFirstString(record: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+  return '';
+}
+
+function parseMixedItems(source: ContentPage | null, key: string): ListItem[] {
+  const value = source?.[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item): ListItem | null => {
+      if (typeof item === 'string' && item.trim()) {
+        return { title: item, description: '' };
+      }
+
+      const record = asRecord(item);
+      if (!record) {
+        return null;
+      }
+
+      const title = getFirstString(record, ['title', 'name', 'label']);
+      const description = getFirstString(record, ['description', 'body', 'text']);
+      if (!title && !description) {
+        return null;
+      }
+
+      return { title, description };
+    })
+    .filter((item): item is ListItem => item !== null);
+}
+
 export function AboutScreen(): JSX.Element {
   const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const [content, setContent] = useState<ContentPage | null>(null);
@@ -49,8 +108,12 @@ export function AboutScreen(): JSX.Element {
   const heroSubtitle = getString(content, 'heroSubtitle', 'A professional workspace designed around flexibility, focus, and service.');
   const storyTitle = getString(content, 'storyTitle', 'Our story');
   const storyBody = getString(content, 'storyBody', 'The Leadenhall Works brings together coworking, private offices, and meeting rooms for teams and professionals in the City of London.');
+  const storyParagraphs = getParagraphs(content);
+  const whyChooseTitle = getString(content, 'whyChooseTitle', 'Why choose us');
+  const whyChooseItems = parseMixedItems(content, 'whyChooseItems');
   const amenitiesTitle = getString(content, 'amenitiesTitle', 'What members can expect');
   const amenitiesBody = getString(content, 'amenitiesBody', 'Thoughtful workspace amenities, bookable rooms, and a central location that supports productive workdays.');
+  const amenities = parseMixedItems(content, 'amenities');
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -62,12 +125,45 @@ export function AboutScreen(): JSX.Element {
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{storyTitle}</Text>
-        <Text style={styles.body}>{storyBody}</Text>
+        {storyParagraphs.length > 0 ? (
+          storyParagraphs.map((paragraph) => (
+            <Text key={paragraph} style={styles.body}>
+              {paragraph}
+            </Text>
+          ))
+        ) : (
+          <Text style={styles.body}>{storyBody}</Text>
+        )}
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>{whyChooseTitle}</Text>
+        {whyChooseItems.length > 0 ? (
+          <View style={styles.list}>
+            {whyChooseItems.map((item, index) => (
+              <View key={`${item.title}-${index}`} style={styles.listItem}>
+                {item.title ? <Text style={styles.itemTitle}>{item.title}</Text> : null}
+                {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{amenitiesTitle}</Text>
-        <Text style={styles.body}>{amenitiesBody}</Text>
+        {amenities.length > 0 ? (
+          <View style={styles.list}>
+            {amenities.map((item, index) => (
+              <View key={`${item.title}-${index}`} style={styles.listItem}>
+                {item.title ? <Text style={styles.itemTitle}>{item.title}</Text> : null}
+                {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.body}>{amenitiesBody}</Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -125,6 +221,25 @@ const styles = StyleSheet.create({
   },
   body: {
     color: colors.foreground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.lineHeight.normal,
+  },
+  list: {
+    gap: spacing.md,
+  },
+  listItem: {
+    gap: spacing.xs,
+  },
+  itemTitle: {
+    color: colors.foreground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.lg,
+    fontWeight: '600',
+    lineHeight: typography.lineHeight.normal,
+  },
+  itemDescription: {
+    color: colors.mutedForeground,
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.base,
     lineHeight: typography.lineHeight.normal,

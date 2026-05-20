@@ -1,27 +1,56 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { createApiClient } from '../../api/client';
+import { forgotMobilePassword } from '../../api/mobile-auth-api';
+import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
 
+type AuthNavigation = NativeStackNavigationProp<AuthStackParamList>;
+
+const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function ForgotPasswordScreen(): JSX.Element {
+  const navigation = useNavigation<AuthNavigation>();
+  const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail) {
-      setMessage('Enter your email address to prepare a reset request.');
+      setMessage('Enter your email address.');
       return;
     }
 
-    setMessage('Password reset email support will be connected in a later auth task. Reset links should open leadenhallworks://reset-password?token=...');
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      setMessage('Enter a valid email address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await forgotMobilePassword(apiClient, { email: normalizedEmail });
+      setMessage("If an account exists with that email, we've sent a password reset link.");
+    } catch {
+      setMessage("If an account exists with that email, we've sent a password reset link.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.eyebrow}>Account help</Text>
       <Text style={styles.title}>Forgot password</Text>
-      <Text style={styles.subtitle}>Enter your email to request a reset link when backend reset endpoints are connected.</Text>
+      <Text style={styles.subtitle}>Enter your email and we'll send a reset link if an account exists.</Text>
 
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Email</Text>
@@ -40,8 +69,12 @@ export function ForgotPasswordScreen(): JSX.Element {
 
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
-      <Pressable accessibilityRole="button" onPress={handleSubmit} style={styles.button}>
-        <Text style={styles.buttonText}>Prepare reset</Text>
+      <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={handleSubmit} style={styles.button}>
+        <Text style={styles.buttonText}>{isSubmitting ? 'Sending…' : 'Send reset link'}</Text>
+      </Pressable>
+
+      <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={() => navigation.navigate('Login')} style={styles.backButton}>
+        <Text style={styles.backButtonText}>Back to Login</Text>
       </Pressable>
     </View>
   );
@@ -117,5 +150,18 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: '700',
     lineHeight: typography.lineHeight.normal,
+  },
+  backButton: {
+    alignItems: 'center',
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    color: colors.foreground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    lineHeight: typography.lineHeight.tight,
+    textDecorationLine: 'underline',
   },
 });

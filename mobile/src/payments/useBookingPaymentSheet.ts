@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createApiClient } from '../api/client';
-import { type BookingDraftInput, createMemberBookingPaymentIntent } from '../api/booking-api';
+import {
+  cancelMemberBookingPayment,
+  confirmMemberBookingPayment,
+  createMemberBookingPaymentIntent,
+  type BookingDraftInput,
+} from '../api/booking-api';
+import type { MemberBooking } from '../api/member-api';
 import { useAuth } from '../auth/AuthProvider';
 import { getStoredSession } from '../auth/secure-storage';
 
@@ -9,9 +15,17 @@ const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost
 
 export type BookingPaymentSheetResult = {
   status: 'payment_sheet_completed';
-  bookingId: number | null;
-  paymentIntentId: string | null;
+  booking: MemberBooking;
 };
+
+const PAYMENT_VERIFICATION_MESSAGE = 'Your payment was submitted and is being verified. We will update your booking status shortly.';
+
+export class BookingPaymentVerificationError extends Error {
+  constructor() {
+    super(PAYMENT_VERIFICATION_MESSAGE);
+    this.name = 'BookingPaymentVerificationError';
+  }
+}
 
 export function useBookingPaymentSheet(): {
   presentBookingPaymentSheet(input: BookingDraftInput): Promise<BookingPaymentSheetResult>;
@@ -35,8 +49,12 @@ export function useBookingPaymentSheet(): {
 
     try {
       const draft = await createMemberBookingPaymentIntent(apiClient, input);
+      const draftBookingId = typeof draft.booking?.id === 'number' ? draft.booking.id : null;
 
-      if (!draft.clientSecret) {
+      if (!draft.clientSecret || !draft.paymentIntentId || !draftBookingId) {
+        if (draftBookingId) {
+          await cancelMemberBookingPayment(apiClient, { bookingId: draftBookingId }).catch(() => null);
+        }
         throw new Error('Payment could not be prepared.');
       }
 
@@ -46,19 +64,31 @@ export function useBookingPaymentSheet(): {
       });
 
       if (initResult.error) {
+        await cancelMemberBookingPayment(apiClient, { bookingId: draftBookingId }).catch(() => null);
         throw new Error('Payment could not be prepared.');
       }
 
       const presentResult = await presentPaymentSheet();
 
       if (presentResult.error) {
+        await cancelMemberBookingPayment(apiClient, { bookingId: draftBookingId }).catch(() => null);
         throw new Error('Payment was not completed.');
+      }
+
+      let confirmedBooking: MemberBooking;
+
+      try {
+        confirmedBooking = await confirmMemberBookingPayment(apiClient, {
+          bookingId: draftBookingId,
+          paymentIntentId: draft.paymentIntentId,
+        });
+      } catch {
+        throw new BookingPaymentVerificationError();
       }
 
       return {
         status: 'payment_sheet_completed',
-        bookingId: typeof draft.booking?.id === 'number' ? draft.booking.id : null,
-        paymentIntentId: draft.paymentIntentId,
+        booking: confirmedBooking,
       };
     } finally {
       setIsPresenting(false);

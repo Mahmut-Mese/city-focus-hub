@@ -1,59 +1,120 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { createApiClient } from '../../api/client';
+import { resetMobilePassword } from '../../api/mobile-auth-api';
 import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
 
 type ResetPasswordScreenProps = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
+type AuthNavigation = NativeStackNavigationProp<AuthStackParamList>;
+
+const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function ResetPasswordScreen({ route }: ResetPasswordScreenProps): JSX.Element {
+  const navigation = useNavigation<AuthNavigation>();
+  const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
   const token = route.params?.token ?? '';
-  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!token) {
-      setMessage('Open this screen from a reset link such as leadenhallworks://reset-password?token=...');
+      setMessage('No reset token detected. Request a new password reset link.');
       return;
     }
 
-    if (!password) {
-      setMessage('Enter a new password to prepare the reset request.');
+    if (!newPassword) {
+      setMessage('Enter a new password.');
       return;
     }
 
-    setMessage('Password reset submission will be connected when mobile reset endpoints are added.');
+    if (newPassword.length < 6) {
+      setMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage('Passwords do not match.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await resetMobilePassword(apiClient, {
+        token,
+        newPassword,
+      });
+      setIsSuccess(true);
+      setNewPassword('');
+      setConfirmPassword('');
+      setMessage('Password reset successful.');
+    } catch (error) {
+      const fallbackMessage = 'Unable to reset password. The link may be invalid or expired.';
+      if (error instanceof Error && error.message) {
+        setMessage(error.message);
+      } else {
+        setMessage(fallbackMessage);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.eyebrow}>Secure reset</Text>
       <Text style={styles.title}>Reset password</Text>
-      <Text style={styles.subtitle}>Deep links should open this screen with leadenhallworks://reset-password?token=...</Text>
+      <Text style={styles.subtitle}>Set a new password for your account.</Text>
 
       <View style={styles.tokenBox}>
-        <Text style={styles.tokenLabel}>Reset token</Text>
-        <Text style={styles.tokenValue}>{token ? 'Token received from deep link.' : 'No token detected yet.'}</Text>
+        <Text style={styles.tokenLabel}>Reset link</Text>
+        <Text style={styles.tokenValue}>{token ? 'Reset link received.' : 'No reset token detected.'}</Text>
       </View>
 
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>New password</Text>
         <TextInput
           autoCapitalize="none"
-          onChangeText={setPassword}
+          onChangeText={setNewPassword}
           placeholder="New password"
           placeholderTextColor={colors.mutedForeground}
           secureTextEntry
           style={styles.input}
           textContentType="newPassword"
-          value={password}
+          value={newPassword}
+        />
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Confirm new password</Text>
+        <TextInput
+          autoCapitalize="none"
+          onChangeText={setConfirmPassword}
+          placeholder="Confirm new password"
+          placeholderTextColor={colors.mutedForeground}
+          secureTextEntry
+          style={styles.input}
+          textContentType="newPassword"
+          value={confirmPassword}
         />
       </View>
 
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
-      <Pressable accessibilityRole="button" onPress={handleSubmit} style={styles.button}>
-        <Text style={styles.buttonText}>Prepare password reset</Text>
+      <Pressable accessibilityRole="button" disabled={isSubmitting || isSuccess} onPress={handleSubmit} style={styles.button}>
+        <Text style={styles.buttonText}>{isSubmitting ? 'Resetting…' : 'Reset password'}</Text>
+      </Pressable>
+
+      <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={() => navigation.navigate('Login')} style={styles.backButton}>
+        <Text style={styles.backButtonText}>Back to Login</Text>
       </Pressable>
     </View>
   );
@@ -128,7 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   message: {
-    color: colors.mutedForeground,
+    color: colors.foreground,
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
     lineHeight: typography.lineHeight.normal,
@@ -148,5 +209,18 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: '700',
     lineHeight: typography.lineHeight.normal,
+  },
+  backButton: {
+    alignItems: 'center',
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    color: colors.foreground,
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    lineHeight: typography.lineHeight.tight,
+    textDecorationLine: 'underline',
   },
 });

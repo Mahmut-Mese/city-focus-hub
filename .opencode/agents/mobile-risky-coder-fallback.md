@@ -29,3 +29,5 @@ Rules are identical to `mobile-risky-coder`:
 - Never log secrets or tokens.
 - Mobile Bearer auth must not fall back to cookies.
 - Stripe webhooks remain source of truth.
+
+Your output must be reviewed by LEAD and REVIEWER before integration.

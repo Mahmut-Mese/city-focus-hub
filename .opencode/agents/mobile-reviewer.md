@@ -1,7 +1,7 @@
 ---
 description: Reviews mobile-agent output, rejects problematic drafts, escalates disputes to LEAD, and integrates only after LEAD sign-off on contested items.
 mode: primary
-model: github-copilot/claude-opus-4.7
+model: openai/gpt-5.5
 temperature: 0.1
 permission:
   edit: allow

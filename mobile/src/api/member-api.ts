@@ -48,6 +48,56 @@ export type MembershipSubscriptionResult = {
   activationPending: true;
 };
 
+export type MembershipPlanChangePreview = {
+  currentPlan: {
+    slug: string;
+    name: string;
+    monthlyPriceMinor: number;
+    currency: string;
+  };
+  nextPlan: {
+    slug: string;
+    name: string;
+    monthlyPriceMinor: number;
+    currency: string;
+  };
+  preview: {
+    currency: string;
+    subtotalMinor: number;
+    taxMinor: number;
+    totalMinor: number;
+    amountDueMinor: number;
+    amountRemainingMinor: number;
+    nextPaymentAttemptAt: string | null;
+    periodEnd: string | null;
+    prorationDate: string | null;
+  };
+  settlement: {
+    action: string;
+    currency: string;
+    subtotalMinor: number;
+    taxMinor: number;
+    totalMinor: number;
+    paymentDueMinor: number;
+    refundMinor: number;
+  };
+};
+
+export type MemberMembershipChangeResult = {
+  membership: MemberMembership | null;
+  adjustmentId: number | null;
+  action: string;
+  paymentDueMinor: number;
+  refundMinor: number;
+  clientSecret?: string | null;
+  paymentIntentId?: string | null;
+  subtotalMinor?: number;
+  taxMinor?: number;
+  currency?: string;
+  scheduledPlanName?: string;
+  effectiveDate?: string | null;
+};
+
 export type MemberBooking = MemberRecord & {
   id: number;
   status: string;
@@ -194,6 +244,51 @@ export function createMembershipSubscriptionFromSetupIntent(
   return apiClient.request<MembershipSubscriptionResult>('/api/member-portal/memberships/subscription', {
     method: 'POST',
     body: input,
+  });
+}
+
+export function previewMemberPlanChange(apiClient: ApiClient, planSlug: string): Promise<MembershipPlanChangePreview> {
+  return apiClient.request<MembershipPlanChangePreview>('/api/member-portal/memberships/change-plan/preview', {
+    method: 'POST',
+    body: { planSlug },
+  });
+}
+
+export function changeMemberPlan(apiClient: ApiClient, planSlug: string): Promise<MemberMembershipChangeResult> {
+  return apiClient.request<MemberMembershipChangeResult>('/api/member-portal/memberships/change-plan', {
+    method: 'POST',
+    body: { planSlug },
+  });
+}
+
+export function confirmMemberMembershipUpgradePayment(
+  apiClient: ApiClient,
+  input: { paymentIntentId: string; adjustmentId: number },
+): Promise<MemberMembership | null> {
+  return apiClient.request<MemberMembership | null>('/api/member-portal/memberships/confirm-upgrade-payment', {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export function cancelMemberMembership(apiClient: ApiClient): Promise<MemberMembership | null> {
+  return apiClient.request<MemberMembership | null>('/api/member-portal/memberships/cancel', {
+    method: 'POST',
+  });
+}
+
+export function cancelMemberScheduledDowngrade(apiClient: ApiClient): Promise<MemberMembership | null> {
+  return apiClient.request<MemberMembership | null>('/api/member-portal/memberships/cancel-scheduled-downgrade', {
+    method: 'POST',
+  });
+}
+
+export async function cancelMemberMembershipAdjustment(
+  apiClient: ApiClient,
+  input: { adjustmentId: number },
+): Promise<{ ok: boolean }> {
+  return apiClient.request<{ ok: boolean }>(`/api/member-portal/memberships/adjustments/${input.adjustmentId}/cancel`, {
+    method: 'POST',
   });
 }
 

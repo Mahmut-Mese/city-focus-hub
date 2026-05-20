@@ -5,6 +5,7 @@ import { HomeScreen } from '../screens/public/HomeScreen';
 import { AboutScreen } from '../screens/public/AboutScreen';
 import { PricingScreen } from '../screens/public/PricingScreen';
 import { MeetingRoomsScreen } from '../screens/public/MeetingRoomsScreen';
+import { MeetingRoomBookingScreen } from '../screens/public/MeetingRoomBookingScreen';
 import { VirtualOfficeScreen } from '../screens/public/VirtualOfficeScreen';
 import { ContactScreen } from '../screens/public/ContactScreen';
 import { FaqScreen } from '../screens/public/FaqScreen';
@@ -17,6 +18,7 @@ export type PublicStackParamList = {
   Home: undefined;
   Pricing: undefined;
   MeetingRooms: undefined;
+  MeetingRoomBooking: { roomId?: string } | undefined;
   VirtualOffice: undefined;
   About: undefined;
   FAQ: undefined;
@@ -49,8 +51,9 @@ export function PublicStack() {
       }}
     >
       <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'The Leadenhall Works' }} />
-      <Stack.Screen name="Pricing" component={PricingScreen} options={{ title: 'Pricing' }} />
+      <Stack.Screen name="Pricing" component={PricingScreen} options={{ title: 'Membership' }} />
       <Stack.Screen name="MeetingRooms" component={MeetingRoomsScreen} options={{ title: 'Meeting Rooms' }} />
+      <Stack.Screen name="MeetingRoomBooking" component={MeetingRoomBookingScreen} options={{ title: 'Book Meeting Room' }} />
       <Stack.Screen name="VirtualOffice" component={VirtualOfficeScreen} options={{ title: 'Virtual Office' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About' }} />
       <Stack.Screen name="FAQ" component={FaqScreen} options={{ title: 'FAQ' }} />

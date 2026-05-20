@@ -1,6 +1,6 @@
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef, type LinkingOptions, type NavigatorScreenParams, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, View } from 'react-native';
+import { Text, View, Pressable } from 'react-native';
 import { colors, spacing, typography } from '@/theme';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
@@ -46,6 +46,12 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['leadenhallworks://'],
   config: {
     screens: {
+      Public: {
+        screens: {
+          Home: '',
+          MeetingRoomBooking: 'meeting-rooms/book',
+        },
+      },
       Auth: {
         screens: {
           ResetPassword: 'reset-password',
@@ -55,6 +61,7 @@ const linking: LinkingOptions<RootStackParamList> = {
         screens: {
           Dashboard: 'dashboard',
           Bookings: 'bookings',
+          BookRoom: 'book-room',
           Membership: 'membership',
           Invoices: 'invoices',
           NotificationPreferences: 'notifications',
@@ -81,6 +88,15 @@ function AuthStackNavigator() {
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.foreground,
         contentStyle: { backgroundColor: colors.background },
+        headerLeft: () => (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => rootNavigationRef.navigate('Public', { screen: 'Home' })}
+            style={{ marginLeft: spacing.sm }}
+          >
+            <Text style={{ color: colors.foreground, fontWeight: '700' }}>Home</Text>
+          </Pressable>
+        ),
       }}
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
@@ -100,14 +116,17 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme} linking={linking}>
-      <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Public">
-        {!isAuthenticated ? (
+      <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={isAuthenticated ? 'Member' : 'Public'}>
+        {isAuthenticated ? (
+          <RootStack.Group>
+            <RootStack.Screen name="Member" component={MemberTabs} />
+            <RootStack.Screen name="Public" component={PublicStack} />
+          </RootStack.Group>
+        ) : (
           <RootStack.Group>
             <RootStack.Screen name="Public" component={PublicStack} />
             <RootStack.Screen name="Auth" component={AuthStackNavigator} />
           </RootStack.Group>
-        ) : (
-          <RootStack.Screen name="Member" component={MemberTabs} />
         )}
       </RootStack.Navigator>
     </NavigationContainer>
