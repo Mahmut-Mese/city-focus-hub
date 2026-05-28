@@ -5,7 +5,10 @@ import {
   cancelMemberBookingPayment,
   confirmMemberBookingPayment,
   createMemberBookingPaymentIntent,
+  confirmMemberBookingAdjustmentPayment,
+  cancelMemberBookingAdjustment,
   type BookingDraftInput,
+  type UpdateMemberBookingResult,
 } from '../api/booking-api';
 import type { MemberBooking } from '../api/member-api';
 import { useAuth } from '../auth/AuthProvider';
@@ -16,6 +19,11 @@ const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost
 export type BookingPaymentSheetResult = {
   status: 'payment_sheet_completed';
   booking: MemberBooking;
+};
+
+export type AdjustmentPaymentSheetResult = {
+  status: 'payment_sheet_completed';
+  result: UpdateMemberBookingResult;
 };
 
 const PAYMENT_VERIFICATION_MESSAGE = 'Your payment was submitted and is being verified. We will update your booking status shortly.';
@@ -29,6 +37,7 @@ export class BookingPaymentVerificationError extends Error {
 
 export function useBookingPaymentSheet(): {
   presentBookingPaymentSheet(input: BookingDraftInput): Promise<BookingPaymentSheetResult>;
+  presentAdjustmentPaymentSheet(draft: UpdateMemberBookingResult): Promise<AdjustmentPaymentSheetResult>;
   isPresenting: boolean;
 } {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -95,5 +104,56 @@ export function useBookingPaymentSheet(): {
     }
   };
 
-  return { presentBookingPaymentSheet, isPresenting };
+  const presentAdjustmentPaymentSheet = async (draft: UpdateMemberBookingResult): Promise<AdjustmentPaymentSheetResult> => {
+    setIsPresenting(true);
+
+    try {
+      const { adjustmentId, clientSecret, paymentIntentId } = draft;
+
+      if (!clientSecret || !paymentIntentId || !adjustmentId) {
+        if (adjustmentId) {
+          await cancelMemberBookingAdjustment(apiClient, { adjustmentId }).catch(() => null);
+        }
+        throw new Error('Adjustment payment could not be prepared.');
+      }
+
+      const initResult = await initPaymentSheet({
+        merchantDisplayName: 'The Leadenhall Works',
+        paymentIntentClientSecret: clientSecret,
+      });
+
+      if (initResult.error) {
+        await cancelMemberBookingAdjustment(apiClient, { adjustmentId }).catch(() => null);
+        throw new Error('Adjustment payment could not be prepared.');
+      }
+
+      const presentResult = await presentPaymentSheet();
+
+      if (presentResult.error) {
+        await cancelMemberBookingAdjustment(apiClient, { adjustmentId }).catch(() => null);
+        throw new Error('Adjustment payment was not completed.');
+      }
+
+      let confirmedResult: UpdateMemberBookingResult;
+
+      try {
+        confirmedResult = await confirmMemberBookingAdjustmentPayment(apiClient, {
+          adjustmentId,
+          paymentIntentId,
+        });
+      } catch {
+        // Semantic requirement: If adjustment PaymentSheet succeeds but backend confirm fails, do not cancel adjustment.
+        throw new BookingPaymentVerificationError();
+      }
+
+      return {
+        status: 'payment_sheet_completed',
+        result: confirmedResult,
+      };
+    } finally {
+      setIsPresenting(false);
+    }
+  };
+
+  return { presentBookingPaymentSheet, presentAdjustmentPaymentSheet, isPresenting };
 }

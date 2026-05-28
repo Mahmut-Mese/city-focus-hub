@@ -56,11 +56,24 @@ function buildContactMessage(formState: ContactFormState): string {
 }
 
 function LeadenhallLogo({ inverted = false }: { inverted?: boolean }): JSX.Element {
+  if (!inverted) {
+    return (
+      <View accessibilityLabel="THE LEADENHALL WORKS" accessible style={styles.topLogoTile}>
+        <View style={[styles.topLogoStroke, styles.topLogoLeft]} />
+        <View style={[styles.topLogoStroke, styles.topLogoRoof]} />
+        <View style={[styles.topLogoStroke, styles.topLogoCentre]} />
+        <View style={[styles.topLogoStroke, styles.topLogoInnerRoof]} />
+        <View style={[styles.topLogoStroke, styles.topLogoInner]} />
+        <View style={[styles.topLogoStroke, styles.topLogoCrossbar]} />
+        <View style={[styles.topLogoStroke, styles.topLogoRight]} />
+      </View>
+    );
+  }
   const strokeColor = inverted ? colors.primaryForeground : colors.primary;
   const textColor = inverted ? colors.primaryForeground : colors.foreground;
 
   const isFooter = inverted;
-  const markSize = isFooter ? 48 : 32;
+  const markSize = isFooter ? 48 : 42;
   
   const wordStyleBase = {
     color: textColor,
@@ -448,8 +461,18 @@ const styles = StyleSheet.create({
    brandLineVertical: { position: 'absolute', width: 2 },
    brandLineDiagonal: { position: 'absolute', transform: [{ rotate: '-29deg' }] },
    brandLineCornerVertical: { position: 'absolute', width: 2 },
-   brandLineCornerHorizontal: { position: 'absolute', height: 2 },
-   brandWordmark: { justifyContent: 'center' },
+    brandLineCornerHorizontal: { position: 'absolute', height: 2 },
+    // Top logo styles
+    topLogoTile: { backgroundColor: colors.background, borderColor: colors.primary, borderWidth: 1, height: 42, position: 'relative', width: 42 },
+    topLogoStroke: { backgroundColor: colors.primary, position: 'absolute' },
+    topLogoLeft: { bottom: 4, left: 10, top: 14, width: 3 },
+    topLogoRoof: { height: 4, left: 10, top: 13, transform: [{ rotate: '-29deg' }], width: 23 },
+    topLogoCentre: { bottom: 4, left: 28, top: 7, width: 3 },
+    topLogoInnerRoof: { height: 4, left: 15, top: 20, transform: [{ rotate: '-28deg' }], width: 14 },
+    topLogoInner: { bottom: 4, left: 22, top: 20, width: 3 },
+    topLogoCrossbar: { height: 3, left: 28, top: 24, width: 11 },
+    topLogoRight: { bottom: 4, left: 38, top: 24, width: 3 },
+    brandWordmark: { justifyContent: 'center' },
   headerSpacer: { flex: 1 },
   headerIcon: { alignItems: 'center', borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
   menuPanel: { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },

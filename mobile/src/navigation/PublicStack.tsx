@@ -18,7 +18,7 @@ export type PublicStackParamList = {
   Home: undefined;
   Pricing: undefined;
   MeetingRooms: undefined;
-  MeetingRoomBooking: { roomId?: string } | undefined;
+  MeetingRoomBooking: { roomId?: string; room?: string } | undefined;
   VirtualOffice: undefined;
   About: undefined;
   FAQ: undefined;

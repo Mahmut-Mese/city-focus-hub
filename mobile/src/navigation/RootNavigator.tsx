@@ -49,6 +49,10 @@ const linking: LinkingOptions<RootStackParamList> = {
       Public: {
         screens: {
           Home: '',
+          Pricing: {
+            path: 'pricing',
+            exact: false,
+          },
           MeetingRoomBooking: 'meeting-rooms/book',
         },
       },

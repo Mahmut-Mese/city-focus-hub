@@ -34,8 +34,8 @@ export function ResetPasswordScreen({ route }: ResetPasswordScreenProps): JSX.El
       return;
     }
 
-    if (newPassword.length < 6) {
-      setMessage('Password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setMessage('Password must be at least 8 characters.');
       return;
     }
 
@@ -84,7 +84,7 @@ export function ResetPasswordScreen({ route }: ResetPasswordScreenProps): JSX.El
         <TextInput
           autoCapitalize="none"
           onChangeText={setNewPassword}
-          placeholder="New password"
+          placeholder="At least 8 characters"
           placeholderTextColor={colors.mutedForeground}
           secureTextEntry
           style={styles.input}

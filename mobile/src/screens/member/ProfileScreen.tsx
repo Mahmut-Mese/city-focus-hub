@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { createApiClient } from '../../api/client';
-import { fetchMemberProfile, updateMemberProfile, type MemberUser } from '../../api/member-api';
+import { fetchMemberDashboard, updateMemberProfile, type MemberDashboardPayload, type MemberUser } from '../../api/member-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { getStoredSession } from '../../auth/secure-storage';
 import { EmptyState } from '../../components/EmptyState';
@@ -14,6 +14,7 @@ const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost
 export function ProfileScreen(): JSX.Element {
   const { refreshSession } = useAuth();
   const [profile, setProfile] = useState<MemberUser | null>(null);
+  const [dashboard, setDashboard] = useState<MemberDashboardPayload | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -36,7 +37,9 @@ export function ProfileScreen(): JSX.Element {
     setError(null);
     setMessage(null);
     try {
-      const current = await fetchMemberProfile(apiClient);
+      const payload = await fetchMemberDashboard(apiClient);
+      const current = payload.user;
+      setDashboard(payload);
       setProfile(current);
       setName(current.name);
       setEmail(current.email);
@@ -101,6 +104,31 @@ export function ProfileScreen(): JSX.Element {
         <Text style={styles.subtitle}>{profile.email}</Text>
       </View>
 
+      {dashboard && (
+        <View style={styles.statsCard}>
+          <View style={styles.statRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Member Access</Text>
+              <Text style={styles.statValue}>{profile.accessStatus || 'N/A'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Subscription</Text>
+              <Text style={styles.statValue}>{dashboard.membership?.status || 'None'}</Text>
+            </View>
+          </View>
+          <View style={styles.statRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Current Plan</Text>
+              <Text style={styles.statValue}>{dashboard.membership?.planName || 'N/A'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Member Since</Text>
+              <Text style={styles.statValue}>{profile.createdAt ? new Date(profile.createdAt as string).toLocaleDateString() : 'N/A'}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <View style={styles.formCard}>
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Name</Text>
@@ -127,6 +155,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.xl, gap: spacing.lg },
   heroCard: { backgroundColor: colors.secondary, borderRadius: radius.lg, gap: spacing.md, padding: spacing.xl },
+  statsCard: { backgroundColor: colors.secondary, borderRadius: radius.lg, gap: spacing.md, padding: spacing.xl },
+  statRow: { flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
+  statBox: { flex: 1 },
+  statLabel: { color: colors.mutedForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xs, letterSpacing: 0.4, lineHeight: typography.lineHeight.tight, textTransform: 'uppercase', marginBottom: spacing.xs },
+  statValue: { color: colors.foreground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.sm, fontWeight: '600', lineHeight: typography.lineHeight.normal, textTransform: 'capitalize' },
   eyebrow: { color: colors.mutedForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.sm, letterSpacing: 0.4, lineHeight: typography.lineHeight.tight, textTransform: 'uppercase' },
   title: { color: colors.foreground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize['3xl'], fontWeight: '700', lineHeight: 38 },
   subtitle: { color: colors.mutedForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.base, lineHeight: typography.lineHeight.normal },

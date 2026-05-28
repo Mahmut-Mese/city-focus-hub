@@ -40,8 +40,8 @@ export function SettingsScreen(): JSX.Element {
       return;
     }
 
-    if (next.length < 6) {
-      setMessage('New password must be at least 6 characters.');
+    if (next.length < 8) {
+      setMessage('New password must be at least 8 characters.');
       return;
     }
 
@@ -106,7 +106,7 @@ export function SettingsScreen(): JSX.Element {
             autoCapitalize="none"
             editable={!isSaving}
             onChangeText={setNewPassword}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             placeholderTextColor={colors.mutedForeground}
             secureTextEntry
             style={styles.input}

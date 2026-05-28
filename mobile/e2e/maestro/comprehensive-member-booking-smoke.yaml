@@ -6,6 +6,10 @@ appId: com.leadenhallworks.mobile
 - extendedWaitUntil:
     visible: "Home Dashboard"
     timeout: 30000
-- assertVisible: "Quick actions"
-- assertVisible: "View membership"
-- assertVisible: "My Bookings"
+- tapOn: "Book a room"
+- extendedWaitUntil:
+    visible: "Choose room and time"
+    timeout: 30000
+- assertVisible: "Room"
+- assertVisible: "Date"
+

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { createApiClient } from '../../api/client';
-import { type ContentPage, fetchContentPage } from '../../api/content-api';
+import { type ContentPage, fetchContentPage, getMediaUrl } from '../../api/content-api';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
@@ -73,7 +73,8 @@ function parseMixedItems(source: ContentPage | null, key: string): ListItem[] {
 }
 
 export function AboutScreen(): JSX.Element {
-  const apiClient = useMemo(() => createApiClient({ baseUrl: getApiBaseUrl() }), []);
+  const apiBaseUrl = getApiBaseUrl();
+  const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
   const [content, setContent] = useState<ContentPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,16 +116,35 @@ export function AboutScreen(): JSX.Element {
   const amenitiesBody = getString(content, 'amenitiesBody', 'Thoughtful workspace amenities, bookable rooms, and a central location that supports productive workdays.');
   const amenities = parseMixedItems(content, 'amenities');
 
+  const heroBackgroundImage = content?.heroBackgroundImage ? getMediaUrl(content.heroBackgroundImage, apiBaseUrl) : undefined;
+  const storyImage = content?.storyImage ? getMediaUrl(content.storyImage, apiBaseUrl) : undefined;
+  const amenitiesImage = content?.amenitiesImage ? getMediaUrl(content.amenitiesImage, apiBaseUrl) : undefined;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.heroCard}>
-        <Text style={styles.eyebrow}>About</Text>
-        <Text style={styles.title}>{heroTitle}</Text>
-        <Text style={styles.subtitle}>{heroSubtitle}</Text>
-      </View>
+      {heroBackgroundImage ? (
+        <ImageBackground
+          source={{ uri: heroBackgroundImage }}
+          style={styles.heroCard}
+          imageStyle={{ borderRadius: radius.lg }}
+          resizeMode="cover"
+        >
+          <View style={styles.heroOverlay} />
+          <Text style={[styles.eyebrow, styles.heroText]}>About</Text>
+          <Text style={[styles.title, styles.heroText]}>{heroTitle}</Text>
+          <Text style={[styles.subtitle, styles.heroText]}>{heroSubtitle}</Text>
+        </ImageBackground>
+      ) : (
+        <View style={styles.heroCard}>
+          <Text style={styles.eyebrow}>About</Text>
+          <Text style={styles.title}>{heroTitle}</Text>
+          <Text style={styles.subtitle}>{heroSubtitle}</Text>
+        </View>
+      )}
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{storyTitle}</Text>
+        {storyImage ? <Image source={{ uri: storyImage }} style={styles.sectionImage} /> : null}
         {storyParagraphs.length > 0 ? (
           storyParagraphs.map((paragraph) => (
             <Text key={paragraph} style={styles.body}>
@@ -152,6 +172,7 @@ export function AboutScreen(): JSX.Element {
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{amenitiesTitle}</Text>
+        {amenitiesImage ? <Image source={{ uri: amenitiesImage }} style={styles.sectionImage} /> : null}
         {amenities.length > 0 ? (
           <View style={styles.list}>
             {amenities.map((item, index) => (
@@ -183,6 +204,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     gap: spacing.md,
     padding: spacing.xl,
+    overflow: 'hidden',
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  heroText: {
+    color: colors.background,
   },
   eyebrow: {
     color: colors.mutedForeground,
@@ -218,6 +247,13 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
     lineHeight: typography.lineHeight.normal,
+  },
+  sectionImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: radius.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   body: {
     color: colors.foreground,

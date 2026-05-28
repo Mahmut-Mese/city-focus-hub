@@ -46,6 +46,26 @@ export type PublicMeetingRoomAvailability = {
   };
 };
 
+export type UpdateMemberBookingInput = {
+  bookingId: number;
+  resourceId?: number;
+  startAt?: string;
+  endAt?: string;
+  purpose?: string;
+  notes?: string;
+};
+
+export type UpdateMemberBookingResult = {
+  action: 'payment_required' | 'updated' | 'scheduled' | 'refund_required' | 'none' | string;
+  paymentDueMinor?: number;
+  refundMinor?: number;
+  adjustmentId?: number;
+  clientSecret?: string | null;
+  paymentIntentId?: string | null;
+  booking: MemberBooking;
+  currency?: string;
+};
+
 export function fetchBookingResources(apiClient: ApiClient, query: BookingResourcesQuery = {}): Promise<MemberResource[]> {
   return apiClient.request<MemberResource[]>(`/api/member-portal/resources${buildMemberQuery(query)}`);
 }
@@ -105,6 +125,42 @@ export function cancelMemberBooking(
     body: {
       bookingId: input.bookingId,
     },
+  });
+}
+
+export function updateMemberBooking(
+  apiClient: ApiClient,
+  input: UpdateMemberBookingInput,
+): Promise<UpdateMemberBookingResult> {
+  return apiClient.request<UpdateMemberBookingResult>(`/api/member-portal/bookings/${input.bookingId}`, {
+    method: 'PUT',
+    body: {
+      resourceId: input.resourceId,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      purpose: input.purpose,
+      notes: input.notes,
+    },
+  });
+}
+
+export function confirmMemberBookingAdjustmentPayment(
+  apiClient: ApiClient,
+  input: { adjustmentId: number; paymentIntentId: string },
+): Promise<UpdateMemberBookingResult> {
+  return apiClient.request<UpdateMemberBookingResult>('/api/member-portal/bookings/adjustments/confirm-payment', {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export function cancelMemberBookingAdjustment(
+  apiClient: ApiClient,
+  input: { adjustmentId: number },
+): Promise<void> {
+  return apiClient.request<void>(`/api/member-portal/bookings/adjustments/${input.adjustmentId}/cancel`, {
+    method: 'POST',
+    body: {},
   });
 }
 

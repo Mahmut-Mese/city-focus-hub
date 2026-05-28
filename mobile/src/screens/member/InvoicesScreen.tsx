@@ -22,10 +22,11 @@ function formatDate(value?: string | null): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
 }
 
-function getInvoiceUrl(invoice: MemberInvoice): string | null {
-  const hostedUrl = typeof invoice.hostedInvoiceUrl === 'string' && invoice.hostedInvoiceUrl.startsWith('https://') ? invoice.hostedInvoiceUrl : null;
+function getInvoiceUrl(invoice: MemberInvoice): { url: string | null; type: 'pdf' | 'hosted' | null } {
   const pdfUrl = typeof invoice.invoicePdf === 'string' && invoice.invoicePdf.startsWith('https://') ? invoice.invoicePdf : null;
-  return hostedUrl || pdfUrl;
+  if (pdfUrl) return { url: pdfUrl, type: 'pdf' };
+  const hostedUrl = typeof invoice.hostedInvoiceUrl === 'string' && invoice.hostedInvoiceUrl.startsWith('https://') ? invoice.hostedInvoiceUrl : null;
+  return hostedUrl ? { url: hostedUrl, type: 'hosted' } : { url: null, type: null };
 }
 
 export function InvoicesScreen(): JSX.Element {
@@ -62,7 +63,7 @@ export function InvoicesScreen(): JSX.Element {
   }, [loadInvoices]);
 
   const openInvoice = async (invoice: MemberInvoice) => {
-    const url = getInvoiceUrl(invoice);
+    const { url } = getInvoiceUrl(invoice);
     if (!url) {
       setOpenMessage('No invoice URL is available for this invoice.');
       return;
@@ -86,7 +87,7 @@ export function InvoicesScreen(): JSX.Element {
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Billing</Text>
         <Text style={styles.title}>Invoices</Text>
-        <Text style={styles.subtitle}>View invoice status and open invoice links externally.</Text>
+        <Text style={styles.subtitle}>View invoice status and open invoice links securely.</Text>
       </View>
 
       {openMessage ? <Text style={styles.message}>{openMessage}</Text> : null}
@@ -94,16 +95,22 @@ export function InvoicesScreen(): JSX.Element {
       {invoices.map((invoice) => {
         const invoiceNumber = typeof invoice.invoiceNumber === 'string' && invoice.invoiceNumber ? invoice.invoiceNumber : `Invoice ${invoice.id}`;
         const currency = typeof invoice.currency === 'string' ? invoice.currency : 'GBP';
+        const { url, type } = getInvoiceUrl(invoice);
+        const openText = type === 'pdf' ? 'Open PDF' : type === 'hosted' ? 'Open hosted invoice' : 'Open invoice';
+        const description = typeof invoice.description === 'string' ? invoice.description : 'No description provided';
+        const displayDate = invoice.paidAt ? `Paid ${formatDate(typeof invoice.paidAt === 'string' ? invoice.paidAt : undefined)}` : `Created ${formatDate(invoice.createdAt)}`;
+        
         return (
           <View key={String(invoice.id)} style={styles.card}>
             <View style={styles.row}>
               <Text style={styles.itemTitle}>{invoiceNumber}</Text>
               <Text style={styles.status}>{invoice.status}</Text>
             </View>
-            <Text style={styles.meta}>{formatDate(invoice.createdAt)}</Text>
+            <Text style={styles.meta}>{description}</Text>
+            <Text style={styles.meta}>{displayDate}</Text>
             <Text style={styles.amount}>{formatMoney(invoice.totalMinor, currency)}</Text>
             <Pressable accessibilityRole="button" onPress={() => void openInvoice(invoice)} style={styles.button}>
-              <Text style={styles.buttonText}>Open invoice</Text>
+              <Text style={styles.buttonText}>{openText}</Text>
             </Pressable>
           </View>
         );

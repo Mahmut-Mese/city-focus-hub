@@ -221,7 +221,9 @@ export function MeetingRoomBookingScreen(): JSX.Element {
   }, [calendarDays]);
 
   const selectInitialResource = useCallback((items: MemberResource[]) => {
-    const roomId = route.params?.roomId;
+    const params = route.params as Record<string, unknown> | undefined;
+    const rawRoomId = params?.roomId ?? params?.room;
+    const roomId = typeof rawRoomId === 'string' || typeof rawRoomId === 'number' ? String(rawRoomId) : null;
     if (!roomId) {
       setSelectedResourceId(items[0]?.id ?? null);
       return;
@@ -234,7 +236,7 @@ export function MeetingRoomBookingScreen(): JSX.Element {
       || String(resource.id) === roomId
     ));
     setSelectedResourceId(match?.id ?? null);
-  }, [route.params?.roomId]);
+  }, [route.params]);
 
   const loadResources = useCallback(async () => {
     setIsLoading(true);
@@ -476,11 +478,9 @@ useEffect(() => {
   if (error) return <ErrorState message={error} onRetry={loadResources} />;
   if (resources.length === 0) return <EmptyState title="No meeting rooms" message="Meeting room booking options are not available yet." />;
 
-  const isRoomIdPresent = Boolean(route.params?.roomId);
-
-  if (!isRoomIdPresent) {
-    return <EmptyState title="No room selected" message="Please return to Meeting Rooms and choose a room to book." />;
-  }
+  const params = route.params as Record<string, unknown> | undefined;
+  const rawRoomId = params?.roomId ?? params?.room;
+  const isRoomIdPresent = Boolean(rawRoomId);
 
   if (isRoomIdPresent && !selectedResource) {
     return <EmptyState title="Room not found" message="The selected meeting room could not be found." />;
@@ -530,12 +530,34 @@ useEffect(() => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Room</Text>
-        {selectedResource ? (
+        {isRoomIdPresent && selectedResource ? (
           <View style={styles.optionCard}>
             <Text style={styles.optionTitle}>{selectedResource.name}</Text>
             <Text style={styles.optionMeta}>{selectedResource.capacity ? `Up to ${selectedResource.capacity} people` : 'Capacity not listed'}</Text>
             <Text style={styles.optionMeta}>{getResourceNumber(selectedResource, 'hourlyRateMinor') ? `${formatMoney(getResourceNumber(selectedResource, 'hourlyRateMinor') ?? 0, currency)} / hour` : 'Price unavailable'}</Text>
             {isSelectedRoomUnavailable ? <Text style={styles.warning}>Unavailable for selected time</Text> : null}
+          </View>
+        ) : null}
+        {!isRoomIdPresent ? (
+          <View style={{ gap: spacing.sm }}>
+            {resources.map((resource) => {
+              const selected = resource.id === selectedResourceId;
+              const resCurrency = getResourceString(resource, 'currency', 'GBP');
+              return (
+                <Pressable
+                  key={resource.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => { setSelectedResourceId(resource.id); setMessage(null); }}
+                  style={[styles.optionCard, selected ? styles.optionCardSelected : null]}
+                >
+                  <Text style={styles.optionTitle}>{resource.name}</Text>
+                  <Text style={styles.optionMeta}>{resource.capacity ? `Up to ${resource.capacity} people` : 'Capacity not listed'}</Text>
+                  <Text style={styles.optionMeta}>{getResourceNumber(resource, 'hourlyRateMinor') ? `${formatMoney(getResourceNumber(resource, 'hourlyRateMinor') ?? 0, resCurrency)} / hour` : 'Price unavailable'}</Text>
+                  {selected && isSelectedRoomUnavailable ? <Text style={styles.warning}>Unavailable for selected time</Text> : null}
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
       </View>

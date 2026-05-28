@@ -228,6 +228,7 @@ export function PricingScreen(): JSX.Element {
   const heroSubtitle = getString(page, 'heroSubtitle', 'Choose coworking, office, and meeting room options that fit the way you work.');
   const comparisonTitle = getString(page, 'comparisonTitle', 'Membership plans and services');
   const purchaseButtonLabel = getString(page, 'purchaseButtonLabel', 'Choose plan');
+  const recommendedLabel = getString(page, 'recommendedLabel', 'Recommended');
   const featureListTitle = getString(page, 'featureListTitle', 'Included features');
   const featureListSubtitle = getString(page, 'featureListSubtitle', 'What you can expect with this plan.');
   const comparisonColumns = getPageStringArray(page, 'comparisonColumns');
@@ -253,6 +254,7 @@ export function PricingScreen(): JSX.Element {
           const period = getString(plan, 'period', 'month');
           const description = getString(plan, 'description', 'Contact the team for current availability and details.');
           const features = getStringArray(plan, 'features');
+          const isPopular = plan.isPopular || plan.recommended || plan.popular;
           const planSlug = getPlanSlug(plan);
           const isSelected = planSlug !== null && selectedPlanSlug === planSlug;
           const isDisabled = isPresenting || isSelected || isLaunchingPaymentRef.current;
@@ -260,7 +262,14 @@ export function PricingScreen(): JSX.Element {
           return (
             <View key={`${name}-${index}`} style={styles.planCard}>
               <View style={styles.planHeader}>
-                <Text style={styles.planName}>{name}</Text>
+                <View style={{ flex: 1, alignItems: 'flex-start', gap: spacing.xs }}>
+                  <Text style={styles.planName}>{name}</Text>
+                  {isPopular ? (
+                    <View style={styles.badgeContainer}>
+                      <Text style={styles.badgeText}>{recommendedLabel}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.price}>{price}</Text>
               </View>
               <Text style={styles.period}>{price === 'Contact us' ? 'Tailored pricing' : `per ${period}`}</Text>
@@ -348,6 +357,8 @@ const styles = StyleSheet.create({
   planCard: { borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
   planHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
   planName: { color: colors.foreground, flex: 1, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.lg, fontWeight: '700', lineHeight: typography.lineHeight.normal },
+  badgeContainer: { backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  badgeText: { color: colors.primaryForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xs, fontWeight: '700', textTransform: 'uppercase' },
   price: { color: colors.foreground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xl, fontWeight: '700', lineHeight: typography.lineHeight.normal },
   period: { color: colors.mutedForeground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.sm, lineHeight: typography.lineHeight.tight },
   body: { color: colors.foreground, fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.base, lineHeight: typography.lineHeight.normal },

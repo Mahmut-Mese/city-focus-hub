@@ -1,0 +1,1 @@
+cd mobile && npm run typecheck && npm run test:smoke
