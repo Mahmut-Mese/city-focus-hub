@@ -253,13 +253,22 @@ export function HomeScreen(): JSX.Element {
       <View style={styles.header}>
         <LeadenhallLogo />
         <View style={styles.headerSpacer} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Account" style={styles.headerIcon} onPress={handleAccountPress}>
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Account"
+          testID="home-account-button"
+          style={styles.headerIcon}
+          onPress={handleAccountPress}
+        >
           <HomeIcon name="User" size={16} />
         </Pressable>
         <Pressable
+          accessible={true}
           accessibilityRole="button"
           accessibilityLabel="Menu"
           accessibilityState={{ expanded: isMenuOpen }}
+          testID="home-menu-button"
           style={styles.headerIcon}
           onPress={() => setIsMenuOpen((current) => !current)}
         >
@@ -270,7 +279,15 @@ export function HomeScreen(): JSX.Element {
       {isMenuOpen ? (
         <View style={styles.menuPanel}>
           {menuLinks.map((link) => (
-            <Pressable key={link.path} accessibilityRole="button" style={styles.menuItem} onPress={() => handleMenuLinkPress(link.path)}>
+            <Pressable
+              key={link.path}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={link.label}
+              testID={`home-menu-link-${link.path.replace(/^\//, '').replace(/\//g, '-') || 'home'}`}
+              style={styles.menuItem}
+              onPress={() => handleMenuLinkPress(link.path)}
+            >
               <Text style={styles.menuItemText}>{link.label}</Text>
               <HomeIcon name="ArrowRight" size={12} />
             </Pressable>
@@ -278,7 +295,7 @@ export function HomeScreen(): JSX.Element {
         </View>
       ) : null}
 
-      <ImageBackground source={{ uri: home.hero.backgroundImage }} resizeMode="cover" style={styles.hero} imageStyle={styles.heroImage}>
+      <ImageBackground source={{ uri: home.hero.backgroundImage }} resizeMode="cover" style={styles.hero} imageStyle={styles.heroImage} testID="home-hero-section">
         <View style={styles.heroOverlay} />
         <View style={styles.heroInner}>
           <Text style={styles.heroTitle}>{home.hero.title}</Text>
@@ -304,7 +321,7 @@ export function HomeScreen(): JSX.Element {
         </View>
       </ImageBackground>
 
-      <View style={styles.graySection}>
+      <View style={styles.graySection} testID="home-services-section">
         <HomeSectionHeader eyebrow={home.servicesEyebrow} kicker={home.servicesKicker} />
         {home.services.map((service) => (
           <HomeCard key={service.title} padded={false} onPress={() => navigateToPath(service.link)} accessibilityLabel={service.title}>
@@ -321,7 +338,7 @@ export function HomeScreen(): JSX.Element {
         ))}
       </View>
 
-      <View style={styles.whiteSection}>
+      <View style={styles.whiteSection} testID="home-about-highlight-section">
         <HomeSectionHeader eyebrow={home.aboutHighlight.eyebrow} title={home.aboutHighlight.title} />
         <Text style={styles.sectionDescription}>{home.aboutHighlight.description}</Text>
         {home.aboutHighlight.benefits.map((benefit) => (
@@ -341,7 +358,7 @@ export function HomeScreen(): JSX.Element {
         <HomeImage uri={home.aboutHighlight.image} accessibilityLabel={home.aboutHighlight.title} containerStyle={styles.aboutImage} />
       </View>
 
-      <View style={styles.graySection}>
+      <View style={styles.graySection} testID="home-features-section">
         <HomeSectionHeader eyebrow={home.whyChooseEyebrow} kicker={home.whyChooseKicker} title={home.whyChooseTitle} centeredTitle />
         {home.whyChooseItems.map((item) => (
           <HomeCard key={item.title}>
@@ -352,7 +369,7 @@ export function HomeScreen(): JSX.Element {
         ))}
       </View>
 
-      <View style={styles.whiteSection}>
+      <View style={styles.whiteSection} testID="home-testimonials-section">
         <HomeSectionHeader eyebrow={home.testimonialsEyebrow} kicker={home.testimonialsKicker} title={home.testimonialsTitle} centeredTitle />
         {home.testimonials.map((testimonial) => (
           <HomeCard key={testimonial.name}>
@@ -364,14 +381,14 @@ export function HomeScreen(): JSX.Element {
         ))}
       </View>
 
-      <View style={styles.graySection}>
+      <View style={styles.graySection} testID="home-gallery-section">
         <HomeSectionHeader eyebrow={home.galleryEyebrow} kicker={home.galleryKicker} title={home.galleryTitle} centeredTitle />
         {home.galleryImages.map((image, index) => (
           <HomeImage key={`${image.image}-${index}`} uri={image.image} accessibilityLabel={image.alt} containerStyle={index === 0 ? styles.galleryLarge : styles.gallerySmall} />
         ))}
       </View>
 
-      <View style={styles.whiteSection}>
+      <View style={styles.whiteSection} testID="home-contact-section">
         <HomeCard style={styles.contactCard}>
           <View style={styles.contactHeaderRow}>
             <Text style={styles.contactTitle}>{home.contactForm.title}</Text>
@@ -407,7 +424,7 @@ export function HomeScreen(): JSX.Element {
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={styles.footer} testID="home-footer-section">
         <View style={styles.footerLogoRow}>
           <LeadenhallLogo inverted />
         </View>

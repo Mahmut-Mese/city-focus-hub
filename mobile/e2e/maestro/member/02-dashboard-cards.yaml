@@ -1,0 +1,11 @@
+appId: com.leadenhallworks.mobile
+---
+# Requires authenticated session from auth/02-login-valid.yaml.
+- launchApp
+- openLink: "leadenhallworks://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+- extendedWaitUntil:
+    visible: "Home Dashboard"
+    timeout: 60000
+- assertVisible: "Quick actions"
+- assertVisible: "View membership"
+- assertVisible: "My Bookings"

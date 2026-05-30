@@ -58,6 +58,7 @@ export function RegisterScreen(): JSX.Element {
             style={styles.input}
             textContentType="name"
             value={name}
+            testID="register-name"
           />
         </View>
 
@@ -74,6 +75,7 @@ export function RegisterScreen(): JSX.Element {
             style={styles.input}
             textContentType="emailAddress"
             value={email}
+            testID="register-email"
           />
         </View>
 
@@ -89,13 +91,17 @@ export function RegisterScreen(): JSX.Element {
             style={styles.input}
             textContentType="newPassword"
             value={password}
+            testID="register-password"
           />
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable
+          accessible={true}
           accessibilityRole="button"
+          accessibilityLabel="Submit registration"
+          testID="submit-register"
           disabled={isSubmitting}
           onPress={handleSubmit}
           style={({ pressed }) => [
