@@ -228,6 +228,24 @@ def render(size, segments, sw, bg, stroke,
     return pixels
 
 
+def composite_center(bg_size, bg, tile, inset):
+    """Place an already-rendered square tile over a flat background."""
+    bg_r, bg_g, bg_b = bg
+    tile_size = len(tile)
+    pixels = []
+    bg_pixel = (float(bg_r), float(bg_g), float(bg_b), 255.0)
+
+    for y in range(bg_size):
+        row = [bg_pixel] * bg_size
+        if inset <= y < inset + tile_size:
+            tile_row = tile[y - inset]
+            for x, pixel in enumerate(tile_row):
+                row[inset + x] = pixel
+        pixels.append(row)
+
+    return pixels
+
+
 # ── main ─────────────────────────────────────────────────────────────
 def main():
     base = '/Users/mahmutmese/Documents/city-focus-hub/mobile/assets'
@@ -254,25 +272,32 @@ def main():
     #  icon.png
     # ═════════════════════════════════════════════════════════════════
     print("Rendering icon.png …", flush=True)
-    segs_icon = place(raw_segs, 1.0, 1024)
-    px_icon = render(1024, segs_icon, sw=44,
-                     bg=(26, 26, 32), stroke=(245, 235, 210),
-                     border=2, border_col=(200, 190, 165), texture=4)
+    icon_inset = 54
+    icon_tile_size = 1024 - icon_inset * 2
+    segs_icon = place(raw_segs, 0.88, icon_tile_size)
+    px_icon_tile = render(icon_tile_size, segs_icon, sw=42,
+                          bg=(25, 25, 23), stroke=(245, 235, 210),
+                          border=3, border_col=(245, 235, 210), texture=5)
+    px_icon = composite_center(1024, (231, 227, 218), px_icon_tile, icon_inset)
     p = os.path.join(base, 'icon.png')
     write_png(p, 1024, 1024, px_icon)
     print(f"  icon.png         1024×1024  {os.path.getsize(p)} bytes")
+
+    ios_icon = '/Users/mahmutmese/Documents/city-focus-hub/mobile/ios/TheLeadenhallWorks/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png'
+    write_png(ios_icon, 1024, 1024, px_icon)
+    print(f"  iOS app icon     1024×1024  {os.path.getsize(ios_icon)} bytes")
 
     # ═════════════════════════════════════════════════════════════════
     #  adaptive-icon.png
     # ═════════════════════════════════════════════════════════════════
     print("Rendering adaptive-icon.png …", flush=True)
-    segs_ad = place(raw_segs, 0.78, 1024)
-    px_ad = render(1024, segs_ad, sw=44*0.78,
-                   bg=(0, 0, 0), stroke=(245, 235, 210),
-                   transparent=True)
     p = os.path.join(base, 'adaptive-icon.png')
-    write_png(p, 1024, 1024, px_ad)
+    write_png(p, 1024, 1024, px_icon)
     print(f"  adaptive-icon.png 1024×1024  {os.path.getsize(p)} bytes")
+
+    if os.environ.get('ICON_ONLY') == '1':
+        print("\n✓ Icon assets regenerated.")
+        return
 
     # ═════════════════════════════════════════════════════════════════
     #  splash.png

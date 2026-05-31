@@ -37,6 +37,11 @@ const EMPTY_FORM: ContactFormState = {
   message: '',
 };
 
+const LOGO_VIEWBOX = 206;
+const LOGO_STROKE = 10;
+const LOGO_DIAGONAL_LENGTH = Math.hypot(58, 33);
+const LOGO_DIAGONAL_ANGLE = `${Math.atan2(-33, 58) * (180 / Math.PI)}deg`;
+
 async function openExternalUrl(url: string): Promise<void> {
   if (!url) return;
   try {
@@ -55,25 +60,60 @@ function buildContactMessage(formState: ContactFormState): string {
   return subject ? `Subject: ${subject}\n\n${message}` : message;
 }
 
-function LeadenhallLogo({ inverted = false }: { inverted?: boolean }): JSX.Element {
-  if (!inverted) {
-    return (
-      <View accessibilityLabel="THE LEADENHALL WORKS" accessible style={styles.topLogoTile}>
-        <View style={[styles.topLogoStroke, styles.topLogoLeft]} />
-        <View style={[styles.topLogoStroke, styles.topLogoRoof]} />
-        <View style={[styles.topLogoStroke, styles.topLogoCentre]} />
-        <View style={[styles.topLogoStroke, styles.topLogoInnerRoof]} />
-        <View style={[styles.topLogoStroke, styles.topLogoInner]} />
-        <View style={[styles.topLogoStroke, styles.topLogoCrossbar]} />
-        <View style={[styles.topLogoStroke, styles.topLogoRight]} />
-      </View>
-    );
-  }
+function LogoMark({ inverted = false, size }: { inverted?: boolean; size: number }): JSX.Element {
   const strokeColor = inverted ? colors.primaryForeground : colors.primary;
+  const scale = size / LOGO_VIEWBOX;
+  const strokeWidth = LOGO_STROKE * scale;
+
+  return (
+    <View
+      accessibilityLabel="THE LEADENHALL WORKS"
+      accessible
+      style={[styles.logoMarkTile, { backgroundColor: inverted ? 'transparent' : colors.background, height: size, width: size }]}
+    >
+      <View
+        style={[
+          styles.logoOuterRect,
+          {
+            borderColor: strokeColor,
+            borderWidth: strokeWidth,
+            height: 170 * scale,
+            left: 18 * scale,
+            top: 18 * scale,
+            width: 170 * scale,
+          },
+        ]}
+      />
+      <View style={[styles.logoStroke, { backgroundColor: strokeColor, height: 88 * scale, left: 66 * scale - strokeWidth / 2, top: 90 * scale, width: strokeWidth }]} />
+      <View
+        style={[
+          styles.logoStroke,
+          {
+            backgroundColor: strokeColor,
+            height: strokeWidth,
+            left: 95 * scale - (LOGO_DIAGONAL_LENGTH * scale) / 2,
+            top: 73.5 * scale - strokeWidth / 2,
+            transform: [{ rotate: LOGO_DIAGONAL_ANGLE }],
+            width: LOGO_DIAGONAL_LENGTH * scale,
+          },
+        ]}
+      />
+      <View style={[styles.logoStroke, { backgroundColor: strokeColor, height: 121 * scale, left: 124 * scale - strokeWidth / 2, top: 57 * scale, width: strokeWidth }]} />
+      <View style={[styles.logoStroke, { backgroundColor: strokeColor, height: 57 * scale, left: 126 * scale - strokeWidth / 2, top: 121 * scale, width: strokeWidth }]} />
+      <View style={[styles.logoStroke, { backgroundColor: strokeColor, height: strokeWidth, left: 126 * scale, top: 121 * scale - strokeWidth / 2, width: 62 * scale }]} />
+    </View>
+  );
+}
+
+function LeadenhallLogo({ inverted = false }: { inverted?: boolean }): JSX.Element {
   const textColor = inverted ? colors.primaryForeground : colors.foreground;
 
   const isFooter = inverted;
   const markSize = isFooter ? 48 : 42;
+
+  if (!isFooter) {
+    return <LogoMark size={markSize} />;
+  }
   
   const wordStyleBase = {
     color: textColor,
@@ -95,12 +135,7 @@ function LeadenhallLogo({ inverted = false }: { inverted?: boolean }): JSX.Eleme
 
   return (
     <View style={[styles.brandRow, !isFooter && { maxWidth: 160, flexShrink: 1 }]}>
-      <View style={[styles.brandMark, { borderColor: strokeColor, width: markSize, height: markSize }]}>
-        <View style={[styles.brandLineVertical, { backgroundColor: strokeColor, left: '28%', top: '22%', height: '56%' }]} />
-        <View style={[styles.brandLineDiagonal, { backgroundColor: strokeColor, left: '28%', top: '22%', width: '56%' }]} />
-        <View style={[styles.brandLineCornerVertical, { backgroundColor: strokeColor, left: '72%', top: '64%', height: '14%' }]} />
-        <View style={[styles.brandLineCornerHorizontal, { backgroundColor: strokeColor, left: '72%', top: '64%', width: '14%' }]} />
-      </View>
+      <LogoMark inverted size={markSize} />
       <View style={[styles.brandWordmark, !isFooter && { maxWidth: 116, flexShrink: 1 }]}>
         <Text style={[wordStyleBase, wordStyle]}>THE</Text>
         <Text style={[wordStyleBase, wordStyle, wordStyleMiddle]}>LEADENHALL</Text>
@@ -261,7 +296,7 @@ export function HomeScreen(): JSX.Element {
           style={styles.headerIcon}
           onPress={handleAccountPress}
         >
-          <HomeIcon name="User" size={16} />
+          <HomeIcon name="User" size={20} />
         </Pressable>
         <Pressable
           accessible={true}
@@ -473,25 +508,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: spacing['2xl'] },
   header: { alignItems: 'center', backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-   brandRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
-   brandMark: { borderWidth: 2, position: 'relative' },
-   brandLineVertical: { position: 'absolute', width: 2 },
-   brandLineDiagonal: { position: 'absolute', transform: [{ rotate: '-29deg' }] },
-   brandLineCornerVertical: { position: 'absolute', width: 2 },
-    brandLineCornerHorizontal: { position: 'absolute', height: 2 },
-    // Top logo styles
-    topLogoTile: { backgroundColor: colors.background, borderColor: colors.primary, borderWidth: 1, height: 42, position: 'relative', width: 42 },
-    topLogoStroke: { backgroundColor: colors.primary, position: 'absolute' },
-    topLogoLeft: { bottom: 4, left: 10, top: 14, width: 3 },
-    topLogoRoof: { height: 4, left: 10, top: 13, transform: [{ rotate: '-29deg' }], width: 23 },
-    topLogoCentre: { bottom: 4, left: 28, top: 7, width: 3 },
-    topLogoInnerRoof: { height: 4, left: 15, top: 20, transform: [{ rotate: '-28deg' }], width: 14 },
-    topLogoInner: { bottom: 4, left: 22, top: 20, width: 3 },
-    topLogoCrossbar: { height: 3, left: 28, top: 24, width: 11 },
-    topLogoRight: { bottom: 4, left: 38, top: 24, width: 3 },
-    brandWordmark: { justifyContent: 'center' },
+  brandRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
+  logoMarkTile: { position: 'relative' },
+  logoOuterRect: { position: 'absolute' },
+  logoStroke: { position: 'absolute' },
+  brandWordmark: { justifyContent: 'center' },
   headerSpacer: { flex: 1 },
-  headerIcon: { alignItems: 'center', borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  headerIcon: { alignItems: 'center', backgroundColor: '#f7f7f6', borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
   menuPanel: { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1, gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   menuItem: { alignItems: 'center', borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   menuItemText: { color: colors.foreground, fontSize: typography.fontSize.sm, fontWeight: '600' },

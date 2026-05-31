@@ -31,7 +31,7 @@
     "android": {
       "package": "com.leadenhallworks.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#141414",
+        "backgroundColor": "#E7E3DA",
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "intentFilters": [
