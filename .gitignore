@@ -22,6 +22,24 @@ adminjs/.env
 # AdminJS build cache
 adminjs/.adminjs/
 
+# Mobile app generated files
+mobile/.expo/
+mobile/expo.log
+mobile/npm-debug.log*
+mobile/yarn-debug.log*
+mobile/yarn-error.log*
+mobile/pnpm-debug.log*
+mobile/node_modules/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/local.properties
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/.xcode.env.local
+mobile/ios/*.xcodeproj/project.xcworkspace/
+mobile/ios/DerivedData/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
