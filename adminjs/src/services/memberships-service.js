@@ -2,12 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { config } from '../config.js';
 import { sequelize } from '../database.js';
 import { execute, queryAll, queryOne } from './sql.js';
+import { enqueueNotification } from './notification-outbox-service.js';
+
+
+
 import {
   cancelStripePaymentIntent,
   cancelStripeSubscription,
   createMembershipAdjustmentCheckoutSession,
   createMembershipUpgradePaymentIntentDraft,
   createStripeCheckoutSession,
+  createStripeSetupIntent,
+  createStripeSubscriptionWithPaymentMethod,
   createStripeSubscription,
   createStripeSubscriptionIncomplete,
   ensurePlanStripePrice,
@@ -17,6 +23,7 @@ import {
   previewStripeSubscriptionPlanChange,
   retrieveStripeCheckoutSession,
   retrieveStripePaymentIntent,
+  retrieveStripeSetupIntent,
   retrieveStripeSubscription,
   updateStripeSubscriptionPlan,
 } from './stripe-service.js';
@@ -221,6 +228,144 @@ export async function getUserMembership(userId) {
   );
 
   return toMembership(row);
+}
+
+export async function createMembershipSetupIntent({ userId, planSlug }) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  const plan = await getPlanBySlug(planSlug);
+  if (!plan) {
+    throw new Error('Membership plan was not found.');
+  }
+
+  const customerId = await ensureStripeCustomer(user);
+  const setupIntent = await createStripeSetupIntent({ customerId, userId, planSlug: plan.slug });
+
+  if (!setupIntent.client_secret) {
+    throw new Error('Could not create setup intent. Please try again.');
+  }
+
+  return {
+    clientSecret: setupIntent.client_secret,
+    setupIntentId: setupIntent.id,
+    customerId,
+    plan: {
+      slug: plan.slug,
+      name: plan.name,
+      monthlyPriceMinor: Number(plan.monthly_price_minor || 0),
+      currency: plan.currency || 'gbp',
+    },
+  };
+}
+
+export async function createMembershipSubscriptionFromSetupIntent({ userId, planSlug, setupIntentId }) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  const existingMembership = await getUserMembership(userId);
+  if (existingMembership && ['active', 'trialing', 'past_due'].includes(existingMembership.status)) {
+    throw new Error('User already has an active membership.');
+  }
+
+  const plan = await getPlanBySlug(planSlug);
+  if (!plan) {
+    throw new Error('Membership plan was not found.');
+  }
+
+  const customerId = await ensureStripeCustomer(user);
+  const setupIntent = await retrieveStripeSetupIntent(setupIntentId);
+  const setupCustomerId = typeof setupIntent.customer === 'string' ? setupIntent.customer : setupIntent.customer?.id;
+
+  if (setupIntent.status !== 'succeeded') {
+    throw new Error('Payment method setup is not complete.');
+  }
+  if (!setupCustomerId || setupCustomerId !== customerId) {
+    throw new Error('Setup intent does not belong to this user.');
+  }
+  if (String(setupIntent.metadata?.app_user_id || '') !== String(userId)) {
+    throw new Error('Setup intent does not belong to this user.');
+  }
+  if (String(setupIntent.metadata?.plan_slug || '') !== String(plan.slug)) {
+    throw new Error('Setup intent does not match the selected plan.');
+  }
+
+  const paymentMethodId = typeof setupIntent.payment_method === 'string'
+    ? setupIntent.payment_method
+    : setupIntent.payment_method?.id;
+  if (!paymentMethodId) {
+    throw new Error('Setup intent is missing a payment method.');
+  }
+
+  const { priceId } = await ensurePlanStripePrice({
+    id: plan.id,
+    slug: plan.slug,
+    name: plan.name,
+    description: plan.description,
+    currency: plan.currency,
+    monthlyPriceMinor: Number(plan.monthly_price_minor),
+    stripePriceId: plan.stripe_price_id,
+    stripeProductId: plan.stripe_product_id,
+  });
+
+  const now = new Date();
+  const [insertId, metadata] = await execute(
+    `INSERT INTO memberships
+      (document_id, user_id, plan_id, status, cancel_at_period_end, current_period_start, current_period_end, failed_payment_count, created_at, updated_at)
+     VALUES
+      (:documentId, :userId, :planId, 'pending', 0, NULL, NULL, 0, :createdAt, :updatedAt)`,
+    {
+      documentId: randomUUID(),
+      userId,
+      planId: plan.id,
+      createdAt: now,
+      updatedAt: now,
+    },
+  );
+  const membershipId = typeof insertId === 'number' ? insertId : metadata?.insertId;
+
+  let subscription;
+  try {
+    subscription = await createStripeSubscriptionWithPaymentMethod({
+      customerId,
+      priceId,
+      paymentMethodId,
+      userId,
+      membershipId,
+      planSlug: plan.slug,
+    });
+  } catch (error) {
+    await execute(
+      `UPDATE memberships SET status = 'payment_failed', updated_at = :updatedAt WHERE id = :membershipId`,
+      { membershipId, updatedAt: new Date() },
+    );
+    throw new Error('Could not create membership subscription. Please try again.');
+  }
+
+  await execute(
+    `UPDATE memberships
+        SET status = 'pending',
+            stripe_subscription_id = :stripeSubscriptionId,
+            stripe_price_id = :stripePriceId,
+            updated_at = :updatedAt
+      WHERE id = :membershipId`,
+    {
+      membershipId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      updatedAt: new Date(),
+    },
+  );
+
+  return {
+    membership: await getUserMembership(userId),
+    subscriptionId: subscription.id,
+    activationPending: true,
+  };
 }
 
 async function getMembershipByStripeSubscriptionId(subscriptionId) {
@@ -1917,6 +2062,15 @@ export async function handleInvoicePaid(invoice) {
     }
   }
 
+  if (subscriptionId && userId) {
+    const subscription = await retrieveStripeSubscription(subscriptionId);
+    membershipId = (await upsertMembershipFromSubscription({
+      userId,
+      subscription,
+      preferredPlanSlug: String(subscription.metadata?.plan_slug || invoice.metadata?.plan_slug || ''),
+    })) || membershipId;
+  }
+
   if (userId) {
     await updateUserAccessStatus(userId, 'active');
     await execute(
@@ -1931,7 +2085,6 @@ export async function handleInvoicePaid(invoice) {
       },
     );
 
-    // If a scheduled downgrade is pending, apply it now that the new period has started
     const membership = membershipId
       ? await getUserMembership(userId)
       : null;
@@ -1957,7 +2110,8 @@ export async function handleInvoicePaid(invoice) {
     paidAt: new Date(),
   });
 
-  // Fire-and-forget: send monthly renewal receipt to the member
+  fireMembershipNotification({ userId, membershipId, invoiceId: invoice.id, eventType: 'membership.payment_paid', title: 'Membership payment received', body: 'Your membership payment has been received. Access updates are handled automatically.' });
+
   if (userId) {
     void (async () => {
       try {
@@ -1980,6 +2134,7 @@ export async function handleInvoicePaid(invoice) {
     })();
   }
 }
+
 
 export async function handleInvoicePaymentFailed(invoice) {
   let userId = Number(invoice.metadata?.app_user_id || 0);
@@ -2136,4 +2291,13 @@ export async function handleSubscriptionDeleted(subscription) {
   if (userId) {
     await updateUserAccessStatus(userId, 'suspended');
   }
+}
+
+function fireMembershipNotification({ userId, membershipId, invoiceId, eventType, title, body, data = {} }) {
+  const normalizedUserId = Number(userId || 0);
+  if (!normalizedUserId) return;
+  const normalizedMembershipId = membershipId ? Number(membershipId) : null;
+  const normalizedInvoiceId = invoiceId ? String(invoiceId) : '';
+  const idempotencyKey = normalizedInvoiceId ? `${eventType}:invoice:${normalizedInvoiceId}` : `${eventType}:membership:${normalizedMembershipId || normalizedUserId}`;
+  void enqueueNotification({ userId: normalizedUserId, eventType, idempotencyKey, title, body, data: { ...(normalizedMembershipId ? { membershipId: String(normalizedMembershipId) } : {}), ...(normalizedInvoiceId ? { invoiceId: normalizedInvoiceId } : {}), ...data } }).catch((err) => console.error('[memberships-service] Notification enqueue failed:', err?.message || err));
 }

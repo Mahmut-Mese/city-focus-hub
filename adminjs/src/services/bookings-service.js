@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { calculateVat, chargeBooking, extractInvoicePaymentIntentId } from './payments-service.js';
 import { createLocalInvoice, upsertStripeInvoice } from './invoices-service.js';
 import { execute, queryAll, queryOne } from './sql.js';
+import { enqueueNotification } from './notification-outbox-service.js';
 import { getResourceById, listResources } from './resources-service.js';
 import { getUserMembership } from './memberships-service.js';
 import { refundBookingAmount } from './refunds-service.js';
@@ -21,6 +22,21 @@ import {
 import { createOrGetGuestUser, findUserByEmail, findUserById } from './users-service.js';
 import { sequelize } from '../database.js';
 import { sendBookingConfirmationEmail, sendRefundNotificationEmail, sendRefundRequestedEmail, sendRefundApprovedEmail, sendRefundRejectedEmail } from '../mailer.js';
+
+function fireBookingNotification(booking, eventType, title, body, data = {}) {
+  const userId = Number(booking?.userId || booking?.user_id || 0);
+  const bookingId = Number(booking?.id || 0);
+  if (!userId || !bookingId) return;
+
+  void enqueueNotification({
+    userId,
+    eventType,
+    idempotencyKey: `${eventType}:booking:${bookingId}`,
+    title,
+    body,
+    data: { bookingId: String(bookingId), ...data },
+  }).catch((err) => console.error('[bookings-service] Notification enqueue failed:', err?.message || err));
+}
 
 /**
  * Fire-and-forget email sender for booking confirmations.
@@ -2196,12 +2212,14 @@ export async function handleBookingPaymentIntentSucceeded(paymentIntent) {
     ? { hostedInvoiceUrl: chargeReceiptUrl, invoicePdf: chargeReceiptUrl }
     : null;
 
-  return (await finalizeBookingAfterSuccessfulPayment(
+  const outcome = await finalizeBookingAfterSuccessfulPayment(
     bookingRow,
     paymentIntentId,
     paymentIntent.status || 'succeeded',
     invoiceFinancials,
-  )).bookingRow;
+  );
+  fireBookingNotification(outcome.bookingRow || bookingRow, 'booking.confirmed', 'Booking confirmed', 'Your booking has been confirmed.');
+  return outcome.bookingRow;
 }
 
 export async function handleBookingPaymentIntentFailed(paymentIntent) {
@@ -2231,6 +2249,7 @@ export async function handleBookingPaymentIntentFailed(paymentIntent) {
     paymentIntent?.status || paymentIntent?.last_payment_error?.code || 'payment_failed',
   );
 
+  fireBookingNotification(bookingRow, 'booking.payment_failed', 'Booking payment failed', 'Your booking payment could not be completed.');
   return getBookingRowById(bookingRow.id);
 }
 

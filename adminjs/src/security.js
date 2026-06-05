@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { verifyMobileAccessToken } from './services/mobile-auth-service.js';
 
 const rateLimitBuckets = new Map();
 
@@ -69,8 +70,39 @@ const CSRF_EXEMPT_PATHS = new Set([
   '/logout',
 ]);
 
+export function getBearerTokenFromRequest(request) {
+  const authHeader = request.headers['authorization'];
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    if (token.length > 0) {
+      return token;
+    }
+  }
+  return null;
+}
+
+export async function authenticateMobileBearerRequest(request) {
+  const token = getBearerTokenFromRequest(request);
+  if (!token) {
+    return null;
+  }
+  
+  try {
+    const result = await verifyMobileAccessToken(token);
+    if (!result) {
+      throw new Error('Authentication required.');
+    }
+    request.mobileAuthenticatedUser = result.user;
+    request.mobileAuthSessionId = result.sessionId;
+    request.mobileAuthSession = result.session;
+    return result;
+  } catch (error) {
+    throw new Error('Authentication required.');
+  }
+}
+
 export function createCsrfMiddleware() {
-  return (request, response, next) => {
+  return async (request, response, next) => {
     // Skip CSRF check for safe (read-only) methods
     if (CSRF_SAFE_METHODS.has(request.method)) {
       return next();
@@ -79,6 +111,16 @@ export function createCsrfMiddleware() {
     // Skip CSRF check for auth routes (no session to validate against yet)
     if (CSRF_EXEMPT_PATHS.has(request.path)) {
       return next();
+    }
+
+    const bearerToken = getBearerTokenFromRequest(request);
+    if (bearerToken) {
+      try {
+        await authenticateMobileBearerRequest(request);
+        return next();
+      } catch (error) {
+        return response.status(401).json({ error: 'Authentication required.' });
+      }
     }
 
     // Session must exist for CSRF to work
