@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createApiClient } from '../api/client';
+import { getApiBaseUrl } from '../config/api';
 import {
   cancelMemberMembershipAdjustment,
   changeMemberPlan,
@@ -13,7 +14,6 @@ import {
 import { useAuth } from '../auth/AuthProvider';
 import { getStoredSession } from '../auth/secure-storage';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 const NON_ACTIVE_MEMBERSHIP_STATUSES = new Set([
   'pending',

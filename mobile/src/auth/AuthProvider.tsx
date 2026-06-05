@@ -4,6 +4,7 @@ import { createApiClient } from '../api/client';
 import { getStoredSession, storeSession, clearStoredSession } from './secure-storage';
 import { loginMobile, registerMobile, logoutMobile, refreshMobileSession, getMobileSession, MobileMember } from '../api/mobile-auth-api';
 import { registerDeviceForPushNotifications, unregisterDevicePushToken } from '../notifications/push-registration';
+import { getApiBaseUrl } from '../config/api';
 
 export type RegisterInput = {
   name: string;
@@ -30,10 +31,6 @@ export function useAuth(): AuthContextValue {
   }
   return context;
 }
-
-const getApiBaseUrl = () => {
-  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-};
 
 async function refreshStoredSession(): Promise<string | null> {
   const session = await getStoredSession();

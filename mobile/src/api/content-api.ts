@@ -1,4 +1,5 @@
 import { ApiClient } from './client';
+import { getApiBaseUrl } from '../config/api';
 
 export type ContentStatus = 'published' | 'draft';
 
@@ -63,8 +64,7 @@ export function getMediaUrl(media: unknown, apiBaseUrl?: string): string {
 export function getMediaUrls(media: unknown, apiBaseUrl?: string): string[] {
   const collected: string[] = [];
   const baseOrigin = (() => {
-    const envBase = typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_URL : undefined;
-    const raw = apiBaseUrl ?? envBase ?? '';
+    const raw = apiBaseUrl ?? getApiBaseUrl();
     if (!raw) return '';
     // Remove any trailing '/api' and possible trailing slash.
     let cleaned = raw.replace(/\/api\/?$/i, '');

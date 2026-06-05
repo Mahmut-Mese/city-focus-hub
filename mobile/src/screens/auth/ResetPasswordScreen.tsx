@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { resetMobilePassword } from '../../api/mobile-auth-api';
 import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
@@ -11,7 +12,6 @@ import { colors, radius, spacing, typography } from '../../theme';
 type ResetPasswordScreenProps = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 type AuthNavigation = NativeStackNavigationProp<AuthStackParamList>;
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function ResetPasswordScreen({ route }: ResetPasswordScreenProps): JSX.Element {
   const navigation = useNavigation<AuthNavigation>();

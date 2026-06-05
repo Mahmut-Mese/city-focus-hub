@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { fetchMemberDashboard, type MemberDashboardPayload } from '../../api/member-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { getStoredSession } from '../../auth/secure-storage';
@@ -55,7 +56,6 @@ function formatTimeRange(startAt: unknown, endAt: unknown): string {
   return `${s.toLocaleString('en-GB')} - ${e.toLocaleString('en-GB')}`;
 }
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 type MemberNavigation = BottomTabNavigationProp<MemberTabsParamList>;
 

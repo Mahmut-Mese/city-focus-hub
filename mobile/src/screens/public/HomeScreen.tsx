@@ -3,6 +3,7 @@ import { ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, Text
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { fetchContentPage, fetchSiteSetting, submitContactSubmission } from '../../api/content-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { HomeCard, HomeChip, HomeIcon, HomeImage, HomeSectionHeader } from '../../components/home';
@@ -13,7 +14,6 @@ import type { PublicStackParamList } from '../../navigation/PublicStack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;
 type RootNavigation = NativeStackNavigationProp<RootStackParamList>;

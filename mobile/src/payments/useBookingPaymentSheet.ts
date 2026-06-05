@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createApiClient } from '../api/client';
+import { getApiBaseUrl } from '../config/api';
 import {
   cancelMemberBookingPayment,
   confirmMemberBookingPayment,
@@ -14,7 +15,6 @@ import type { MemberBooking } from '../api/member-api';
 import { useAuth } from '../auth/AuthProvider';
 import { getStoredSession } from '../auth/secure-storage';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 export type BookingPaymentSheetResult = {
   status: 'payment_sheet_completed';

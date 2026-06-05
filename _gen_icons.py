@@ -246,6 +246,31 @@ def composite_center(bg_size, bg, tile, inset):
     return pixels
 
 
+def write_android_launcher_assets(base_dir, render_icon_asset):
+    """Write checked-in Android launcher density assets.
+
+    These files use the existing .webp names, but the repo currently stores
+    PNG data there. Keep that convention so we do not introduce a new encoder.
+    """
+    densities = [
+        ('mdpi', 48, 108),
+        ('hdpi', 72, 162),
+        ('xhdpi', 96, 216),
+        ('xxhdpi', 144, 324),
+        ('xxxhdpi', 192, 432),
+    ]
+
+    android_res = '/Users/mahmutmese/Documents/city-focus-hub/mobile/android/app/src/main/res'
+    for density, launcher_size, foreground_size in densities:
+        density_dir = os.path.join(android_res, f'mipmap-{density}')
+        launcher_px = render_icon_asset(launcher_size)
+        foreground_px = render_icon_asset(foreground_size)
+        write_png(os.path.join(density_dir, 'ic_launcher.webp'), launcher_size, launcher_size, launcher_px)
+        write_png(os.path.join(density_dir, 'ic_launcher_round.webp'), launcher_size, launcher_size, launcher_px)
+        write_png(os.path.join(density_dir, 'ic_launcher_foreground.webp'), foreground_size, foreground_size, foreground_px)
+        print(f"  Android {density:<6} launcher {launcher_size}×{launcher_size}, foreground {foreground_size}×{foreground_size}")
+
+
 # ── main ─────────────────────────────────────────────────────────────
 def main():
     base = '/Users/mahmutmese/Documents/city-focus-hub/mobile/assets'
@@ -268,17 +293,23 @@ def main():
         return [((x1*scale+ox, y1*scale+oy), (x2*scale+ox, y2*scale+oy))
                 for (x1, y1), (x2, y2) in segs]
 
+    def render_icon_asset(size):
+        icon_inset = int(round(size * 0.17))
+        icon_tile_size = size - icon_inset * 2
+        scale = 0.88 * (icon_tile_size / 1024.0)
+        stroke_width = max(2.0, 42.0 * (icon_tile_size / 916.0))
+        border_width = max(1, int(round(3.0 * (icon_tile_size / 916.0))))
+        segs_icon = place(raw_segs, scale, icon_tile_size)
+        px_icon_tile = render(icon_tile_size, segs_icon, sw=stroke_width,
+                              bg=(25, 25, 23), stroke=(245, 235, 210),
+                              border=border_width, border_col=(245, 235, 210), texture=5)
+        return composite_center(size, (231, 227, 218), px_icon_tile, icon_inset)
+
     # ═════════════════════════════════════════════════════════════════
     #  icon.png
     # ═════════════════════════════════════════════════════════════════
     print("Rendering icon.png …", flush=True)
-    icon_inset = 54
-    icon_tile_size = 1024 - icon_inset * 2
-    segs_icon = place(raw_segs, 0.88, icon_tile_size)
-    px_icon_tile = render(icon_tile_size, segs_icon, sw=42,
-                          bg=(25, 25, 23), stroke=(245, 235, 210),
-                          border=3, border_col=(245, 235, 210), texture=5)
-    px_icon = composite_center(1024, (231, 227, 218), px_icon_tile, icon_inset)
+    px_icon = render_icon_asset(1024)
     p = os.path.join(base, 'icon.png')
     write_png(p, 1024, 1024, px_icon)
     print(f"  icon.png         1024×1024  {os.path.getsize(p)} bytes")
@@ -294,6 +325,7 @@ def main():
     p = os.path.join(base, 'adaptive-icon.png')
     write_png(p, 1024, 1024, px_icon)
     print(f"  adaptive-icon.png 1024×1024  {os.path.getsize(p)} bytes")
+    write_android_launcher_assets(base, render_icon_asset)
 
     if os.environ.get('ICON_ONLY') == '1':
         print("\n✓ Icon assets regenerated.")

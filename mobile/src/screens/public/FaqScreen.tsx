@@ -3,13 +3,13 @@ import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, Vi
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { type ContentCollectionItem, type ContentPage, fetchContentPage, fetchFaqItems, getMediaUrl } from '../../api/content-api';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;
 type UnknownRecord = Record<string, unknown>;

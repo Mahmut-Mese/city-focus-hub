@@ -50,7 +50,7 @@ export function PublicStack() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'The Leadenhall Works' }} />
+      <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Pricing" component={PricingScreen} options={{ title: 'Membership' }} />
       <Stack.Screen name="MeetingRooms" component={MeetingRoomsScreen} options={{ title: 'Meeting Rooms' }} />
       <Stack.Screen name="MeetingRoomBooking" component={MeetingRoomBookingScreen} options={{ title: 'Book Meeting Room' }} />

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import {
   cancelAccountDeletion,
   fetchAccountDeletionStatus,
@@ -13,7 +14,6 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function AccountDeletionScreen(): JSX.Element {
   const { refreshSession } = useAuth();

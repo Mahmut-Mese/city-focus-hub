@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { fetchBookingResources } from '../../api/booking-api';
 import type { BookingDraftInput } from '../../api/booking-api';
 import type { MemberBooking, MemberResource } from '../../api/member-api';
@@ -12,7 +13,6 @@ import { LoadingState } from '../../components/LoadingState';
 import { BookingPaymentVerificationError, useBookingPaymentSheet } from '../../payments/useBookingPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Type safety helpers
 function getResourceNumber(r: unknown, key: string): number | null {
@@ -144,7 +144,7 @@ export function BookRoomScreen(): JSX.Element {
             const r = availRes.find((x) => getResourceNumber(x, 'id') === selectedResourceId);
             
             // if absent or available explicitly false
-            const isAvailableBool = typeof (r as any)?.available === 'boolean' ? (r as any).available : true;
+            const isAvailableBool = !r || typeof r !== 'object' ? true : typeof (r as Record<string, unknown>).available === 'boolean' ? (r as Record<string, unknown>).available : true;
             if (!r || !isAvailableBool) {
               return hr;
             }

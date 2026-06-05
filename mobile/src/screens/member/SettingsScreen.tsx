@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { changeMobilePassword } from '../../api/mobile-auth-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { getStoredSession } from '../../auth/secure-storage';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function SettingsScreen(): JSX.Element {
   const { logout, refreshSession } = useAuth();

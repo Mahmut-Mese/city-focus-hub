@@ -51,15 +51,21 @@
           ]
         }
       ],
-      "versionCode": 9
+      "versionCode": 4
     },
     "plugins": [
       "expo-secure-store",
       "expo-notifications",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.leadenhallworks.mobile"
+        }
+      ],
       "@sentry/react-native"
     ],
     "extra": {
-      "apiUrl": "https://hotpink-oyster-552591.hostingersite.com",
+      "apiUrl": "http://localhost:3001",
       "stagingApiUrl": "https://staging-api.leadenhallworks.com",
       "eas": {
         "projectId": "857a6042-376f-4be9-9eee-d9f97b12de70"

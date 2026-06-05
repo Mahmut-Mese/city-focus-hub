@@ -4,6 +4,7 @@ import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { initPaymentSheet, initStripe, presentPaymentSheet } from '@stripe/stripe-react-native';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import {
   cancelGuestMeetingRoomBookingPayment,
   confirmGuestMeetingRoomBookingPayment,
@@ -17,7 +18,6 @@ import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 const HOURS = Array.from({ length: 15 }, (_, index) => `${String(index + 7).padStart(2, '0')}:00`);
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const VAT_RATE = 0.2;

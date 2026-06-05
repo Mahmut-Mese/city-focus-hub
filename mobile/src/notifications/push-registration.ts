@@ -9,6 +9,7 @@ import {
   type PushPlatform,
 } from '../api/member-api';
 import { getStoredSession } from '../auth/secure-storage';
+import { getApiBaseUrl } from '../config/api';
 
 export type PushRegistrationStatus =
   | 'registered'
@@ -25,10 +26,6 @@ export type PushRegistrationResult = {
   sessionId?: string | null;
   reason?: string;
 };
-
-export function getApiBaseUrl(): string {
-  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-}
 
 export function createMemberApiClient(
   getAccessToken: () => Promise<string | null> = async () => (await getStoredSession()).accessToken,

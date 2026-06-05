@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { AuthProvider } from './src/auth/AuthProvider';
 import { RootNavigator, rootNavigationRef } from './src/navigation/RootNavigator';
 import { addNotificationResponseHandler } from './src/notifications/notification-routing';
+import { getApiBaseUrl } from './src/config/api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -47,7 +48,7 @@ export default function App() {
   // Fetch version policy on mount
   useEffect(() => {
     const fetchPolicy = async () => {
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3001';
+      const baseUrl = getApiBaseUrl();
       const currentVersion = Constants.expoConfig?.version || '0.0.0';
       const url = `${baseUrl}/api/mobile-app/version-policy?platform=${Platform.OS}&version=${currentVersion}`;
       try {

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { cancelMemberBooking, updateMemberBooking, fetchBookingResources } from '../../api/booking-api';
 import type { MemberResource } from '../../api/member-api';
 import { fetchMemberBookings, type MemberBooking } from '../../api/member-api';
@@ -12,7 +13,6 @@ import { LoadingState } from '../../components/LoadingState';
 import { BookingPaymentVerificationError, useBookingPaymentSheet } from '../../payments/useBookingPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 function formatWhen(value: string): string {
   const date = new Date(value);

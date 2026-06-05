@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { fetchMemberInvoices, type MemberInvoice } from '../../api/member-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { getStoredSession } from '../../auth/secure-storage';
@@ -9,7 +10,6 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 function formatMoney(minor?: number, currency = 'GBP'): string {
   if (typeof minor !== 'number') return 'Amount unavailable';

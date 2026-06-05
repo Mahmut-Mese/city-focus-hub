@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { type ContentPage, fetchContentPage, fetchPublicPlans, type PublicPlan } from '../../api/content-api';
 import { useAuth } from '../../auth/AuthProvider';
 import { ErrorState } from '../../components/ErrorState';
@@ -12,7 +13,6 @@ import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { useMembershipPaymentSheet } from '../../payments/useMembershipPaymentSheet';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 type PlanLike = PublicPlan;
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;

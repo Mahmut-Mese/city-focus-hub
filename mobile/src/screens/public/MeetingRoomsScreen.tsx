@@ -6,13 +6,13 @@ import type { MemberResource } from '../../api/member-api';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import { type ContentCollectionItem, type ContentPage, fetchContentPage, fetchPricingPlans } from '../../api/content-api';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 const DEFAULT_ROOM_IMAGE = 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800';
 
 type PublicNavigation = NativeStackNavigationProp<PublicStackParamList>;

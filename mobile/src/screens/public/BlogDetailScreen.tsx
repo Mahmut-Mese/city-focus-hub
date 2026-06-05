@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createApiClient } from '../../api/client';
+import { getApiBaseUrl } from '../../config/api';
 import {
   type ContentCollectionItem,
   type ContentPage,
@@ -16,7 +17,6 @@ import { LoadingState } from '../../components/LoadingState';
 import type { PublicStackParamList } from '../../navigation/PublicStack';
 import { colors, radius, spacing, typography } from '../../theme';
 
-const getApiBaseUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 type BlogDetailScreenProps = NativeStackScreenProps<PublicStackParamList, 'BlogDetail'>;
 
@@ -84,6 +84,15 @@ export function BlogDetailScreen({ navigation, route }: BlogDetailScreenProps): 
     void loadContent();
   }, [loadContent]);
 
+  const popularTags = useMemo(() => {
+    const allTags = posts.flatMap(p => getStringArray(p, 'tags'));
+    const counts = allTags.reduce((acc, tag) => {
+      acc[tag] = (acc[tag] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.keys(counts).sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0)).slice(0, 10);
+  }, [posts]);
+
   if (isLoading) return <LoadingState message="Loading blog post…" />;
   if (error) return <ErrorState message={error} onRetry={loadContent} />;
 
@@ -108,14 +117,6 @@ export function BlogDetailScreen({ navigation, route }: BlogDetailScreenProps): 
   const detailSearchButtonLabel = getString(page, 'detailSearchButtonLabel', 'Search our blog');
   
   const detailPopularTagsTitle = getString(page, 'detailPopularTagsTitle', 'Popular tags');
-  const popularTags = useMemo(() => {
-    const allTags = posts.flatMap(p => getStringArray(p, 'tags'));
-    const counts = allTags.reduce((acc, tag) => {
-      acc[tag] = (acc[tag] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    return Object.keys(counts).sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0)).slice(0, 10);
-  }, [posts]);
   
   const detailRelatedWorkspacesTitle = getString(page, 'detailRelatedWorkspacesTitle', 'Related workspaces');
   const relatedWorkspaces = Array.isArray(page?.relatedWorkspaces) ? page.relatedWorkspaces : [];
