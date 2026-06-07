@@ -42,6 +42,12 @@ mobile/ios/DerivedData/
 # Expo local state
 mobile/.expo/
 
+# Local duplicate folders created by Finder/copy operations
+docs/mobile 2/
+mobile/e2e/maestro 2/
+mobile/e2e/maestro 3/
+mobile/src/* 2/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
