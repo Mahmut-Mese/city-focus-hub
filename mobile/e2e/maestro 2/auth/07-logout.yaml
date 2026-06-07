@@ -1,0 +1,30 @@
+appId: com.leadenhallworks.mobile
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- openLink: "leadenhallworks://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+- extendedWaitUntil:
+    visible: "Account"
+    timeout: 60000
+- assertVisible: "THE LEADENHALL WORKS"
+- tapOn: "Account"
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 30000
+- tapOn:
+    id: "login-email"
+- inputText: ${E2E_EMAIL}
+- tapOn:
+    id: "login-password"
+- inputText: ${E2E_PASSWORD}
+- tapOn:
+    id: "submit-login"
+- extendedWaitUntil:
+    visible: "Home Dashboard"
+    timeout: 60000
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 30000
+- assertVisible: "Member Access"
