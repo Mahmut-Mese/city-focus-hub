@@ -50,10 +50,6 @@ const tabIcons: Record<VisibleTabName, { active: IconName; inactive: IconName }>
   Profile: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
 
-function isVisibleTab(routeName: keyof MemberTabsParamList): routeName is VisibleTabName {
-  return routeName in tabIcons;
-}
-
 function PlaceholderScreen({ title }: { title: string }) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, backgroundColor: colors.background }}>
@@ -138,12 +134,12 @@ export function MemberTabs() {
     <Tabs.Navigator
       initialRouteName="Dashboard"
       tabBar={(props) => <MemberTabBar {...props} />}
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerLeft: () => <HomeHeaderButton />,
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.foreground,
         headerTitleStyle: { fontSize: typography.fontSize.xl, fontWeight: '700' },
-      })}
+      }}
     >
       <Tabs.Screen name="Dashboard" component={DashboardScreen} />
       <Tabs.Screen name="Bookings" component={BookingsScreen} options={{ title: 'My Bookings' }} />

@@ -5,7 +5,21 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".next", "out", ".astro", "adminjs/dist", "adminjs/.adminjs", "node_modules"] },
+  {
+    ignores: [
+      "dist",
+      ".next",
+      "out",
+      ".astro",
+      "adminjs/dist",
+      "adminjs/.adminjs",
+      "node_modules",
+      "docs/mobile 2/**",
+      "mobile/e2e/maestro 2/**",
+      "mobile/e2e/maestro 3/**",
+      "mobile/src/* 2/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
