@@ -349,6 +349,18 @@ async function ensureSchema() {
   }
 }
 
+async function ensureSessionTable(tableName) {
+  assertSafeIdentifier(tableName, 'session table name');
+  await sequelize.query(
+    `CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+      session_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+      expires INT(11) UNSIGNED NOT NULL,
+      data MEDIUMTEXT COLLATE utf8mb4_bin,
+      PRIMARY KEY (session_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`,
+  );
+}
+
 // P1-63: Allowlist of valid identifiers to prevent SQL injection via ensureColumn/hasColumn.
 // These functions accept raw table/column names — only allow known safe identifiers.
 const VALID_IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -587,6 +599,8 @@ async function seedResources() {
 
 export async function ensureCommerceSchema() {
   await ensureSchema();
+  await ensureSessionTable(config.session.tableName);
+  await ensureSessionTable(config.memberSession.tableName);
   await runCommerceMigrations();
   await seedPlans();
   await seedResources();

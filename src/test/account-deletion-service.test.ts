@@ -32,6 +32,7 @@ describe('account-deletion-service', () => {
   let db: DbModule;
   const userIds: number[] = [];
   const sessionIds: string[] = [];
+  const memberSessionIds: string[] = [];
   const pushTokens: string[] = [];
 
   beforeAll(async () => {
@@ -48,11 +49,15 @@ describe('account-deletion-service', () => {
       await sql.execute('DELETE FROM mobile_refresh_tokens WHERE session_id = :sessionId', { sessionId });
       await sql.execute('DELETE FROM mobile_sessions WHERE session_id = :sessionId', { sessionId });
     }
+    for (const sessionId of memberSessionIds) {
+      await sql.execute('DELETE FROM member_sessions WHERE session_id = :sessionId', { sessionId });
+    }
     for (const userId of userIds) {
       await sql.execute('DELETE FROM account_deletion_requests WHERE user_id = :userId', { userId });
     }
     pushTokens.length = 0;
     sessionIds.length = 0;
+    memberSessionIds.length = 0;
     userIds.length = 0;
   });
 
@@ -95,9 +100,11 @@ describe('account-deletion-service', () => {
   it('marks completed and revokes active mobile sessions, refresh tokens, and push tokens', async () => {
     const userId = randomUserId();
     const sessionId = randomUUID();
+    const memberSessionId = randomUUID();
     const pushToken = `ExpoPushToken[${randomUUID()}]`;
     userIds.push(userId);
     sessionIds.push(sessionId);
+    memberSessionIds.push(memberSessionId);
     pushTokens.push(pushToken);
 
     await sql.execute(
@@ -118,6 +125,16 @@ describe('account-deletion-service', () => {
        VALUES (:userId, :token, 'ios', 'active', :now, :now)`,
       { userId, token: pushToken, now: new Date() },
     );
+    await sql.execute(
+      `INSERT INTO member_sessions
+        (session_id, expires, data)
+       VALUES (:sessionId, :expires, :data)`,
+      {
+        sessionId: memberSessionId,
+        expires: Math.floor((Date.now() + 86400000) / 1000),
+        data: JSON.stringify({ memberUserId: userId }),
+      },
+    );
 
     const request = await service.requestAccountDeletion({ userId, reason: 'test' });
     const completed = await service.markAccountDeletionCompleted({ requestId: request.id, userId, reason: 'test completion' });
@@ -126,8 +143,10 @@ describe('account-deletion-service', () => {
     const session = await sql.queryOne<{ status: string }>('SELECT status FROM mobile_sessions WHERE session_id = :sessionId', { sessionId });
     const refresh = await sql.queryOne<{ status: string }>('SELECT status FROM mobile_refresh_tokens WHERE session_id = :sessionId', { sessionId });
     const push = await sql.queryOne<{ status: string }>('SELECT status FROM mobile_push_tokens WHERE token = :token', { token: pushToken });
+    const memberSession = await sql.queryOne<{ count: number }>('SELECT COUNT(*) AS count FROM member_sessions WHERE session_id = :sessionId', { sessionId: memberSessionId });
     expect(session.status).toBe('revoked');
     expect(refresh.status).toBe('revoked');
     expect(push.status).toBe('revoked');
+    expect(Number(memberSession.count)).toBe(0);
   });
 });
