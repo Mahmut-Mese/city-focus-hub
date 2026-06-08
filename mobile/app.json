@@ -51,7 +51,7 @@
           ]
         }
       ],
-      "versionCode": 9
+      "versionCode": 11
     },
     "plugins": [
       "expo-secure-store",

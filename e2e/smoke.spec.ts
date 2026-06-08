@@ -90,26 +90,36 @@ function toSlug(value: unknown): string | null {
   return null;
 }
 
-const BLOG_SLUGS = loadCmsCollection('blog-posts.json')
-  .filter((post) => !post.featured)
-  .map((post) => toSlug(post.slug) ?? toSlug(post.id))
-  .filter((slug): slug is string => Boolean(slug));
+function loadBuiltRouteSlugs(routeDir: string): string[] {
+  try {
+    const entries = readdirSync(routeDir);
+    return entries.filter((entry) => {
+      if (entry === 'index.html' || entry.includes(' ')) return false;
+      const entryPath = path.join(routeDir, entry);
+      return statSync(entryPath).isDirectory();
+    });
+  } catch {
+    return [];
+  }
+}
+
+// Blog detail slugs: read from the built dist directory because the backend can
+// refresh public/cms after the static site is built in CI.
+const BLOG_SLUGS = (() => {
+  const builtSlugs = loadBuiltRouteSlugs(path.join(process.cwd(), 'dist', 'blog'));
+  if (builtSlugs.length > 0) return builtSlugs;
+
+  return loadCmsCollection('blog-posts.json')
+    .filter((post) => !post.featured)
+    .map((post) => toSlug(post.slug) ?? toSlug(post.id))
+    .filter((slug): slug is string => Boolean(slug));
+})();
 
 // Room booking slugs: read from the built dist directory (populated from the resources DB at build time).
 // Falls back to CMS snapshot if the dist directory doesn't have meeting room pages.
 const ROOM_SLUGS = (() => {
-  try {
-    const meetingRoomsDir = path.join(process.cwd(), 'dist', 'meeting-rooms');
-    const entries = readdirSync(meetingRoomsDir);
-    const slugs = entries.filter((entry) => {
-      if (entry === 'index.html' || entry.includes(' ')) return false;
-      const entryPath = path.join(meetingRoomsDir, entry);
-      return statSync(entryPath).isDirectory();
-    });
-    if (slugs.length > 0) return slugs;
-  } catch {
-    // dist not available — fall back to CMS snapshot
-  }
+  const builtSlugs = loadBuiltRouteSlugs(path.join(process.cwd(), 'dist', 'meeting-rooms'));
+  if (builtSlugs.length > 0) return builtSlugs;
 
   return loadCmsCollection('meeting-rooms.json')
     .map((room) => toSlug(room.slug) ?? toSlug(room.id))

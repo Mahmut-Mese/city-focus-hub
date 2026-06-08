@@ -6,6 +6,8 @@ import { AuthProvider } from './src/auth/AuthProvider';
 import { RootNavigator, rootNavigationRef } from './src/navigation/RootNavigator';
 import { addNotificationResponseHandler } from './src/notifications/notification-routing';
 import { getApiBaseUrl } from './src/config/api';
+import { createApiClient } from './src/api/client';
+import { preloadPublicContent } from './src/api/content-api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -40,23 +42,37 @@ function compareVersions(v1: string, v2: string): number {
   return 0;
 }
 
+const VERSION_POLICY_TIMEOUT_MS = 2500;
+
+async function fetchVersionPolicy(url: string): Promise<VersionPolicy> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), VERSION_POLICY_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch version policy: ${response.status}`);
+    }
+
+    return response.json() as Promise<VersionPolicy>;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export default function App() {
-  // State to manage version checking and possible block
-  const [isCheckingVersion, setIsCheckingVersion] = useState(true);
   const [blockedPolicy, setBlockedPolicy] = useState<VersionPolicy | null>(null);
 
-  // Fetch version policy on mount
+  // Fetch version policy on mount without blocking app startup.
   useEffect(() => {
     const fetchPolicy = async () => {
       const baseUrl = getApiBaseUrl();
+      if (!baseUrl) return;
+
       const currentVersion = Constants.expoConfig?.version || '0.0.0';
       const url = `${baseUrl}/api/mobile-app/version-policy?platform=${Platform.OS}&version=${currentVersion}`;
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch version policy: ${response.status}`);
-        }
-        const policy: VersionPolicy = await response.json();
+        const policy = await fetchVersionPolicy(url);
         if (compareVersions(currentVersion, policy.minSupportedVersion) < 0) {
           setBlockedPolicy(policy);
         } else {
@@ -65,11 +81,17 @@ export default function App() {
       } catch {
         // On any error, allow app to open normally
         setBlockedPolicy(null);
-      } finally {
-        setIsCheckingVersion(false);
       }
     };
     fetchPolicy();
+  }, []);
+
+  useEffect(() => {
+    const baseUrl = getApiBaseUrl();
+    if (!baseUrl) return;
+
+    const apiClient = createApiClient({ baseUrl });
+    preloadPublicContent(apiClient);
   }, []);
 
   // Notification response handler (kept unchanged)
@@ -79,15 +101,6 @@ export default function App() {
       subscription.remove();
     };
   }, []);
-
-  // Render while checking version
-  if (isCheckingVersion) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Checking app version...</Text>
-      </View>
-    );
-  }
 
   // Render blocked UI if policy requires update
   if (blockedPolicy) {

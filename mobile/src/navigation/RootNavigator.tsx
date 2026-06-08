@@ -9,7 +9,6 @@ import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { MemberTabs, type MemberTabsParamList } from './MemberTabs';
 import { PublicStack, type PublicStackParamList } from './PublicStack';
 import { useAuth } from '../auth/AuthProvider';
-import { LoadingState } from '../components/LoadingState';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -123,19 +122,15 @@ function AuthStackNavigator() {
 }
 
 export function RootNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <LoadingState message="Loading..." />;
-  }
+  const { isAuthenticated } = useAuth();
 
   return (
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme} linking={linking}>
-      <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={isAuthenticated ? 'Member' : 'Public'}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Public">
         {isAuthenticated ? (
           <RootStack.Group>
-            <RootStack.Screen name="Member" component={MemberTabs} />
             <RootStack.Screen name="Public" component={PublicStack} />
+            <RootStack.Screen name="Member" component={MemberTabs} />
           </RootStack.Group>
         ) : (
           <RootStack.Group>

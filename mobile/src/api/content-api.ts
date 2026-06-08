@@ -1,5 +1,6 @@
 import { ApiClient } from './client';
 import { getApiBaseUrl } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ContentStatus = 'published' | 'draft';
 
@@ -46,6 +47,104 @@ export type PublicPlan = {
 };
 
 type QueryValue = string | number | boolean | undefined | null;
+
+type PublicContentCacheRecord<T> = {
+  savedAt: number;
+  value: T;
+};
+
+const PUBLIC_CONTENT_MEMORY_TTL_MS = 5 * 60 * 1000;
+const PUBLIC_CONTENT_STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const PUBLIC_CONTENT_REQUEST_TIMEOUT_MS = 12_000;
+const PUBLIC_CONTENT_CACHE_PREFIX = 'public-content-cache:v1:';
+
+const publicContentMemoryCache = new Map<string, PublicContentCacheRecord<unknown>>();
+const publicContentPendingRequests = new Map<string, Promise<unknown>>();
+
+function isFresh(record: PublicContentCacheRecord<unknown>, ttlMs: number): boolean {
+  return Date.now() - record.savedAt < ttlMs;
+}
+
+function getStorageKey(cacheKey: string): string {
+  return `${PUBLIC_CONTENT_CACHE_PREFIX}${cacheKey}`;
+}
+
+async function readStoredPublicContent<T>(cacheKey: string): Promise<PublicContentCacheRecord<T> | null> {
+  try {
+    const raw = await AsyncStorage.getItem(getStorageKey(cacheKey));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<PublicContentCacheRecord<T>>;
+    if (typeof parsed.savedAt !== 'number' || !('value' in parsed)) return null;
+
+    return { savedAt: parsed.savedAt, value: parsed.value as T };
+  } catch {
+    return null;
+  }
+}
+
+async function writeStoredPublicContent<T>(cacheKey: string, record: PublicContentCacheRecord<T>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(getStorageKey(cacheKey), JSON.stringify(record));
+  } catch {
+    // Persistent cache is a performance optimization only.
+  }
+}
+
+function startPublicContentRequest<T>(
+  apiClient: ApiClient,
+  cacheKey: string,
+  path: string,
+): Promise<T> {
+  const pending = publicContentPendingRequests.get(cacheKey);
+  if (pending) {
+    return pending as Promise<T>;
+  }
+
+  const request = apiClient.request<T>(path, {
+    skipAuth: true,
+    timeoutMs: PUBLIC_CONTENT_REQUEST_TIMEOUT_MS,
+  }).then((value) => {
+    const record: PublicContentCacheRecord<T> = { savedAt: Date.now(), value };
+    publicContentMemoryCache.set(cacheKey, record);
+    void writeStoredPublicContent(cacheKey, record);
+    return value;
+  }).finally(() => {
+    publicContentPendingRequests.delete(cacheKey);
+  });
+
+  publicContentPendingRequests.set(cacheKey, request);
+  return request;
+}
+
+async function requestCachedPublicContent<T>(
+  apiClient: ApiClient,
+  cacheKey: string,
+  path: string,
+): Promise<T> {
+  const memoryRecord = publicContentMemoryCache.get(cacheKey);
+  if (memoryRecord && isFresh(memoryRecord, PUBLIC_CONTENT_MEMORY_TTL_MS)) {
+    return memoryRecord.value as T;
+  }
+
+  if (memoryRecord && publicContentPendingRequests.has(cacheKey)) {
+    return memoryRecord.value as T;
+  }
+
+  const storedRecord = await readStoredPublicContent<T>(cacheKey);
+  if (storedRecord && isFresh(storedRecord, PUBLIC_CONTENT_STORAGE_TTL_MS)) {
+    publicContentMemoryCache.set(cacheKey, storedRecord);
+    void startPublicContentRequest<T>(apiClient, cacheKey, path).catch(() => undefined);
+    return storedRecord.value;
+  }
+
+  if (memoryRecord) {
+    void startPublicContentRequest<T>(apiClient, cacheKey, path).catch(() => undefined);
+    return memoryRecord.value as T;
+  }
+
+  return startPublicContentRequest<T>(apiClient, cacheKey, path);
+}
 
 // Helper to resolve media URLs from various payload shapes.
 /**
@@ -148,7 +247,8 @@ function withStatus(path: string, status: ContentStatus = 'published'): string {
 }
 
 export function fetchSiteSetting(apiClient: ApiClient, status: ContentStatus = 'published'): Promise<ContentPage | null> {
-  return apiClient.request<ContentPage | null>(withStatus('/api/site-setting', status), { skipAuth: true });
+  const path = withStatus('/api/site-setting', status);
+  return requestCachedPublicContent<ContentPage | null>(apiClient, `page:${path}`, path);
 }
 
 export function fetchContentPage(
@@ -156,7 +256,8 @@ export function fetchContentPage(
   pageName: ContentPageName,
   status: ContentStatus = 'published',
 ): Promise<ContentPage | null> {
-  return apiClient.request<ContentPage | null>(withStatus(`/api/${pageName}?populate=*`, status), { skipAuth: true });
+  const path = withStatus(`/api/${pageName}?populate=*`, status);
+  return requestCachedPublicContent<ContentPage | null>(apiClient, `page:${path}`, path);
 }
 
 export function fetchContentCollection(
@@ -164,7 +265,8 @@ export function fetchContentCollection(
   collectionName: ContentCollectionName,
   params: Record<string, QueryValue> = {},
 ): Promise<ContentCollectionItem[]> {
-  return apiClient.request<ContentCollectionItem[]>(`/api/${collectionName}${buildQuery(params)}`, { skipAuth: true });
+  const path = `/api/${collectionName}${buildQuery(params)}`;
+  return requestCachedPublicContent<ContentCollectionItem[]>(apiClient, `collection:${path}`, path);
 }
 
 export function fetchBlogPosts(apiClient: ApiClient): Promise<ContentCollectionItem[]> {
@@ -216,7 +318,7 @@ export function fetchMeetingRooms(apiClient: ApiClient): Promise<ContentCollecti
 }
 
 export function fetchPublicPlans(apiClient: ApiClient): Promise<PublicPlan[]> {
-  return apiClient.request<PublicPlan[]>('/api/public/plans', { skipAuth: true });
+  return requestCachedPublicContent<PublicPlan[]>(apiClient, 'public-plans:/api/public/plans', '/api/public/plans');
 }
 
 export function submitContactSubmission(
@@ -227,5 +329,28 @@ export function submitContactSubmission(
     method: 'POST',
     body: input,
     skipAuth: true,
+  });
+}
+
+export function preloadPublicContent(apiClient: ApiClient): void {
+  const highPriorityTasks: Promise<unknown>[] = [
+    fetchSiteSetting(apiClient),
+    fetchContentPage(apiClient, 'homepage'),
+    fetchContentPage(apiClient, 'pricing-page'),
+    fetchPublicPlans(apiClient),
+  ];
+
+  void Promise.allSettled(highPriorityTasks).then(() => {
+    const lowerPriorityTasks: Promise<unknown>[] = [
+      fetchContentPage(apiClient, 'meeting-rooms-page'),
+      fetchContentPage(apiClient, 'virtual-office-page'),
+      fetchContentPage(apiClient, 'about-page'),
+      fetchContentPage(apiClient, 'faq-page'),
+      fetchContentPage(apiClient, 'contact-page'),
+      fetchFaqItems(apiClient),
+      fetchMeetingRooms(apiClient),
+    ];
+
+    void Promise.allSettled(lowerPriorityTasks);
   });
 }

@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/AuthProvider';
+import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
 
+type AuthNavigation = NativeStackNavigationProp<AuthStackParamList>;
+
 export function RegisterScreen(): JSX.Element {
+  const navigation = useNavigation<AuthNavigation>();
   const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +36,12 @@ export function RegisterScreen(): JSX.Element {
 
     try {
       await register({ name: normalizedName, email: normalizedEmail, password });
+      setTimeout(() => {
+        navigation.getParent()?.reset({
+          index: 0,
+          routes: [{ name: 'Member' }],
+        });
+      }, 100);
     } catch {
       setError('We could not create your account. Check your details and try again.');
     } finally {

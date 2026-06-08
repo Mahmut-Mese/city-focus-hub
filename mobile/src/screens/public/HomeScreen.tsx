@@ -244,7 +244,7 @@ export function HomeScreen(): JSX.Element {
   const scrollBottomPadding = useScrollBottomPadding();
   const navigation = useNavigation<PublicNavigation>();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const apiClient = useMemo(() => createApiClient({ baseUrl: apiBaseUrl }), [apiBaseUrl]);
   const [homeSource, setHomeSource] = useState<Record<string, unknown> | null>(null);
@@ -319,6 +319,10 @@ export function HomeScreen(): JSX.Element {
   }, [navigateToPath]);
 
   const handleAccountPress = useCallback(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
     setIsMenuOpen(false);
     const rootNavigation = navigation.getParent<RootNavigation>();
     if (isAuthenticated) {
@@ -326,7 +330,7 @@ export function HomeScreen(): JSX.Element {
       return;
     }
     rootNavigation?.navigate('Auth', { screen: 'Login' });
-  }, [isAuthenticated, navigation]);
+  }, [isAuthenticated, isAuthLoading, navigation]);
 
   if (isLoading) {
     return <LoadingState message="Loading home content…" />;
@@ -394,6 +398,8 @@ export function HomeScreen(): JSX.Element {
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel="Account"
+          accessibilityState={{ disabled: isAuthLoading }}
+          disabled={isAuthLoading}
           testID="home-account-button"
           style={styles.headerIcon}
           onPress={handleAccountPress}
