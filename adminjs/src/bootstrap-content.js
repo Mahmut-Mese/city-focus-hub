@@ -7,14 +7,14 @@ import {
   defaultPrivacyPolicyContent,
   defaultSiteSettingsContent,
   defaultTermsContent,
-} from '../../src/data/siteContent.ts';
+} from '../../src/data/siteContent.js';
 import {
   blogPosts,
   faqItems,
   meetingRoomPlans,
   meetingRooms,
   pricingPlans,
-} from '../../src/data/mockData.ts';
+} from '../../src/data/mockData.js';
 
 const TABLE_DEFINITIONS = [
   `CREATE TABLE IF NOT EXISTS site_settings (
