@@ -21,6 +21,7 @@ adminjs/.env
 !/adminjs/.env.example
 
 # AdminJS build cache
+.adminjs/
 adminjs/.adminjs/
 
 # Mobile app generated files
@@ -45,6 +46,7 @@ mobile/.expo/
 
 # Local duplicate folders created by Finder/copy operations
 docs/mobile 2/
+mobile/app 2.json
 mobile/e2e/maestro 2/
 mobile/e2e/maestro 3/
 mobile/src/* 2/

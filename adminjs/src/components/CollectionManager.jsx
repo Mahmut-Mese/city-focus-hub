@@ -1055,10 +1055,6 @@ function resolveMediaPreviewUrl(value) {
     return `https:${normalized}`;
   }
 
-  if (normalized.startsWith('/uploads/') || normalized.startsWith('/admin-assets/')) {
-    return `http://localhost:3001${normalized}`;
-  }
-
   return normalized;
 }
 

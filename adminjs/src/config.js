@@ -43,7 +43,7 @@ function parseSameSite(value, fallback = 'lax') {
 const runtimeEnv = process.env.NODE_ENV || 'development';
 const isLocalLikeEnv = runtimeEnv !== 'production';
 const defaultPort = Number(process.env.PORT || 3001);
-const defaultPublicOrigin = process.env.PUBLIC_ORIGIN || `http://localhost:${defaultPort}`;
+const defaultPublicOrigin = process.env.PUBLIC_ORIGIN || (isLocalLikeEnv ? `http://localhost:${defaultPort}` : '');
 const sessionSecret = requireEnv('SESSION_SECRET', DEFAULT_SESSION_SECRET);
 const adminEmail = requireEnv('ADMINJS_EMAIL', DEFAULT_ADMIN_EMAIL);
 const adminPassword = requireEnv('ADMINJS_PASSWORD', DEFAULT_ADMIN_PASSWORD);
@@ -142,6 +142,10 @@ if (runtimeEnv === 'production' && !process.env.ADMINJS_PREBUNDLE) {
 
   if (!config.cors.allowedOrigins.length) {
     productionErrors.push('FRONTEND_ORIGINS or PUBLIC_ORIGIN must be configured in production.');
+  }
+
+  if (!config.publicOrigin) {
+    productionErrors.push('PUBLIC_ORIGIN must be configured in production.');
   }
 
   if (!config.stripe.secretKey) {
