@@ -4,9 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
  * City Focus Hub — E2E Smoke Test Configuration
  *
  * Expects:
- *   - MySQL running on localhost:3306
- *   - Backend running on localhost:3001  (cd adminjs && node src/start.js)
- *   - Frontend running on localhost:8080 (npm run dev)
+ *   - MySQL running on 127.0.0.1:3306
+ *   - Backend running on 127.0.0.1:3001  (cd adminjs && node src/start.js)
+ *   - Frontend running on 127.0.0.1:8080 (npm run dev)
  *
  * Run: npm run test:e2e
  */
@@ -20,7 +20,7 @@ export default defineConfig({
   timeout: 30_000,
 
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: process.env.FRONTEND_URL || process.env.BASE_URL || 'http://127.0.0.1:8080',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

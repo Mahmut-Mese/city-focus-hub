@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-const API = 'http://localhost:3001';
+const API = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
 
 // ---------------------------------------------------------------------------
 // Public CMS API — should all return 200 with JSON

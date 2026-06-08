@@ -125,7 +125,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Start backend
-        run: npm run adminjs:dev &
+        run: |
+          npm run adminjs:dev > backend.log 2>&1 &
+          echo $! > backend.pid
         env:
           DATABASE_HOST: 127.0.0.1
           DATABASE_PORT: 3306
@@ -133,19 +135,25 @@ jobs:
           DATABASE_PASSWORD: testpass
           DATABASE_NAME: city_focus_hub_admin
           NODE_ENV: test
+          HOST: 127.0.0.1
           PORT: 3001
 
       - name: Build & start frontend
-        run: npm run build:frontend && npm run preview &
+        run: |
+          npm run build:frontend
+          npm run preview -- --host 127.0.0.1 > frontend.log 2>&1 &
+          echo $! > frontend.pid
         env:
-          PUBLIC_API_URL: http://localhost:3001
+          PUBLIC_API_URL: http://127.0.0.1:3001
 
       - name: Wait for services
         run: |
-          npx wait-on http://localhost:3001/api/health --timeout 30000 || true
-          npx wait-on http://localhost:8080 --timeout 30000 || true
+          npx wait-on http://127.0.0.1:3001/api/health --timeout 60000 || (cat backend.log && exit 1)
+          npx wait-on http://127.0.0.1:8080 --timeout 60000 || (cat frontend.log && exit 1)
 
       - name: Run E2E tests
         run: npm run test:e2e
         env:
-          BASE_URL: http://localhost:8080
+          BASE_URL: http://127.0.0.1:8080
+          FRONTEND_URL: http://127.0.0.1:8080
+          BACKEND_URL: http://127.0.0.1:3001

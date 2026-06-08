@@ -5,8 +5,8 @@ import { test, expect, type ConsoleMessage } from '@playwright/test';
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-const FRONTEND_BASE = 'http://localhost:8080';
-const BACKEND_BASE = 'http://localhost:3001';
+const FRONTEND_BASE = process.env.FRONTEND_URL || process.env.BASE_URL || 'http://127.0.0.1:8080';
+const BACKEND_BASE = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
 
 function loadDotEnvValue(filePath: string, key: string): string | null {
   try {
