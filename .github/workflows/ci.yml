@@ -54,6 +54,26 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+          MYSQL_DATABASE: city_focus_hub_admin
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: 3306
+      DATABASE_USER: root
+      DATABASE_PASSWORD: testpass
+      DATABASE_NAME: city_focus_hub_admin
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +84,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Prepare test database
+        run: |
+          node --input-type=module -e "import { sequelize } from './adminjs/src/database.js'; import { ensureCommerceSchema } from './adminjs/src/bootstrap-commerce.js'; await sequelize.authenticate(); await ensureCommerceSchema(); await sequelize.close();"
+          npm run migrate --prefix adminjs
 
       - name: Run unit tests
         run: npm test
