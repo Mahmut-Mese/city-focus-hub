@@ -21,6 +21,7 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
+        "image": "latest",
         "simulator": false
       },
       "android": {
@@ -34,6 +35,7 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
+        "image": "latest",
         "simulator": false
       },
       "android": {
