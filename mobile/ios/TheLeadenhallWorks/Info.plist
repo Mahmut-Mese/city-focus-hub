@@ -50,6 +50,8 @@
     <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
     <key>NSCameraUsageDescription</key>
     <string>The Leadenhall Works may use the camera if you choose to scan payment card details during checkout.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
