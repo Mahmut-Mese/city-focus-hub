@@ -261,16 +261,20 @@ export function HomeScreen(): JSX.Element {
     setIsLoading(true);
     setError(null);
 
+    const siteSettingRequest = fetchSiteSetting(apiClient).catch(() => null);
+
     try {
-      const [homePage, siteSetting] = await Promise.all([
-        fetchContentPage(apiClient, 'homepage'),
-        fetchSiteSetting(apiClient),
-      ]);
+      const homePage = await fetchContentPage(apiClient, 'homepage');
       setHomeSource(homePage);
+      setIsLoading(false);
+
+      const siteSetting = await siteSettingRequest;
       setSiteSource(siteSetting);
     } catch {
       setError('We could not load the home page content.');
-    } finally {
+      void siteSettingRequest.then((siteSetting) => {
+        setSiteSource(siteSetting);
+      });
       setIsLoading(false);
     }
   }, [apiClient]);

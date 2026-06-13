@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { ApiClient, ApiError } from './client';
 import { getApiBaseUrl } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -56,6 +56,7 @@ type PublicContentCacheRecord<T> = {
 const PUBLIC_CONTENT_MEMORY_TTL_MS = 5 * 60 * 1000;
 const PUBLIC_CONTENT_STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const PUBLIC_CONTENT_REQUEST_TIMEOUT_MS = 12_000;
+const PUBLIC_CONTENT_RETRY_DELAYS_MS = [500, 1500];
 const PUBLIC_CONTENT_CACHE_PREFIX = 'public-content-cache:v1:';
 
 const publicContentMemoryCache = new Map<string, PublicContentCacheRecord<unknown>>();
@@ -91,6 +92,38 @@ async function writeStoredPublicContent<T>(cacheKey: string, record: PublicConte
   }
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryPublicContentRequest(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 0 || error.status >= 500;
+  }
+
+  return true;
+}
+
+async function requestPublicContentWithRetry<T>(apiClient: ApiClient, path: string): Promise<T> {
+  for (let attempt = 0; attempt <= PUBLIC_CONTENT_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await apiClient.request<T>(path, {
+        skipAuth: true,
+        timeoutMs: PUBLIC_CONTENT_REQUEST_TIMEOUT_MS,
+      });
+    } catch (error) {
+      const retryDelay = PUBLIC_CONTENT_RETRY_DELAYS_MS[attempt];
+      if (retryDelay === undefined || !shouldRetryPublicContentRequest(error)) {
+        throw error;
+      }
+
+      await wait(retryDelay);
+    }
+  }
+
+  throw new ApiError('Public content request failed.', 0);
+}
+
 function startPublicContentRequest<T>(
   apiClient: ApiClient,
   cacheKey: string,
@@ -101,10 +134,7 @@ function startPublicContentRequest<T>(
     return pending as Promise<T>;
   }
 
-  const request = apiClient.request<T>(path, {
-    skipAuth: true,
-    timeoutMs: PUBLIC_CONTENT_REQUEST_TIMEOUT_MS,
-  }).then((value) => {
+  const request = requestPublicContentWithRetry<T>(apiClient, path).then((value) => {
     const record: PublicContentCacheRecord<T> = { savedAt: Date.now(), value };
     publicContentMemoryCache.set(cacheKey, record);
     void writeStoredPublicContent(cacheKey, record);
